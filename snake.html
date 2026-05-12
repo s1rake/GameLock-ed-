@@ -2219,22 +2219,29 @@ function endGame() {
     updateSparkBalance();
 
     // Отправляем рекорд в Supabase
-    if (currentUser) {
-        const skinColor = getCurrentSkinColor();
-        try {
-            sb.from('snake_leaderboard').upsert({
-                username: currentUser.username,
-                score: s.record,
-                gold_apples: s.totalGoldApples || 0,
-                events: s.totalEvents || 0,
-                deaths: s.deaths,
-                skin_color: skinColor,
-                created_at: new Date().toISOString()
-            }).then(() => updateLeaderboard());
-        } catch (e) {
-            console.log('Рекорд сохранён локально');
-        }
-    }
+if (currentUser) {
+    const skinColor = getCurrentSkinColor();
+    fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard', {
+        method: 'POST',
+        headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0',
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+            username: currentUser.username,
+            score: s.record,
+            gold_apples: s.totalGoldApples || 0,
+            events: s.totalEvents || 0,
+            deaths: s.deaths,
+            skin_color: skinColor,
+            created_at: new Date().toISOString()
+        })
+    }).then(r => {
+        if (r.status === 201) updateLeaderboard();
+    }).catch(e => console.log('Рекорд сохранён локально'));
+}
 
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = `Счёт: ${score}`;
