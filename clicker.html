@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кликер</title>
+    <link rel="shortcut icon" href="img/clicker.png" type="image/x-icon">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:linear-gradient(135deg,#00b4d8,#0077b6);display:flex;flex-direction:column;align-items:center;min-height:100vh;transition:0.3s;user-select:none}
+body.dark-theme{background:linear-gradient(135deg,#1a1a2e,#16213e)}
+.top-panel{display:flex;gap:15px;margin-top:20px;margin-bottom:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+.menu-btn{background:white;padding:12px 25px;border-radius:12px;cursor:pointer;font-size:18px;transition:0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.1);border:none;font-weight:bold}
+body.dark-theme .menu-btn{background:#2a2a4a;color:#eee}
+.menu-btn:hover{transform:translateY(-2px);background:#ececec}
+body.dark-theme .menu-btn:hover{background:#3a3a5a}
+.profile-section{display:flex;align-items:center;gap:10px;background:white;padding:8px 15px;border-radius:25px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+body.dark-theme .profile-section{background:#2a2a4a;color:#eee}
+.profile-avatar{font-size:30px}
+.profile-name{font-weight:bold;font-size:18px;color:#333}
+body.dark-theme .profile-name{color:#eee}
+.profile-btn{background:#0077b6;color:white;border:none;padding:8px 15px;border-radius:15px;cursor:pointer;font-size:14px;transition:0.2s}
+.profile-btn:hover{background:#005f8a}
+.theme-toggle{background:white;border:none;padding:10px 15px;border-radius:25px;cursor:pointer;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+body.dark-theme .theme-toggle{background:#2a2a4a}
+.title{font-size:40px;color:white;margin:15px 0;font-weight:bold;text-shadow:2px 2px 4px rgba(0,0,0,0.3)}
+.balance{background:white;padding:12px 25px;border-radius:18px;font-size:24px;font-weight:bold;margin:8px 0 15px}
+body.dark-theme .balance{background:#2a2a4a;color:#eee}
+.main-grid{display:flex;gap:25px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:20px;max-width:1000px;width:95%}
+.shop-left{background:rgba(255,255,255,0.95);border-radius:20px;padding:18px;width:260px;box-shadow:0 5px 20px rgba(0,0,0,0.3);text-align:center;flex-shrink:0}
+body.dark-theme .shop-left{background:rgba(42,42,74,0.95)}
+.shop-title{font-size:18px;font-weight:bold;margin-bottom:10px}
+body.dark-theme .shop-title{color:#eee}
+.upg{background:#f8f8f8;padding:9px;margin:5px 0;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:8px;border:2px solid transparent;transition:0.2s;font-size:12px}
+body.dark-theme .upg{background:#1a1a3a}
+.upg:hover{border-color:#ffd93d}
+.upg-icon{font-size:26px}
+.upg-info{flex:1;text-align:left}
+.upg-name{font-weight:bold;font-size:13px}
+body.dark-theme .upg-name{color:#eee}
+.upg-price{font-weight:bold;color:#0077b6}
+.rebirth-box{margin-top:10px;padding:10px;background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-radius:12px;text-align:center;font-size:12px}
+.btn{width:100%;padding:9px;border:none;border-radius:10px;font-size:13px;cursor:pointer;margin:3px 0;font-weight:bold}
+.btn-green{background:#4caf50;color:#fff}
+.btn-red{background:#f44;color:#fff}
+.btn-gold{background:linear-gradient(135deg,#f90,#f60);color:#fff}
+.game-center{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.safe-wrap{position:relative;width:300px;height:300px;cursor:pointer}
+.safe{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 35% 35%,#5a5a5a,#1a1a1a);display:flex;align-items:center;justify-content:center;border:8px solid #444;font-size:110px;transition:0.1s;box-shadow:0 10px 40px rgba(0,0,0,0.4)}
+.safe:active{transform:scale(0.94)}
+.safe.boosting{animation:shake 0.1s infinite;box-shadow:0 0 60px rgba(255,215,0,0.6)!important}
+@keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,-2px)}}
+.bonus-popup{position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:28px;font-weight:bold;color:#FFD700;pointer-events:none;animation:bonusFloat 1.5s ease-out forwards;text-shadow:0 0 15px rgba(255,215,0,0.8);z-index:10}
+@keyframes bonusFloat{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(-60px) scale(1.5)}}
+.floating-text{position:absolute;font-size:22px;font-weight:bold;color:#FFD700;pointer-events:none;z-index:5;animation:floatUp 0.7s forwards}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-70px)}}
+.stats-right{background:rgba(255,255,255,0.95);border-radius:20px;padding:18px;width:200px;box-shadow:0 5px 20px rgba(0,0,0,0.3);text-align:center;flex-shrink:0}
+body.dark-theme .stats-right{background:rgba(42,42,74,0.95)}
+.stat-item{padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;font-size:13px}
+body.dark-theme .stat-item{border-bottom-color:#444;color:#ddd}
+.stat-item:last-child{border-bottom:none}
+.stat-val{color:#0077b6;font-size:16px}
+.bottom-row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:1000px;width:95%;margin-bottom:25px}
+.sticker-panel{background:rgba(255,255,255,0.95);border-radius:20px;padding:18px;flex:1;min-width:280px;max-width:450px;box-shadow:0 5px 20px rgba(0,0,0,0.3);text-align:center}
+body.dark-theme .sticker-panel{background:rgba(42,42,74,0.95)}
+.sticker-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:40px;padding:8px;background:#fafafa;border-radius:12px;margin:5px 0;max-height:180px;overflow-y:auto}
+body.dark-theme .sticker-grid{background:rgba(0,0,0,0.3)}
+.sticker{background:#fff;padding:6px;border-radius:10px;text-align:center;cursor:pointer;border:2px solid #ddd;font-size:11px;width:55px;transition:0.2s}
+body.dark-theme .sticker{background:#1a1a3a;border-color:#444}
+.sticker:hover{border-color:#ffd700;transform:translateY(-2px)}
+.sticker.sel{border-color:#4caf50!important;background:#e8f5e9!important}
+.sticker-emoji{font-size:22px}
+.craft-target{background:#fff3e0;padding:10px;border-radius:10px;margin:8px 0;font-size:13px;border:2px solid #ff9800;cursor:pointer;font-weight:bold}
+.craft-target:hover{background:#ffe0b2}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;justify-content:center;align-items:center;z-index:100}
+.modal{background:#fff;border-radius:20px;padding:25px;min-width:350px;max-width:500px;text-align:center;position:relative;max-height:80vh;overflow-y:auto}
+body.dark-theme .modal{background:#2a2a4a;color:#eee}
+.modal h2{margin:0 0 15px;font-size:24px}
+.modal input{width:100%;padding:12px;border:2px solid #ddd;border-radius:10px;font-size:15px;margin-bottom:10px;outline:none}
+body.dark-theme .modal input{background:#1a1a3a;border-color:#444;color:#eee}
+.modal-link{color:#0077b6;cursor:pointer;text-decoration:underline;font-size:13px}
+.modal-close{position:absolute;top:10px;right:15px;font-size:22px;cursor:pointer;color:#999}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:15px;font-weight:bold;font-size:15px;z-index:200;color:#fff;box-shadow:0 5px 20px rgba(0,0,0,0.3);animation:slideIn 0.4s ease}
+@keyframes slideIn{0%{opacity:0;transform:translateX(-50%) translateY(-30px)}100%{opacity:1;transform:translateX(-50%) translateY(0)}}
+.craft-option{padding:10px;margin:4px 0;background:#f5f5f5;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;border:2px solid transparent;transition:0.2s}
+.craft-option:hover{border-color:#ff9800;background:#fff}
+.craft-option.selected{border-color:#4caf50!important;background:#e8f5e9!important}
+</style>
+</head>
+<body>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalLogin">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h2>🔐 Вход</h2>
+        <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
+        <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
+        <div class="modal-error" id="loginError">Неверное имя или пароль</div>
+        <button class="btn btn-gold" onclick="login()" style="width:100%">Войти</button>
+        <span class="modal-link" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
+    </div>
+    <div class="modal" id="modalRegister">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h2>📝 Регистрация</h2>
+        <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
+        <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
+        <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
+        <div class="modal-error" id="registerError">Ошибка регистрации</div>
+        <button class="btn btn-gold" onclick="register()" style="width:100%">Зарегистрироваться</button>
+        <span class="modal-link" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
+    </div>
+    <div class="modal" id="modalCraft" style="display:none">
+        <span class="modal-close" onclick="closeCraftModal()">✕</span>
+        <h2>🎯 Выберите что крафтить</h2>
+        <div id="craftList"></div>
+        <button class="btn btn-red" onclick="craftTarget=null;closeCraftModal();updateUI();" style="margin-top:10px;">❌ Сбросить цель</button>
+    </div>
+</div>
+
+<div class="top-panel">
+    <button class="menu-btn" onclick="location.href='main.html'">🏠 Главное меню</button>
+    <button class="menu-btn" onclick="location.href='snake.html'">🐍 Змейка</button>
+    <button class="menu-btn" onclick="location.href='clicker.html'">💰 Кликер</button>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+    <div class="profile-section">
+        <span class="profile-avatar">👤</span>
+        <span class="profile-name" id="profileName">Гость</span>
+        <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
+    </div>
+</div>
+
+<div class="title">💰 Кликер</div>
+<div class="balance">💰 <span id="bal">0</span></div>
+
+<div class="main-grid">
+    <div class="shop-left">
+        <div class="shop-title">🛒 Улучшения (макс: <span id="maxLvl">10</span>)</div>
+        <div class="upg" onclick="buyUpgrade('clickPower')"><div class="upg-icon">💪</div><div class="upg-info"><div class="upg-name">Сила клика</div><div>Ур: <span id="clvl">1</span></div></div><div class="upg-price">💰 <span id="cpr">10</span></div></div>
+        <div class="upg" onclick="buyUpgrade('autoClicker')"><div class="upg-icon">🤖</div><div class="upg-info"><div class="upg-name">Автокликер</div><div>Ур: <span id="alvl">0</span></div></div><div class="upg-price">💰 <span id="apr">50</span></div></div>
+        <div class="upg" onclick="buyUpgrade('multiplier')"><div class="upg-icon">✨</div><div class="upg-info"><div class="upg-name">Множитель</div><div>Ур: <span id="mlvl">0</span></div></div><div class="upg-price">💰 <span id="mpr">500</span></div></div>
+        <div class="rebirth-box">
+            <div style="font-weight:bold;">🌟 Перерождение <span id="rebLvl">0</span>/4</div>
+            <div>Доход: ×<span id="rebMult">1</span> | Макс: <span id="rebMax">10</span></div>
+            <button class="btn btn-green" onclick="rebirth()">🌟 <span id="rebBtn">Переродиться</span></button>
+        </div>
+    </div>
+    <div class="game-center"><div class="safe-wrap" id="safeWrap"><div class="safe" id="safe">🔒</div></div></div>
+    <div class="stats-right">
+        <div class="shop-title">📊 Статистика</div>
+        <div class="stat-item">👆 Кликов<div class="stat-val"><span id="clicks">0</span></div></div>
+        <div class="stat-item">⚡ Кл/сек<div class="stat-val"><span id="cps">0</span></div></div>
+        <div class="stat-item">💥 Бустер<div class="stat-val"><span id="boostVal">0%</span></div></div>
+        <div class="stat-item">🏷️ Стикеров<div class="stat-val"><span id="stCnt">0</span></div></div>
+        <div class="stat-item">🔨 Крафтов<div class="stat-val"><span id="craftCnt">0</span></div></div>
+    </div>
+</div>
+
+<div class="bottom-row">
+    <div class="sticker-panel"><div class="shop-title">🏷️ Мои стикеры</div><div class="sticker-grid" id="myStickers">Нет стикеров</div></div>
+    <div class="sticker-panel">
+        <div class="shop-title">🔨 Крафт</div>
+        <div class="craft-target" onclick="openCraftModal()">🎯 Цель: <span id="craftTargetName">Не выбрана (нажмите)</span></div>
+        <div class="sticker-grid" id="craftSlots">Выберите стикеры</div>
+        <div style="font-size:12px;color:#666;margin:4px 0" id="craftInfo"></div>
+        <button class="btn btn-green" onclick="doCraft()" id="craftBtn" disabled>🔨 Скрафтить</button>
+        <button class="btn btn-red" onclick="clearCraft()">🗑️ Очистить</button>
+        <button class="btn btn-gold" onclick="sellStickers()">💸 Продать все</button>
+    </div>
+</div>
+
+<script>
+// ========== ТЕМА ==========
+let darkTheme=localStorage.getItem('snakeDarkTheme')==='true';
+if(darkTheme)document.body.classList.add('dark-theme');
+function toggleTheme(){darkTheme=!darkTheme;localStorage.setItem('snakeDarkTheme',darkTheme);document.body.classList.toggle('dark-theme');document.getElementById('themeToggle').textContent=darkTheme?'☀️':'🌙';}
+document.getElementById('themeToggle').textContent=darkTheme?'☀️':'🌙';
+
+// ========== АККАУНТЫ ==========
+let currentUser=JSON.parse(localStorage.getItem('snakeCurrentUser'))||null;
+function getAllUsers(){return JSON.parse(localStorage.getItem('snakeUsers'))||{};}
+function saveUsers(users){localStorage.setItem('snakeUsers',JSON.stringify(users));}
+
+function updateProfileUI(){
+    if(currentUser){document.getElementById('profileName').textContent=currentUser.username;document.getElementById('profileBtn').textContent='Выйти';document.getElementById('profileBtn').onclick=logout;document.getElementById('profileSection').querySelector('.profile-avatar').textContent='🎮';}
+    else{document.getElementById('profileName').textContent='Гость';document.getElementById('profileBtn').textContent='Войти';document.getElementById('profileBtn').onclick=openAuthModal;document.getElementById('profileSection').querySelector('.profile-avatar').textContent='👤';}
+    loadClickerData();
+}
+function openAuthModal(){if(currentUser){logout();return;}document.getElementById('modalOverlay').style.display='flex';document.getElementById('modalLogin').style.display='block';document.getElementById('modalRegister').style.display='none';document.getElementById('modalCraft').style.display='none';}
+function closeModal(){document.getElementById('modalOverlay').style.display='none';}
+function closeCraftModal(){document.getElementById('modalCraft').style.display='none';}
+function switchModal(type){if(type==='register'){document.getElementById('modalLogin').style.display='none';document.getElementById('modalRegister').style.display='block';}else{document.getElementById('modalLogin').style.display='block';document.getElementById('modalRegister').style.display='none';}}
+
+function register(){
+    const u=document.getElementById('registerUsername').value.trim(),p=document.getElementById('registerPassword').value,p2=document.getElementById('registerPasswordConfirm').value;
+    if(!u||!p)return alert('Заполните все поля');if(u.length<3)return alert('Имя: мин 3');if(p.length<4)return alert('Пароль: мин 4');if(p!==p2)return alert('Не совпадают');
+    const users=getAllUsers();if(users[u])return alert('Занято');
+    saveClickerData();
+    users[u]={password:p,stats:{},sparks:{},ownedSkins:['green'],selectedSkin:'green',settings:{},achievements:{},tictactoe:{},clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}},created:Date.now()};
+    saveUsers(users);currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
+    closeModal();updateProfileUI();toast('✅ Готово!');
+}
+function login(){
+    const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value;
+    if(!u||!p)return alert('Заполните');
+    const users=getAllUsers();if(!users[u]||users[u].password!==p)return alert('Неверно');
+    if(!users[u].clicker)users[u].clicker={balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}};
+    if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};
+    saveClickerData();
+    currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
+    closeModal();updateProfileUI();toast('✅ Вход!');
+}
+function logout(){saveClickerData();currentUser=null;localStorage.removeItem('snakeCurrentUser');updateProfileUI();}
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+function toast(msg,c){const t=document.createElement('div');t.className='toast';t.textContent=msg;t.style.background=c||'#4caf50';document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='0.5s';setTimeout(function(){t.remove();},500);},2500);}
+
+// ========== ДАННЫЕ КЛИКЕРА ==========
+function getClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}}};if(!users[u].clicker)users[u].clicker={balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}};if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};return users[u].clicker;}
+function saveClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={};users[u].clicker={balance:Math.floor(balance),totalClicks:Math.floor(totalClicks),clickPower:clickPower,autoClicker:autoClicker,multiplier:multiplier,rebirths:rebirths,stickers:stickers,craftCnt:craftCnt,craftTarget:craftTarget,limitedStickers:limitedStickers};saveUsers(users);}
+function loadClickerData(){const d=getClickerData();balance=d.balance||0;totalClicks=d.totalClicks||0;clickPower=d.clickPower||1;autoClicker=d.autoClicker||0;multiplier=d.multiplier||0;rebirths=d.rebirths||0;stickers=d.stickers||{};craftCnt=d.craftCnt||0;craftTarget=d.craftTarget||null;limitedStickers=d.limitedStickers||{};craftSel={};boostPct=0;boostActive=false;updateUI();}
+
+// ========== ЦВЕТА ДЛЯ ЛИМИТИРОВАННЫХ СТИКЕРОВ ==========
+const LIMITED_COLORS = [
+    {name:'Красный',bg:'#ff4444',border:'#cc0000',chance:12,coeff:1.2},
+    {name:'Синий',bg:'#4488ff',border:'#2266cc',chance:10,coeff:1.5},
+    {name:'Зелёный',bg:'#44cc44',border:'#228822',chance:10,coeff:1.5},
+    {name:'Жёлтый',bg:'#ffdd00',border:'#ccaa00',chance:10,coeff:1.5},
+    {name:'Фиолетовый',bg:'#cc44ff',border:'#8822cc',chance:10,coeff:1.5},
+    {name:'Оранжевый',bg:'#ff8800',border:'#cc6600',chance:10,coeff:1.5},
+    {name:'Розовый',bg:'#ff69b4',border:'#cc4488',chance:10,coeff:1.5},
+    {name:'Голубой',bg:'#00ccff',border:'#0099cc',chance:10,coeff:1.5},
+    {name:'Белый',bg:'#ffffff',border:'#cccccc',chance:10,coeff:1.5},
+    {name:'Лаймовый',bg:'#ccff00',border:'#99cc00',chance:4,coeff:2.5},
+    {name:'Бирюзовый',bg:'#00ffcc',border:'#00cc99',chance:10,coeff:1.5},
+    {name:'Коралловый',bg:'#ff7f50',border:'#cc5533',chance:10,coeff:1.5},
+    {name:'Золотой',bg:'#ffd700',border:'#ccaa00',chance:10,coeff:1.5},
+    {name:'Мятный',bg:'#98ff98',border:'#66cc66',chance:10,coeff:1.5},
+    {name:'Лавандовый',bg:'#e6e6fa',border:'#b8b8d0',chance:10,coeff:1.5},
+    {name:'Чёрный',bg:'#333333',border:'#111111',chance:6,coeff:2.0},
+    {name:'Серебряный',bg:'#c0c0c0',border:'#999999',chance:10,coeff:1.5},
+    {name:'Бронзовый',bg:'#cd7f32',border:'#996622',chance:10,coeff:1.5},
+    {name:'Изумрудный',bg:'#50c878',border:'#339955',chance:10,coeff:1.5},
+    {name:'Сапфировый',bg:'#0f52ba',border:'#0a3d88',chance:10,coeff:1.5},
+    {name:'Рубиновый',bg:'#e0115f',border:'#b00d4a',chance:10,coeff:1.5},
+    {name:'Аметистовый',bg:'#9966cc',border:'#664499',chance:10,coeff:1.5},
+    {name:'Янтарный',bg:'#ffbf00',border:'#cc9900',chance:10,coeff:1.5},
+    {name:'Перламутровый',bg:'#f5f5dc',border:'#ccccaa',chance:10,coeff:1.5}
+];
+
+// ========== ПЕРЕМЕННЫЕ ==========
+let balance=0,totalClicks=0,clickPower=1,autoClicker=0,multiplier=0,rebirths=0,stickers={},craftSel={},boostPct=0,boostActive=false,craftCnt=0,craftTarget=null,cps=0,clickTime=0,limitedStickers={};
+const REBIRTH_COSTS=[5000,1e6,3e7,4.5e8],REBIRTH_MULTS=[2,4,8,16],MAX_LVLS=[10,40,100,350,1000];
+const TYPES={'⭐':{t:1,p:1,v:50,w:40,n:'Звезда'},'❤️':{t:1,p:1,v:50,w:40,n:'Сердце'},'🍀':{t:1,p:1,v:50,w:40,n:'Клевер'},'💎':{t:2,p:3,v:250,w:25,n:'Алмаз'},'🔥':{t:2,p:3,v:250,w:25,n:'Огонь'},'👑':{t:2,p:3,v:250,w:25,n:'Корона'},'🟡':{t:3,p:10,v:1000,w:8,n:'Золотой'},'🐉':{t:3,p:10,v:1000,w:8,n:'Дракон'},'🌈':{t:4,p:30,v:500000,w:2,n:'Радуга'},'🌌':{t:4,p:30,v:500000,w:2,n:'Галактика'},'🏆':{t:5,p:100,v:5000000,w:0.5,n:'Трофей'},'🦄':{t:5,p:100,v:5000000,w:0.5,n:'Единорог'},'♾️':{t:6,p:300,v:250000000,w:0.05,n:'Бесконечность'}};
+loadClickerData();
+
+// Обновление цен лимитированных стикеров
+setInterval(function(){for(const key of Object.keys(limitedStickers)){if(limitedStickers[key]&&limitedStickers[key].price){limitedStickers[key].price=Math.floor(limitedStickers[key].price*1.01);}}},1000);
+
+// ========== ФУНКЦИИ ==========
+function price(b,g,l){let p=b;for(let i=0;i<Math.min(l,100)&&p<1e15;i++)p=Math.floor(p*g);return Math.min(p,1e15)}
+function getRebMult(){let m=1;for(let i=0;i<Math.min(rebirths,4);i++)m*=REBIRTH_MULTS[i];return m}
+function getMaxLvl(){return MAX_LVLS[Math.min(rebirths,4)]}
+function randomSticker(){const e=Object.entries(TYPES);let r=Math.random()*e.reduce((s,[,v])=>s+v.w,0);for(const[k,v]of e){r-=v.w;if(r<=0)return k;}return e[0][0];}
+function randomLimitedColor(){const totalChance=LIMITED_COLORS.reduce((s,c)=>s+c.chance,0);let r=Math.random()*totalChance;for(const c of LIMITED_COLORS){r-=c.chance;if(r<=0)return c;}return LIMITED_COLORS[0];}
+function getLimitedPrice(baseSticker){const tp=TYPES[baseSticker];if(!tp)return 0;return Math.floor(tp.v*5);}
+
+function mergeStickers(emoji){
+    if(!stickers[emoji]||stickers[emoji]<5)return;
+    stickers[emoji]-=5;
+    if(stickers[emoji]<=0)delete stickers[emoji];
+    const color=randomLimitedColor();
+    const basePrice=getLimitedPrice(emoji);
+    const finalPrice=Math.floor(basePrice*color.coeff);
+    const id='lim_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
+    limitedStickers[id]={emoji:emoji,color:color,basePrice:basePrice,price:finalPrice,created:Date.now()};
+    updateUI();saveClickerData();
+    toast('✨ Лимитированный стикер! '+color.name+' фон!','#ffd700');
+}
+
+function sellLimitedSticker(id){
+    if(!limitedStickers[id])return;
+    balance+=limitedStickers[id].price;
+    delete limitedStickers[id];
+    updateUI();saveClickerData();
+    toast('💸 Продан за '+limitedStickers[id].price.toLocaleString()+'💰','#ffd700');
+}
+
+function updateUI(){
+    const rm=getRebMult(),ml=getMaxLvl();
+    document.getElementById('bal').textContent=Math.floor(balance).toLocaleString();
+    document.getElementById('clicks').textContent=Math.floor(totalClicks).toLocaleString();
+    document.getElementById('cps').textContent=cps;document.getElementById('boostVal').textContent=boostPct+'%';
+    document.getElementById('maxLvl').textContent=ml;
+    document.getElementById('clvl').textContent=clickPower;document.getElementById('cpr').textContent=price(10,1.5,clickPower-1).toLocaleString();
+    document.getElementById('alvl').textContent=autoClicker;document.getElementById('apr').textContent=price(50,1.8,autoClicker).toLocaleString();
+    document.getElementById('mlvl').textContent=multiplier;document.getElementById('mpr').textContent=price(500,3,multiplier).toLocaleString();
+    document.getElementById('rebLvl').textContent=rebirths;document.getElementById('rebMult').textContent=rm;document.getElementById('rebMax').textContent=ml;
+    document.getElementById('rebBtn').textContent=rebirths>=4?'Максимум!':'Переродиться ('+REBIRTH_COSTS[rebirths].toLocaleString()+'💰)';
+    document.getElementById('craftCnt').textContent=craftCnt;
+    document.getElementById('craftTargetName').textContent=TYPES[craftTarget]?TYPES[craftTarget].emoji+' '+TYPES[craftTarget].n:'Не выбрана (нажмите)';
+    
+    const md=document.getElementById('myStickers');md.innerHTML='';let total=0;
+    
+    // Обычные стикеры
+    for(const[t,c]of Object.entries(stickers)){
+        if(c<=0)continue;total+=c;const tp=TYPES[t];if(!tp)continue;
+        const d=document.createElement('div');d.className='sticker';d.style.cursor='pointer';
+        d.innerHTML='<div class="sticker-emoji">'+t+'</div><div>×'+c+'</div><div style="font-size:9px;color:#999;">💰'+tp.v.toLocaleString()+'</div>';
+        // ВСЕГДА добавляем в крафт по клику
+        d.onclick=function(){addToCraft(t);};
+        // Если 5+ - показываем кнопку слияния
+        if(c>=5){
+            d.style.border='2px solid #ff9800';
+            d.style.background='#fff3e0';
+            const mergeBtn=document.createElement('div');
+            mergeBtn.style.cssText='font-size:8px;color:#ff6600;cursor:pointer;margin-top:2px;font-weight:bold;';
+            mergeBtn.textContent='🔄 Слить 5';
+            mergeBtn.onclick=function(e){e.stopPropagation();mergeStickers(t);};
+            d.appendChild(mergeBtn);
+        }
+        md.appendChild(d);
+    }
+    
+    // Лимитированные стикеры
+    for(const[id,ls]of Object.entries(limitedStickers)){
+        if(!ls)continue;total++;
+        const d=document.createElement('div');d.className='sticker';
+        d.style.background=ls.color.bg;d.style.border='3px solid '+ls.color.border;
+        d.style.boxShadow='0 0 10px '+ls.color.border;
+        d.title=ls.color.name+' | Цена: '+ls.price.toLocaleString()+'💰 | +1%/сек';
+        d.innerHTML='<div class="sticker-emoji">'+ls.emoji+'</div><div style="font-size:9px;color:#333;background:rgba(255,255,255,0.7);border-radius:4px;padding:1px 3px;">💰'+ls.price.toLocaleString()+'</div>';
+        d.onclick=function(e){e.stopPropagation();if(confirm('Продать за '+ls.price.toLocaleString()+'💰?')){sellLimitedSticker(id);}};
+        md.appendChild(d);
+    }
+    
+    if(total===0)md.innerHTML='<div style="color:#999;font-size:12px;">Нет стикеров</div>';
+    document.getElementById('stCnt').textContent=total;
+    
+    // Крафт слоты
+    const cd=document.getElementById('craftSlots');cd.innerHTML='';let pts=0;
+    for(const[t,c]of Object.entries(craftSel)){if(c<=0)continue;const tp=TYPES[t];if(!tp)continue;pts+=tp.p*c;
+        const d=document.createElement('div');d.className='sticker sel';
+        d.innerHTML='<div class="sticker-emoji">'+t+'</div><div>×'+c+'</div><div style="font-size:9px;color:#4caf50;">'+(tp.p*c)+'очк</div>';
+        d.onclick=function(){removeFromCraft(t);};cd.appendChild(d);}
+    const info=document.getElementById('craftInfo'),btn=document.getElementById('craftBtn');
+    if(craftTarget&&pts>0){const ct=TYPES[craftTarget],need=Math.ceil(ct.p*1.3);info.textContent='Нужно: '+need+' | Есть: '+pts+' | Шанс: '+Math.min(100,(pts/need)*100).toFixed(0)+'%';btn.disabled=false;}
+    else if(!craftTarget&&pts>0){info.textContent='Выберите цель';btn.disabled=true;}
+    else{if(cd.children.length===0)cd.innerHTML='<div style="color:#999;font-size:12px;">Нажимайте на стикеры</div>';info.textContent='';btn.disabled=true;}
+    if(boostActive)document.getElementById('safe').classList.add('boosting');else document.getElementById('safe').classList.remove('boosting');
+}
+
+function openCraftModal(){
+    document.getElementById('modalLogin').style.display='none';document.getElementById('modalRegister').style.display='none';
+    document.getElementById('modalOverlay').style.display='flex';document.getElementById('modalCraft').style.display='block';
+    const list=document.getElementById('craftList');list.innerHTML='';
+    const tn=['','Обычный','Необычный','Редкий','Эпический','Легендарный','Мифический'];
+    for(let tier=1;tier<=6;tier++){const items=Object.entries(TYPES).filter(([,v])=>v.t===tier);if(items.length===0)continue;
+        const td=document.createElement('div');td.style.cssText='font-weight:bold;margin:10px 0 5px;color:#0077b6;text-align:left;';td.textContent=tn[tier];list.appendChild(td);
+        items.forEach(([emoji,st])=>{const div=document.createElement('div');div.className='craft-option';if(craftTarget===emoji)div.classList.add('selected');
+            div.innerHTML='<span style="font-size:30px;">'+emoji+'</span><span style="flex:1;text-align:left;"><b>'+st.n+'</b><br><span style="font-size:11px;color:#666;">Очков: '+Math.ceil(st.p*1.3)+' | 💰'+st.v.toLocaleString()+'</span></span>';
+            div.onclick=function(e){e.stopPropagation();craftTarget=emoji;closeCraftModal();updateUI();saveClickerData();};list.appendChild(div);});}
+}
+
+function activateBooster(){if(boostActive)return;boostActive=true;boostPct=Math.min(boostPct+50,500);document.getElementById('safe').classList.add('boosting');toast('💥 БУСТЕР +50%!','#ff6600');setTimeout(function(){boostActive=false;boostPct=Math.max(0,boostPct-50);updateUI();},10000);}
+function getClickBonus(){const r=Math.random()*100;if(r<0.1)return 100;if(r<1.1)return 10;if(r<11.1)return 2;return 1;}
+function showBonusPopup(mult){const w=document.getElementById('safeWrap'),p=document.createElement('div');p.className='bonus-popup';p.textContent='🔥 ×'+mult+'!';w.appendChild(p);setTimeout(function(){p.remove();},1500);}
+
+document.getElementById('safeWrap').onclick=function(e){
+    const now=Date.now();if(now-clickTime>1000)cps=0;clickTime=now;if(cps>=15)return;cps++;
+    if(!boostActive&&Math.random()<0.02&&boostPct<500)activateBooster();
+    const cb=getClickBonus();if(cb>1)showBonusPopup(cb);
+    let earn=clickPower*Math.pow(2,Math.min(multiplier,50))*getRebMult()*cb*(1+boostPct/100);if(!isFinite(earn))earn=clickPower;
+    balance+=earn;totalClicks++;if(Math.random()<0.05){const s=randomSticker();stickers[s]=(stickers[s]||0)+1;}
+    const safe=document.getElementById('safe'),rect=safe.getBoundingClientRect();
+    const p=document.createElement('div');p.className='floating-text';p.textContent='+'+Math.floor(earn)+'💰';
+    p.style.left=Math.max(0,e.clientX-rect.left-20)+'px';p.style.top=Math.max(0,e.clientY-rect.top-10)+'px';
+    safe.appendChild(p);setTimeout(function(){p.remove();},700);
+    safe.style.transform='scale(0.94)';setTimeout(function(){safe.style.transform='scale(1)';},150);updateUI();saveClickerData();
+};
+
+function buyUpgrade(type){
+    const ml=getMaxLvl();
+    if(type==='clickPower'){if(clickPower>=ml){toast('Макс!','#f44');return;}const p=price(10,1.5,clickPower-1);if(balance>=p){balance-=p;clickPower++;}else{toast('Мало!','#f44');return;}}
+    else if(type==='autoClicker'){if(autoClicker>=ml){toast('Макс!','#f44');return;}const p=price(50,1.8,autoClicker);if(balance>=p){balance-=p;autoClicker++;}else{toast('Мало!','#f44');return;}}
+    else if(type==='multiplier'){if(multiplier>=ml||multiplier>=50){toast('Макс!','#f44');return;}const p=price(500,3,multiplier);if(balance>=p){balance-=p;multiplier++;}else{toast('Мало!','#f44');return;}}
+    updateUI();saveClickerData();
+}
+function rebirth(){if(rebirths>=4){toast('Макс!','#f44');return;}if(balance<REBIRTH_COSTS[rebirths]){toast('Нужно '+REBIRTH_COSTS[rebirths].toLocaleString()+'💰','#f44');return;}if(!confirm('Перерождение '+(rebirths+1)+'?'))return;balance=0;totalClicks=0;clickPower=1;autoClicker=0;multiplier=0;rebirths++;updateUI();saveClickerData();toast('🌟 Перерождение '+rebirths+'!','#ffd700');}
+
+// ========== КРАФТ И СЛИЯНИЕ ==========
+function addToCraft(t){
+    if(!stickers[t])return;
+    stickers[t]--;
+    if(stickers[t]<=0)delete stickers[t];
+    craftSel[t]=(craftSel[t]||0)+1;
+    updateUI();
+}
+function removeFromCraft(t){if(!craftSel[t])return;craftSel[t]--;if(craftSel[t]<=0)delete craftSel[t];stickers[t]=(stickers[t]||0)+1;updateUI();}
+function clearCraft(){for(const t of Object.keys(craftSel)){stickers[t]=(stickers[t]||0)+craftSel[t];}craftSel={};updateUI();}
+function doCraft(){
+    if(!craftTarget){toast('Выберите цель!','#f44');return;}
+    let pts=0;for(const[t,c]of Object.entries(craftSel)){const tp=TYPES[t];if(!tp)continue;pts+=tp.p*c;}
+    if(pts<=0){toast('Выберите стикеры!','#f44');return;}
+    const ct=TYPES[craftTarget],need=Math.ceil(ct.p*1.3),chance=Math.min(100,(pts/need)*100);craftSel={};
+    if(Math.random()*100<chance){stickers[craftTarget]=(stickers[craftTarget]||0)+1;craftCnt++;toast('✅ '+ct.emoji+' '+ct.n+'!','#4caf50');}
+    else toast('❌ Неудача ('+chance.toFixed(0)+'%)','#f44');
+    updateUI();saveClickerData();
+}
+function sellStickers(){
+    let total=0;for(const[t,c]of Object.entries(stickers)){const tp=TYPES[t];if(tp)total+=tp.v*c;}
+    if(total===0){toast('Нет!','#f44');return;}
+    if(!confirm('Продать обычные стикеры за '+total.toLocaleString()+'💰? (Лимитированные не будут проданы)'))return;
+    balance+=total;stickers={};updateUI();saveClickerData();toast('💸 +'+total.toLocaleString()+'💰','#ffd700');
+}
+
+setInterval(function(){if(autoClicker>0){balance+=autoClicker*Math.pow(2,Math.min(multiplier,50))*getRebMult()*(1+boostPct/100);totalClicks+=autoClicker;updateUI();saveClickerData();}},1000);
+setInterval(function(){cps=0;},1000);
+setInterval(saveClickerData,5000);
+window.addEventListener('beforeunload',saveClickerData);
+updateProfileUI();updateUI();
+</script>
+</body>
+</html>
