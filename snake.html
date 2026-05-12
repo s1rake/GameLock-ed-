@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Змейка</title>
-    <link rel="shortcut icon" href="img/snake.png" type="image/x-icon">
+<link rel="shortcut icon" href="img/snake.png" type="image/x-icon">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 
     * {
@@ -1065,6 +1066,9 @@
 </div>
 
 <script>
+const SB_URL='https://omrajmxjntinlzcdyufd.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
 // ========== ТЁМНАЯ ТЕМА ==========
 let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true';
 if (darkTheme) document.body.classList.add('dark-theme');
