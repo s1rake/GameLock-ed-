@@ -1218,17 +1218,19 @@ function endGame() {
     updateStatsDisplay();
     updateSparkBalance();
     
-    // Проверка скорости и отправка рекорда
+    //отправка рекорда
     if (currentUser) {
         const skinColor = getCurrentSkinColor();
         const gameDuration = Math.floor((Date.now() - _st) / 1000);
         const maxScorePerSec = gameDuration > 0 ? score / gameDuration : 0;
         
-        // Если скорость подозрительная — обрезаем рекорд
-        if (gameDuration > 0 && maxScorePerSec > 8) {
-            s.record = Math.max(0, Math.floor(gameDuration * 8));
-            saveStats(s);
-            updateStatsDisplay();
+
+const absoluteMax = 16; 
+if (gameDuration > 0 && maxScorePerSec > absoluteMax) {
+    s.record = Math.max(0, Math.floor(gameDuration * absoluteMax));
+    saveStats(s);
+    updateStatsDisplay();
+}
         }
         
         fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.' + encodeURIComponent(currentUser.username), {
