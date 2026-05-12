@@ -1854,6 +1854,9 @@ const tileCount = canvas.width / size;
 
 let snake = [{x: 10, y: 10}];
 let food = {x: 5, y: 5};
+let _st = 0; 
+let _sh = [];
+let _sc = 0; 
 let bonusFoods = [];
 let goldenActive = false;
 
@@ -1905,6 +1908,11 @@ function drawGame() {
             sessionGoldApples++;
         } else {
             score++;
+           _sc++;
+if (_sc % 2 === 0) {
+    _sh.push({s: score, t: Date.now()});
+    if (_sh.length > 10) _sh.shift();
+}
         }
         updateStat('applesEaten', 1);
         scoreText.textContent = `Счёт: ${score}`;
@@ -2221,6 +2229,44 @@ function endGame() {
     // Отправляем рекорд в Supabase
 if (currentUser) {
     const skinColor = getCurrentSkinColor();
+    const gameDuration = Math.floor((Date.now() - _st) / 1000);
+    const maxScorePerSec = gameDuration > 0 ? score / gameDuration : 0;
+    
+    // Проверка: если больше 8 очков в секунду — не отправляем
+    if (gameDuration > 0 && maxScorePerSec > 8) {
+        console.log('Рекорд отклонён: подозрительная скорость');
+        // Меняем рекорд на 0
+        s.record = Math.max(0, Math.floor(gameDuration * 8));
+    }
+    
+    fetch(`https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.${encodeURIComponent(currentUser.username)}`, {
+        method: 'DELETE',
+        headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0'
+        }
+    }).then(() => {
+        return fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard', {
+            method: 'POST',
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: currentUser.username,
+                score: s.record,
+                gold_apples: s.totalGoldApples || 0,
+                events: s.totalEvents || 0,
+                deaths: s.deaths,
+                skin_color: skinColor,
+                created_at: new Date().toISOString()
+            })
+        });
+    }).then(r => {
+        if (r.status === 201) updateLeaderboard();
+    }).catch(e => console.log('Рекорд сохранён локально'));
+}
     
     // Сначала удаляем старую запись
     fetch(`https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.${encodeURIComponent(currentUser.username)}`, {
@@ -2282,6 +2328,9 @@ function restartGame() {
     sessionEvents = 0;
     manualEvent = false;
     deathType = null;
+   _st = Date.now();
+   _sh = [];
+   _sc = 0;
 
     scoreText.textContent = "Счёт: 0";
     document.getElementById('gameOverScreen').style.display = 'none';
