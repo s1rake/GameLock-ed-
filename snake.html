@@ -1130,10 +1130,8 @@ function saveAchievementsData(data) {
 function checkAchievements(deathType = null) {
     const s = getStats();
     const achData = getAchievementsData();
-    const sparks = getUserSparks();
     let updated = false;
     
-    // Обновляем статистику для достижений
     if (!s.bonusEvents) s.bonusEvents = 0;
     if (!s.rainbowEvents) s.rainbowEvents = 0;
     if (!s.goldenEvents) s.goldenEvents = 0;
@@ -1144,19 +1142,17 @@ function checkAchievements(deathType = null) {
     if (deathType === 'self') s.selfDeaths++;
     if (deathType === 'wall') s.wallDeaths++;
     
-    // Скины
     s.ownedSkinsCount = getUserOwnedSkins().length;
     s.totalEvents = s.totalEvents || 0;
     
     ACHIEVEMENTS.forEach(ach => {
-        if (achData[ach.id] === 'claimed') return;
+        // Пропускаем ВСЕ достижения, у которых уже есть статус (completed или claimed)
+        if (achData[ach.id]) return;
         
         if (ach.condition(s)) {
-            if (!achData[ach.id]) {
-                achData[ach.id] = 'completed';
-                updated = true;
-                showAchievementToast(ach);
-            }
+            achData[ach.id] = 'completed';
+            updated = true;
+            showAchievementToast(ach);
         }
     });
     
@@ -1194,7 +1190,7 @@ function formatReward(reward) {
     }
 }
 
-function claimAchievement(achId) {
+async function claimAchievement(achId) {
     const achData = getAchievementsData();
     if (achData[achId] !== 'completed') return;
     
@@ -1221,6 +1217,16 @@ function claimAchievement(achId) {
     achData[achId] = 'claimed';
     saveAchievementsData(achData);
     saveStats(s);
+    
+    // Сохраняем достижения в Supabase (если доступен)
+    if (currentUser) {
+        try {
+            await sb.from('players').update({ achievements: achData }).eq('username', currentUser.username);
+        } catch (e) {
+            console.log('Достижения сохранены локально');
+        }
+    }
+    
     updateStatsDisplay();
     updateSparkBalance();
     updateSparkButtons();
@@ -1456,7 +1462,7 @@ function register() {
     checkAchievements();
 }
 
-function login() {
+async function login() {
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errorEl = document.getElementById('loginError');
@@ -1486,6 +1492,17 @@ function login() {
     if (!users[username].stats.selfDeaths) users[username].stats.selfDeaths = 0;
     if (!users[username].stats.wallDeaths) users[username].stats.wallDeaths = 0;
     
+    // Загружаем достижения из Supabase (если доступен)
+    try {
+        const { data } = await sb.from('players').select('achievements').eq('username', username).single();
+        if (data && data.achievements) {
+            users[username].achievements = { ...users[username].achievements, ...data.achievements };
+            saveUsers(users);
+        }
+    } catch (e) {
+        console.log('Supabase не отвечает, достижения загружены локально');
+    }
+    
     currentUser = {
         username: username,
         stats: users[username].stats,
@@ -1500,6 +1517,8 @@ function login() {
     closeModal();
     updateProfileUI();
     checkAchievements();
+    updateLeaderboard();
+    alert('✅ Вход!');
 }
 
 function logout() {
@@ -1579,21 +1598,40 @@ function getTotalGoldApples() {
     return s.goldApplesEaten || 0;
 }
 
-// ========== ТАБЛИЦА ЛИДЕРОВ ==========
-function getLeaders() {
-    return JSON.parse(localStorage.getItem('snakeLeaders')) || { score: [], goldApples: [], events: [], deaths: [] };
-}
-
-function saveLeaders(leadersData) {
-    localStorage.setItem('snakeLeaders', JSON.stringify(leadersData));
-}
-
-function updateLeaderboard() {
-    const leaders = getLeaders();
-    updateCategoryLeaders('leaderScore', leaders.score, 'score', 'очк');
-    updateCategoryLeaders('leaderGoldApples', leaders.goldApples, 'goldApples', 'зол');
-    updateCategoryLeaders('leaderEvents', leaders.events, 'events', 'ивент');
-    updateCategoryLeaders('leaderDeaths', leaders.deaths, 'deaths', 'смерт');
+// ========== ТАБЛИЦА ЛИДЕРОВ (SUPABASE) ==========
+async function updateLeaderboard() {
+    try {
+        const { data: scoreData } = await sb
+            .from('snake_leaderboard')
+            .select('*')
+            .order('score', { ascending: false })
+            .limit(5);
+        
+        const { data: goldData } = await sb
+            .from('snake_leaderboard')
+            .select('*')
+            .order('gold_apples', { ascending: false })
+            .limit(5);
+        
+        const { data: eventsData } = await sb
+            .from('snake_leaderboard')
+            .select('*')
+            .order('events', { ascending: false })
+            .limit(5);
+        
+        const { data: deathsData } = await sb
+            .from('snake_leaderboard')
+            .select('*')
+            .order('deaths', { ascending: false })
+            .limit(5);
+        
+        updateCategoryLeaders('leaderScore', scoreData || [], 'score', 'очк');
+        updateCategoryLeaders('leaderGoldApples', goldData || [], 'gold_apples', 'зол');
+        updateCategoryLeaders('leaderEvents', eventsData || [], 'events', 'ивент');
+        updateCategoryLeaders('leaderDeaths', deathsData || [], 'deaths', 'смерт');
+    } catch (e) {
+        console.log('Supabase недоступен, лидерборд не загружен');
+    }
 }
 
 function updateCategoryLeaders(elementId, list, field, suffix) {
@@ -1604,38 +1642,35 @@ function updateCategoryLeaders(elementId, list, field, suffix) {
     }
     const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
     el.innerHTML = list.slice(0, 5).map((entry, i) => {
-        const date = new Date(entry.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        const skinColor = entry.skinColor || '#333';
+        const skinColor = entry.skin_color || '#333';
         return `
             <li>
-                <span><span class="leader-rank">${medals[i]}</span> <span style="color:${skinColor};font-weight:bold;">${entry.name}</span></span>
+                <span><span class="leader-rank">${medals[i]}</span> <span style="color:${skinColor};font-weight:bold;">${entry.username}</span></span>
                 <span class="leader-value">${entry[field] || 0} ${suffix}</span>
-                <span class="leader-date">${date}</span>
             </li>
         `;
     }).join('');
 }
 
-function addToLeaders(category, name, data) {
-    const leaders = getLeaders();
-    const existingIndex = leaders[category].findIndex(e => e.name.toLowerCase() === name.toLowerCase());
-    const sortField = category === 'deaths' ? 'deaths' : category === 'goldApples' ? 'goldApples' : category === 'events' ? 'events' : 'score';
+async function addToLeaders() {
+    if (!currentUser) return;
+    const s = getStats();
     const skinColor = getCurrentSkinColor();
     
-    const newEntry = {
-        name, score: data.score || 0, goldApples: data.goldApples || 0,
-        events: data.events || 0, deaths: data.deaths || 0,
-        skinColor, date: Date.now()
-    };
+    try {
+        await sb.from('snake_leaderboard').upsert({
+            username: currentUser.username,
+            score: s.record,
+            gold_apples: s.totalGoldApples || 0,
+            events: s.totalEvents || 0,
+            deaths: s.deaths,
+            skin_color: skinColor,
+            created_at: new Date().toISOString()
+        });
+    } catch (e) {
+        console.log('Supabase недоступен, рекорд не отправлен');
+    }
     
-    if (existingIndex >= 0) {
-        if (newEntry[sortField] > leaders[category][existingIndex][sortField]) leaders[category][existingIndex] = newEntry;
-        else { leaders[category][existingIndex].date = Date.now(); leaders[category][existingIndex].skinColor = skinColor; }
-    } else leaders[category].push(newEntry);
-    
-    leaders[category].sort((a, b) => b[sortField] - a[sortField]);
-    leaders[category] = leaders[category].slice(0, 10);
-    saveLeaders(leaders);
     updateLeaderboard();
 }
 
@@ -2179,11 +2214,23 @@ function endGame() {
     updateStatsDisplay();
     updateSparkBalance();
 
-    const name = currentUser ? currentUser.username : 'Гость';
-    addToLeaders('score', name, {score: s.record, goldApples: s.totalGoldApples || 0, events: s.totalEvents || 0, deaths: s.deaths});
-    addToLeaders('goldApples', name, {score: s.record, goldApples: s.totalGoldApples || 0, events: s.totalEvents || 0, deaths: s.deaths});
-    addToLeaders('events', name, {score: s.record, goldApples: s.totalGoldApples || 0, events: s.totalEvents || 0, deaths: s.deaths});
-    addToLeaders('deaths', name, {score: s.record, goldApples: s.totalGoldApples || 0, events: s.totalEvents || 0, deaths: s.deaths});
+    // Отправляем рекорд в Supabase
+    if (currentUser) {
+        const skinColor = getCurrentSkinColor();
+        try {
+            sb.from('snake_leaderboard').upsert({
+                username: currentUser.username,
+                score: s.record,
+                gold_apples: s.totalGoldApples || 0,
+                events: s.totalEvents || 0,
+                deaths: s.deaths,
+                skin_color: skinColor,
+                created_at: new Date().toISOString()
+            }).then(() => updateLeaderboard());
+        } catch (e) {
+            console.log('Рекорд сохранён локально');
+        }
+    }
 
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = `Счёт: ${score}`;
@@ -2275,4 +2322,4 @@ startGameLoop();
 </script>
 
 </body>
-</html>                          
+</html>
