@@ -627,15 +627,20 @@ async function register() {
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
     
     // Синхронизация с Supabase (без ошибок если недоступен)
-    if (sb) {
-        try { 
-            await sb.from('players').upsert({ 
-                username: u, 
-                password_hash: p, 
-                created_at: new Date().toISOString() 
-            }); 
-        } catch(e) { console.log('Supabase: оффлайн-режим'); }
-    }
+   // Внутри register, где отправка в Supabase:
+if (sb) {
+    try { 
+        await sb.from('players').upsert({ 
+            username: u, 
+            password_hash: p, 
+            achievements: {},
+            sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
+            owned_skins: ['green'],
+            selected_skin: 'green',
+            created_at: new Date().toISOString() 
+        }); 
+    } catch(e) { console.log('Supabase: оффлайн-режим'); }
+}
     
     closeModal();
     updateProfileUI();
@@ -650,15 +655,32 @@ async function login() {
     const users = getAllUsers();
     if (!users[u] || users[u].password !== p) return alert('Неверно');
     
-    // Загружаем достижения из Supabase
+    // Загружаем данные из Supabase
     if (sb) {
         try {
-            const { data } = await sb.from('players').select('achievements').eq('username', u).single();
-            if (data && data.achievements) {
-                users[u].achievements = { ...users[u].achievements, ...data.achievements };
+            const { data } = await sb.from('players')
+                .select('achievements, sparks, owned_skins, selected_skin')
+                .eq('username', u)
+                .single();
+            
+            if (data) {
+                if (data.achievements) {
+                    users[u].achievements = { ...users[u].achievements, ...data.achievements };
+                }
+                if (data.sparks) {
+                    users[u].sparks = { ...users[u].sparks, ...data.sparks };
+                }
+                if (data.owned_skins) {
+                    users[u].ownedSkins = data.owned_skins;
+                }
+                if (data.selected_skin) {
+                    users[u].selectedSkin = data.selected_skin;
+                }
                 saveUsers(users);
             }
-        } catch(e) {}
+        } catch(e) {
+            console.log('Загружены локальные данные');
+        }
     }
     
     currentUser = { username: u };
@@ -780,8 +802,22 @@ function getSparks() {
     return JSON.parse(localStorage.getItem('snakeGuestSparks') || '{"golden":0,"rainbow":0,"bonus":0,"random":0}');
 }
 
-function saveSparks(sp) {
-    if (currentUser) { currentUser.sparks = sp; } else { localStorage.setItem('snakeGuestSparks', JSON.stringify(sp)); }
+async function saveSparks(sp) {
+    if (currentUser) { 
+        currentUser.sparks = sp;
+        // Сохраняем в Supabase
+        if (sb) {
+            try {
+                await sb.from('players').update({ 
+                    sparks: sp 
+                }).eq('username', currentUser.username);
+            } catch(e) { 
+                console.log('Supabase: оффлайн, сохранено локально'); 
+            }
+        }
+    } else { 
+        localStorage.setItem('snakeGuestSparks', JSON.stringify(sp)); 
+    }
 }
 
 function updateSparkBalance() {
@@ -862,9 +898,35 @@ const SKIN_COLORS = [
 ];
 
 function getOwnedSkins() { return currentUser ? (currentUser.ownedSkins || ['green']) : JSON.parse(localStorage.getItem('snakeGuestOwnedSkins') || '["green"]'); }
-function saveOwnedSkins(sk) { if (currentUser) { currentUser.ownedSkins = sk; } else { localStorage.setItem('snakeGuestOwnedSkins', JSON.stringify(sk)); } }
+async function saveOwnedSkins(sk) {
+    if (currentUser) { 
+        currentUser.ownedSkins = sk;
+        if (sb) {
+            try {
+                await sb.from('players').update({ 
+                    owned_skins: sk 
+                }).eq('username', currentUser.username);
+            } catch(e) {}
+        }
+    } else { 
+        localStorage.setItem('snakeGuestOwnedSkins', JSON.stringify(sk)); 
+    }
+}
 function getSelectedSkin() { return currentUser ? (currentUser.selectedSkin || 'green') : (localStorage.getItem('snakeGuestSelectedSkin') || 'green'); }
-function saveSelectedSkin(id) { if (currentUser) { currentUser.selectedSkin = id; } else { localStorage.setItem('snakeGuestSelectedSkin', id); } }
+async function saveSelectedSkin(id) {
+    if (currentUser) { 
+        currentUser.selectedSkin = id;
+        if (sb) {
+            try {
+                await sb.from('players').update({ 
+                    selected_skin: id 
+                }).eq('username', currentUser.username);
+            } catch(e) {}
+        }
+    } else { 
+        localStorage.setItem('snakeGuestSelectedSkin', id); 
+    }
+}
 
 function openSkinShop() {
     document.getElementById('modalOverlay').style.display = 'flex';
@@ -938,8 +1000,22 @@ function getAchData() {
     return JSON.parse(localStorage.getItem('snakeGuestAch') || '{}');
 }
 
-function saveAchData(d) {
-    if (currentUser) { currentUser.achievements = d; } else { localStorage.setItem('snakeGuestAch', JSON.stringify(d)); }
+async function saveAchData(d) {
+    if (currentUser) { 
+        currentUser.achievements = d;
+        // Сохраняем в Supabase
+        if (sb) {
+            try {
+                await sb.from('players').update({ 
+                    achievements: d 
+                }).eq('username', currentUser.username);
+            } catch(e) { 
+                console.log('Supabase: оффлайн, сохранено локально'); 
+            }
+        }
+    } else { 
+        localStorage.setItem('snakeGuestAch', JSON.stringify(d)); 
+    }
 }
 
 function checkAchievements(dt = null) {
