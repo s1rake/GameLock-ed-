@@ -921,24 +921,94 @@ function closeModal(){document.getElementById('modalOverlay').style.display='non
 function closeCraftModal(){document.getElementById('modalCraft').style.display='none';}
 function switchModal(type){if(type==='register'){document.getElementById('modalLogin').style.display='none';document.getElementById('modalRegister').style.display='block'}else{document.getElementById('modalLogin').style.display='block';document.getElementById('modalRegister').style.display='none'}}
 
-function register(){
-    const u=document.getElementById('registerUsername').value.trim(),p=document.getElementById('registerPassword').value,p2=document.getElementById('registerPasswordConfirm').value;
-    if(!u||!p)return alert('Заполните все поля');if(u.length<3)return alert('Имя: мин 3');if(p.length<4)return alert('Пароль: мин 4');if(p!==p2)return alert('Не совпадают');
-    const users=getAllUsers();if(users[u])return alert('Занято');
+async function register() {
+    const u = document.getElementById('registerUsername').value.trim();
+    const p = document.getElementById('registerPassword').value;
+    const p2 = document.getElementById('registerPasswordConfirm').value;
+    
+    if (!u || u.length < 3) return alert('Имя: мин 3');
+    if (!p || p.length < 4) return alert('Пароль: мин 4');
+    if (p !== p2) return alert('Не совпадают');
+    
+    const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
+    if (exists) return alert('Занято');
+    
+    const hashed = await hashPassword(p);
+    await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() });
+    
+    const users = getAllUsers();
+    users[u] = { clicker: { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {} }, created: Date.now() };
+    saveUsers(users);
+    
+    currentUser = { username: u };
+    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
     saveClickerData();
-    users[u]={password:p,clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}},created:Date.now()};
-    saveUsers(users);currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
-    closeModal();updateProfileUI();toast('✅ Готово!');
+    closeModal();
+    updateProfileUI();
+    toast('✅ Готово!');
 }
-function login(){
-    const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value;
-    if(!u||!p)return alert('Заполните');
-    const users=getAllUsers();if(!users[u]||users[u].password!==p)return alert('Неверно');
-    if(!users[u].clicker)users[u].clicker={balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}};
-    if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};
-    saveClickerData();
-    currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
-    closeModal();updateProfileUI();toast('✅ Вход!');
+
+async function login() {
+    const u = document.getElementById('loginUsername').value.trim();
+    const p = document.getElementById('loginPassword').value;
+    
+    if (!u || !p) return alert('Заполните');
+    
+    const { data: user } = await sb.from('players').select('*').eq('username', u).single();
+    if (!user) return alert('Не найден');
+    
+    const hashed = await hashPassword(p);
+    if (hashed !== user.password_hash) return alert('Неверный пароль');
+    
+    // Загружаем данные кликера
+    try {
+        const { data: clickerData } = await sb.from('clicker_data').select('*').eq('username', u).single();
+        const users = getAllUsers();
+        users[u] = users[u] || {};
+        if (clickerData) {
+            users[u].clicker = {
+                balance: clickerData.balance || 0,
+                totalClicks: clickerData.total_clicks || 0,
+                clickPower: clickerData.click_power || 1,
+                autoClicker: clickerData.auto_clicker || 0,
+                multiplier: clickerData.multiplier || 0,
+                rebirths: clickerData.rebirths || 0,
+                stickers: JSON.parse(clickerData.stickers || '{}'),
+                craftCnt: clickerData.craft_count || 0,
+                craftTarget: clickerData.craft_target || null,
+                limitedStickers: JSON.parse(clickerData.limited_stickers || '{}')
+            };
+        } else {
+            users[u].clicker = { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {} };
+        }
+        saveUsers(users);
+        
+        // Загружаем монеты и избранное
+        const extraKey = 'clicker_extra_' + u;
+        const { data: extraData } = await sb.from('clicker_data').select('coins,favorites,pinned').eq('username', u).single();
+        if (extraData) {
+            localStorage.setItem(extraKey, JSON.stringify({
+                coins: extraData.coins || 0,
+                favorites: JSON.parse(extraData.favorites || '{}'),
+                pinned: JSON.parse(extraData.pinned || '[]')
+            }));
+        }
+    } catch (e) {}
+    
+    currentUser = { username: u };
+    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
+    closeModal();
+    updateProfileUI();
+    toast('✅ Вход!');
+}
+
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'gamelock_salt_2026');
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 function logout(){saveClickerData();currentUser=null;localStorage.removeItem('snakeCurrentUser');updateProfileUI();}
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
