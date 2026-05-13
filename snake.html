@@ -602,50 +602,29 @@ function switchModal(type) {
     document.getElementById('modalRegister').style.display = type === 'register' ? 'block' : 'none';
 }
 
-async function register() {
-    const u = document.getElementById('registerUsername').value.trim();
-    const p = document.getElementById('registerPassword').value;
-    const p2 = document.getElementById('registerPasswordConfirm').value;
-    if (!u || u.length < 3) return alert('Имя: мин 3');
-    if (!p || p.length < 4) return alert('Пароль: мин 4');
-    if (p !== p2) return alert('Не совпадают');
-    const users = getAllUsers();
-    if (users[u]) return alert('Занято');
-    
-    users[u] = {
-        password: p,
-        stats: { deaths: 0, record: 0, eventsEncountered: 0, applesEaten: 0, goldApplesEaten: 0, totalScore: 0, totalGoldApples: 0, totalEvents: 0, bonusEvents: 0, rainbowEvents: 0, goldenEvents: 0, attackEvents: 0, selfDeaths: 0, wallDeaths: 0 },
-        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-        ownedSkins: ['green'],
-        selectedSkin: 'green',
-        settings: { up: 'w', down: 's', left: 'a', right: 'd' },
-        achievements: {},
-        created: Date.now()
-    };
-    saveUsers(users);
-    currentUser = { username: u };
-    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-    
-    // Синхронизация с Supabase (без ошибок если недоступен)
-   // Внутри register, где отправка в Supabase:
 if (sb) {
     try { 
-        await sb.from('players').upsert({ 
+        const { error } = await sb.from('players').upsert({ 
             username: u, 
-            password_hash: p, 
+            password_hash: p,
+            salt: 'gamelocked_salt',  // Добавляем обязательное поле
             achievements: {},
             sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
             owned_skins: ['green'],
             selected_skin: 'green',
             created_at: new Date().toISOString() 
-        }); 
-    } catch(e) { console.log('Supabase: оффлайн-режим'); }
-}
-    
-    closeModal();
-    updateProfileUI();
-    checkAchievements();
-    alert('✅ Готово!');
+        }, { 
+            onConflict: 'username' 
+        });
+        
+        if (error) {
+            console.error('Ошибка регистрации в Supabase:', error);
+        } else {
+            console.log('✅ Пользователь создан в Supabase');
+        }
+    } catch(e) { 
+        console.log('Supabase оффлайн, пользователь создан локально'); 
+    }
 }
 
 async function login() {
