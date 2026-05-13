@@ -26,8 +26,17 @@ body.dark-theme .theme-toggle{background:#2a2a4a}
 .title{font-size:40px;color:white;margin:15px 0;font-weight:bold;text-shadow:2px 2px 4px rgba(0,0,0,0.3)}
 .balance{background:white;padding:12px 25px;border-radius:18px;font-size:24px;font-weight:bold;margin:8px 0 15px}
 body.dark-theme .balance{background:#2a2a4a;color:#eee}
-.main-grid{display:flex;gap:25px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:20px;max-width:1000px;width:95%}
-.shop-left{background:rgba(255,255,255,0.95);border-radius:20px;padding:18px;width:260px;box-shadow:0 5px 20px rgba(0,0,0,0.3);text-align:center;flex-shrink:0}
+.coins{background:linear-gradient(135deg,#ffd700,#ffaa00);padding:6px 15px;border-radius:15px;font-size:16px;font-weight:bold;color:#333}
+.main-grid {
+    display: flex;
+    gap: 25px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 0 auto 20px;
+    max-width: 1000px;
+    width: 95%;
+}.shop-left{background:rgba(255,255,255,0.95);border-radius:20px;padding:18px;width:260px;box-shadow:0 5px 20px rgba(0,0,0,0.3);text-align:center;flex-shrink:0}
 body.dark-theme .shop-left{background:rgba(42,42,74,0.95)}
 .shop-title{font-size:18px;font-weight:bold;margin-bottom:10px}
 body.dark-theme .shop-title{color:#eee}
@@ -63,12 +72,17 @@ body.dark-theme .stat-item{border-bottom-color:#444;color:#ddd}
 .bottom-row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:1000px;width:95%;margin-bottom:25px}
 .sticker-panel{background:rgba(255,255,255,0.95);border-radius:20px;padding:18px;flex:1;min-width:280px;max-width:450px;box-shadow:0 5px 20px rgba(0,0,0,0.3);text-align:center}
 body.dark-theme .sticker-panel{background:rgba(42,42,74,0.95)}
-.sticker-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:40px;padding:8px;background:#fafafa;border-radius:12px;margin:5px 0;max-height:180px;overflow-y:auto}
-body.dark-theme .sticker-grid{background:rgba(0,0,0,0.3)}
+.sticker-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:40px;padding:8px;background:#fafafa;border-radius:12px;margin:5px 0;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#ccc transparent}
+body.dark-theme .sticker-grid{background:rgba(0,0,0,0.3);scrollbar-color:#555 transparent}
+.sticker-grid::-webkit-scrollbar{width:6px}
+.sticker-grid::-webkit-scrollbar-track{background:transparent;border-radius:3px}
+.sticker-grid::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+body.dark-theme .sticker-grid::-webkit-scrollbar-thumb{background:#555}
 .sticker{background:#fff;padding:6px;border-radius:10px;text-align:center;cursor:pointer;border:2px solid #ddd;font-size:11px;width:55px;transition:0.2s}
 body.dark-theme .sticker{background:#1a1a3a;border-color:#444}
 .sticker:hover{border-color:#ffd700;transform:translateY(-2px)}
 .sticker.sel{border-color:#4caf50!important;background:#e8f5e9!important}
+.sticker.fav{border-color:#ffd700!important;background:#fffde7!important}
 .sticker-emoji{font-size:22px}
 .craft-target{background:#fff3e0;padding:10px;border-radius:10px;margin:8px 0;font-size:13px;border:2px solid #ff9800;cursor:pointer;font-weight:bold}
 .craft-target:hover{background:#ffe0b2}
@@ -85,6 +99,24 @@ body.dark-theme .modal input{background:#1a1a3a;border-color:#444;color:#eee}
 .craft-option{padding:10px;margin:4px 0;background:#f5f5f5;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;border:2px solid transparent;transition:0.2s}
 .craft-option:hover{border-color:#ff9800;background:#fff}
 .craft-option.selected{border-color:#4caf50!important;background:#e8f5e9!important}
+.lb-panel{background:rgba(255,255,255,0.95);border-radius:20px;padding:18px;width:100%;max-width:500px;box-shadow:0 5px 20px rgba(0,0,0,0.3);text-align:center;margin:0 auto 25px}
+body.dark-theme .lb-panel{background:rgba(42,42,74,0.95)}
+.lb-list{list-style:none;padding:0;margin:0;text-align:left}
+.lb-list li{padding:6px 8px;font-size:13px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+body.dark-theme .lb-list li{border-bottom-color:#444;color:#ddd}
+.lb-rank{font-weight:bold;color:#ff6b6b;margin-right:8px}
+.lb-color{width:16px;height:16px;border-radius:4px;display:inline-block;margin:0 6px;border:1px solid #999}
+.pinned-area{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:50}
+.pinned-item{font-size:45px;cursor:grab;padding:8px;border-radius:12px;border:2px solid rgba(255,255,255,0.3);position:relative;user-select:none}
+.pinned-item:active{cursor:grabbing}
+.pinned-coin{position:absolute;top:-8px;right:-8px;background:linear-gradient(135deg,#ffd700,#ffaa00);padding:2px 6px;border-radius:8px;font-size:10px;font-weight:bold;color:#333}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 30px rgba(255,215,0,0.5)}50%{box-shadow:0 0 60px rgba(255,215,0,0.8),0 0 80px rgba(255,215,0,0.4)}}
+#packShop::-webkit-scrollbar{height:6px}
+#packShop::-webkit-scrollbar-track{background:transparent;border-radius:3px}
+#packShop::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+body.dark-theme #packShop::-webkit-scrollbar-thumb{background:#555}
+#packShop::-webkit-scrollbar-thumb:hover{background:#aaa}
+body.dark-theme #packShop::-webkit-scrollbar-thumb:hover{background:#777}
 </style>
 </head>
 <body>
@@ -130,7 +162,7 @@ body.dark-theme .modal input{background:#1a1a3a;border-color:#444;color:#eee}
 </div>
 
 <div class="title">💰 Кликер</div>
-<div class="balance">💰 <span id="bal">0</span></div>
+<div class="balance">💰 <span id="bal">0</span> <span class="coins">🪙 <span id="coinsDisplay">0</span></span></div>
 
 <div class="main-grid">
     <div class="shop-left">
@@ -154,7 +186,10 @@ body.dark-theme .modal input{background:#1a1a3a;border-color:#444;color:#eee}
         <div class="stat-item">🔨 Крафтов<div class="stat-val"><span id="craftCnt">0</span></div></div>
     </div>
 </div>
-
+<div class="shop-left" style="width:100%;max-width:1000px;margin:0 auto 20px;padding:15px;">
+    <div class="shop-title">🎁 Стикерпаки (🪙)</div>
+    <div id="packShop" style="display:flex;gap:8px;justify-content:center;overflow-x:auto;padding:5px 0;scrollbar-width:thin;scrollbar-color:#ccc transparent;"></div>
+</div>
 <div class="bottom-row">
     <div class="sticker-panel"><div class="shop-title">🏷️ Мои стикеры</div><div class="sticker-grid" id="myStickers">Нет стикеров</div></div>
     <div class="sticker-panel">
@@ -168,7 +203,21 @@ body.dark-theme .modal input{background:#1a1a3a;border-color:#444;color:#eee}
     </div>
 </div>
 
+<div class="lb-panel">
+    <div class="shop-title">🏆 Самые дорогие стикеры</div>
+    <ul class="lb-list" id="stickerLB"></ul>
+    <button class="btn btn-red" onclick="unpinSticker(0)" id="unpinBtn" style="display:none;margin-top:8px;">🔓 Открепить стикер</button>
+</div>
+
+<div class="pinned-area" id="pinnedArea"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// ========== SUPABASE ==========
+const SB_URL='https://omrajmxjntinlzcdyufd.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+
 // ========== ТЕМА ==========
 let darkTheme=localStorage.getItem('snakeDarkTheme')==='true';
 if(darkTheme)document.body.classList.add('dark-theme');
@@ -181,22 +230,23 @@ function getAllUsers(){return JSON.parse(localStorage.getItem('snakeUsers'))||{}
 function saveUsers(users){localStorage.setItem('snakeUsers',JSON.stringify(users));}
 
 function updateProfileUI(){
-    if(currentUser){document.getElementById('profileName').textContent=currentUser.username;document.getElementById('profileBtn').textContent='Выйти';document.getElementById('profileBtn').onclick=logout;document.getElementById('profileSection').querySelector('.profile-avatar').textContent='🎮';}
-    else{document.getElementById('profileName').textContent='Гость';document.getElementById('profileBtn').textContent='Войти';document.getElementById('profileBtn').onclick=openAuthModal;document.getElementById('profileSection').querySelector('.profile-avatar').textContent='👤';}
+    if(currentUser){document.getElementById('profileName').textContent=currentUser.username;document.getElementById('profileBtn').textContent='Выйти';document.getElementById('profileBtn').onclick=logout}
+    else{document.getElementById('profileName').textContent='Гость';document.getElementById('profileBtn').textContent='Войти';document.getElementById('profileBtn').onclick=openAuthModal}
     loadClickerData();
 }
 function openAuthModal(){if(currentUser){logout();return;}document.getElementById('modalOverlay').style.display='flex';document.getElementById('modalLogin').style.display='block';document.getElementById('modalRegister').style.display='none';document.getElementById('modalCraft').style.display='none';}
 function closeModal(){document.getElementById('modalOverlay').style.display='none';}
 function closeCraftModal(){document.getElementById('modalCraft').style.display='none';}
-function switchModal(type){if(type==='register'){document.getElementById('modalLogin').style.display='none';document.getElementById('modalRegister').style.display='block';}else{document.getElementById('modalLogin').style.display='block';document.getElementById('modalRegister').style.display='none';}}
+function switchModal(type){if(type==='register'){document.getElementById('modalLogin').style.display='none';document.getElementById('modalRegister').style.display='block'}else{document.getElementById('modalLogin').style.display='block';document.getElementById('modalRegister').style.display='none'}}
 
 function register(){
     const u=document.getElementById('registerUsername').value.trim(),p=document.getElementById('registerPassword').value,p2=document.getElementById('registerPasswordConfirm').value;
     if(!u||!p)return alert('Заполните все поля');if(u.length<3)return alert('Имя: мин 3');if(p.length<4)return alert('Пароль: мин 4');if(p!==p2)return alert('Не совпадают');
     const users=getAllUsers();if(users[u])return alert('Занято');
     saveClickerData();
-    users[u]={password:p,stats:{},sparks:{},ownedSkins:['green'],selectedSkin:'green',settings:{},achievements:{},tictactoe:{},clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}},created:Date.now()};
+    users[u]={password:p,clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}},created:Date.now()};
     saveUsers(users);currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
+    saveToSupabase();
     closeModal();updateProfileUI();toast('✅ Готово!');
 }
 function login(){
@@ -207,216 +257,195 @@ function login(){
     if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};
     saveClickerData();
     currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
+    loadFromSupabase();
     closeModal();updateProfileUI();toast('✅ Вход!');
 }
-function logout(){saveClickerData();currentUser=null;localStorage.removeItem('snakeCurrentUser');updateProfileUI();}
+function logout(){saveClickerData();saveToSupabase();currentUser=null;localStorage.removeItem('snakeCurrentUser');updateProfileUI();}
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
-function toast(msg,c){const t=document.createElement('div');t.className='toast';t.textContent=msg;t.style.background=c||'#4caf50';document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='0.5s';setTimeout(function(){t.remove();},500);},2500);}
+function toast(msg,c){const t=document.createElement('div');t.className='toast';t.textContent=msg;t.style.background=c||'#4caf50';document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='0.5s';setTimeout(function(){t.remove();},500)},2500);}
 
-// ========== ДАННЫЕ КЛИКЕРА ==========
+// ========== SUPABASE СИНХРОНИЗАЦИЯ ==========
+async function loadFromSupabase(){
+    if(!currentUser)return;
+    try{
+        const{data}=await sb.from('clicker_data').select('*').eq('username',currentUser.username).single();
+        if(data){
+            balance=data.balance||0;
+            totalClicks=data.total_clicks||0;
+            clickPower=data.click_power||1;
+            autoClicker=data.auto_clicker||0;
+            multiplier=data.multiplier||0;
+            rebirths=data.rebirths||0;
+            stickers=JSON.parse(data.stickers||'{}');
+            craftSel=JSON.parse(data.craft_sel||'{}');
+            craftCnt=data.craft_count||0;
+            craftTarget=data.craft_target||null;
+            limitedStickers=JSON.parse(data.limited_stickers||'{}');
+            coins=data.coins||0;
+            favorites=JSON.parse(data.favorites||'{}');
+            pinned=JSON.parse(data.pinned||'[]');
+            updateCoins();
+            applyPinnedBackground();
+            updatePinned();
+            updateUI();
+            updateStickerLB();
+        }
+    }catch(e){console.log('Загружено локально');}
+}
+
+async function saveToSupabase(){
+    if(!currentUser)return;
+    try{
+        await sb.from('clicker_data').upsert({
+            username:currentUser.username,
+            balance:Math.floor(balance),
+            total_clicks:Math.floor(totalClicks),
+            click_power:clickPower,
+            auto_clicker:autoClicker,
+            multiplier:multiplier,
+            rebirths:rebirths,
+            stickers:JSON.stringify(stickers),
+            craft_sel:JSON.stringify(craftSel),
+            craft_count:craftCnt,
+            craft_target:craftTarget,
+            limited_stickers:JSON.stringify(limitedStickers),
+            coins:coins,
+            favorites:JSON.stringify(favorites),
+            pinned:JSON.stringify(pinned),
+            updated_at:new Date().toISOString()
+        });
+    }catch(e){}
+}
+
+// ========== ДАННЫЕ ==========
 function getClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}}};if(!users[u].clicker)users[u].clicker={balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}};if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};return users[u].clicker;}
-function saveClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={};users[u].clicker={balance:Math.floor(balance),totalClicks:Math.floor(totalClicks),clickPower:clickPower,autoClicker:autoClicker,multiplier:multiplier,rebirths:rebirths,stickers:stickers,craftCnt:craftCnt,craftTarget:craftTarget,limitedStickers:limitedStickers};saveUsers(users);}
-function loadClickerData(){const d=getClickerData();balance=d.balance||0;totalClicks=d.totalClicks||0;clickPower=d.clickPower||1;autoClicker=d.autoClicker||0;multiplier=d.multiplier||0;rebirths=d.rebirths||0;stickers=d.stickers||{};craftCnt=d.craftCnt||0;craftTarget=d.craftTarget||null;limitedStickers=d.limitedStickers||{};craftSel={};boostPct=0;boostActive=false;updateUI();}
+function saveClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={};users[u].clicker={balance:Math.floor(balance),totalClicks:Math.floor(totalClicks),clickPower,autoClicker,multiplier,rebirths,stickers,craftSel,craftCnt,craftTarget,limitedStickers};saveUsers(users);saveToSupabase();}
+function loadClickerData(){const d=getClickerData();balance=d.balance||0;totalClicks=d.totalClicks||0;clickPower=d.clickPower||1;autoClicker=d.autoClicker||0;multiplier=d.multiplier||0;rebirths=d.rebirths||0;stickers=d.stickers||{};craftSel=d.craftSel||{};craftCnt=d.craftCnt||0;craftTarget=d.craftTarget||null;limitedStickers=d.limitedStickers||{};boostPct=0;boostActive=false;updateUI();}
 
-// ========== ЦВЕТА ДЛЯ ЛИМИТИРОВАННЫХ СТИКЕРОВ ==========
-const LIMITED_COLORS = [
-    {name:'Красный',bg:'#ff4444',border:'#cc0000',chance:12,coeff:1.2},
-    {name:'Синий',bg:'#4488ff',border:'#2266cc',chance:10,coeff:1.5},
-    {name:'Зелёный',bg:'#44cc44',border:'#228822',chance:10,coeff:1.5},
-    {name:'Жёлтый',bg:'#ffdd00',border:'#ccaa00',chance:10,coeff:1.5},
-    {name:'Фиолетовый',bg:'#cc44ff',border:'#8822cc',chance:10,coeff:1.5},
-    {name:'Оранжевый',bg:'#ff8800',border:'#cc6600',chance:10,coeff:1.5},
-    {name:'Розовый',bg:'#ff69b4',border:'#cc4488',chance:10,coeff:1.5},
-    {name:'Голубой',bg:'#00ccff',border:'#0099cc',chance:10,coeff:1.5},
-    {name:'Белый',bg:'#ffffff',border:'#cccccc',chance:10,coeff:1.5},
-    {name:'Лаймовый',bg:'#ccff00',border:'#99cc00',chance:4,coeff:2.5},
-    {name:'Бирюзовый',bg:'#00ffcc',border:'#00cc99',chance:10,coeff:1.5},
-    {name:'Коралловый',bg:'#ff7f50',border:'#cc5533',chance:10,coeff:1.5},
-    {name:'Золотой',bg:'#ffd700',border:'#ccaa00',chance:10,coeff:1.5},
-    {name:'Мятный',bg:'#98ff98',border:'#66cc66',chance:10,coeff:1.5},
-    {name:'Лавандовый',bg:'#e6e6fa',border:'#b8b8d0',chance:10,coeff:1.5},
-    {name:'Чёрный',bg:'#333333',border:'#111111',chance:6,coeff:2.0},
-    {name:'Серебряный',bg:'#c0c0c0',border:'#999999',chance:10,coeff:1.5},
-    {name:'Бронзовый',bg:'#cd7f32',border:'#996622',chance:10,coeff:1.5},
-    {name:'Изумрудный',bg:'#50c878',border:'#339955',chance:10,coeff:1.5},
-    {name:'Сапфировый',bg:'#0f52ba',border:'#0a3d88',chance:10,coeff:1.5},
-    {name:'Рубиновый',bg:'#e0115f',border:'#b00d4a',chance:10,coeff:1.5},
-    {name:'Аметистовый',bg:'#9966cc',border:'#664499',chance:10,coeff:1.5},
-    {name:'Янтарный',bg:'#ffbf00',border:'#cc9900',chance:10,coeff:1.5},
-    {name:'Перламутровый',bg:'#f5f5dc',border:'#ccccaa',chance:10,coeff:1.5}
-];
+function loadExtra(){const e=JSON.parse(localStorage.getItem('clicker_extra_'+(currentUser?currentUser.username:'guest'))||'{}');coins=e.coins||0;favorites=e.favorites||{};pinned=e.pinned||[];updateCoins();setTimeout(function(){applyPinnedBackground();updatePinned();updateUnpinButton();},100);}
+function saveExtra(){localStorage.setItem('clicker_extra_'+(currentUser?currentUser.username:'guest'),JSON.stringify({coins,favorites,pinned}));updateCoins();}
+function updateCoins(){document.getElementById('coinsDisplay').textContent=coins;}
 
 // ========== ПЕРЕМЕННЫЕ ==========
 let balance=0,totalClicks=0,clickPower=1,autoClicker=0,multiplier=0,rebirths=0,stickers={},craftSel={},boostPct=0,boostActive=false,craftCnt=0,craftTarget=null,cps=0,clickTime=0,limitedStickers={};
-const REBIRTH_COSTS=[5000,1e6,3e7,4.5e8],REBIRTH_MULTS=[2,4,8,16],MAX_LVLS=[10,40,100,350,1000];
-const TYPES={'⭐':{t:1,p:1,v:50,w:40,n:'Звезда'},'❤️':{t:1,p:1,v:50,w:40,n:'Сердце'},'🍀':{t:1,p:1,v:50,w:40,n:'Клевер'},'💎':{t:2,p:3,v:250,w:25,n:'Алмаз'},'🔥':{t:2,p:3,v:250,w:25,n:'Огонь'},'👑':{t:2,p:3,v:250,w:25,n:'Корона'},'🟡':{t:3,p:10,v:1000,w:8,n:'Золотой'},'🐉':{t:3,p:10,v:1000,w:8,n:'Дракон'},'🌈':{t:4,p:30,v:500000,w:2,n:'Радуга'},'🌌':{t:4,p:30,v:500000,w:2,n:'Галактика'},'🏆':{t:5,p:100,v:5000000,w:0.5,n:'Трофей'},'🦄':{t:5,p:100,v:5000000,w:0.5,n:'Единорог'},'♾️':{t:6,p:300,v:250000000,w:0.05,n:'Бесконечность'}};
-loadClickerData();
+let coins=0,favorites={},pinned=[];
+const REBIRTH_COSTS=[5000,1e6,3e7,4.5e8];
+const REBIRTH_MULTS=[2,4,8,16,32,64];
+const MAX_LVLS=[{click:10,auto:10,multi:5},{click:15,auto:15,multi:10},{click:25,auto:25,multi:15},{click:40,auto:40,multi:20},{click:50,auto:50,multi:25}];
+const LIMITED_COLORS=[{name:'Красный',bg:'#ff4444',border:'#cc0000',chance:12,coeff:1.2},{name:'Синий',bg:'#4488ff',border:'#2266cc',chance:10,coeff:1.5},{name:'Зелёный',bg:'#44cc44',border:'#228822',chance:10,coeff:1.5},{name:'Жёлтый',bg:'#ffdd00',border:'#ccaa00',chance:10,coeff:1.5},{name:'Фиолетовый',bg:'#cc44ff',border:'#8822cc',chance:10,coeff:1.5},{name:'Оранжевый',bg:'#ff8800',border:'#cc6600',chance:10,coeff:1.5},{name:'Розовый',bg:'#ff69b4',border:'#cc4488',chance:10,coeff:1.5},{name:'Голубой',bg:'#00ccff',border:'#0099cc',chance:10,coeff:1.5},{name:'Белый',bg:'#ffffff',border:'#cccccc',chance:10,coeff:1.5},{name:'Лаймовый',bg:'#ccff00',border:'#99cc00',chance:4,coeff:2.5},{name:'Бирюзовый',bg:'#00ffcc',border:'#00cc99',chance:10,coeff:1.5},{name:'Коралловый',bg:'#ff7f50',border:'#cc5533',chance:10,coeff:1.5},{name:'Золотой',bg:'#ffd700',border:'#ccaa00',chance:10,coeff:1.5},{name:'Мятный',bg:'#98ff98',border:'#66cc66',chance:10,coeff:1.5},{name:'Лавандовый',bg:'#e6e6fa',border:'#b8b8d0',chance:10,coeff:1.5},{name:'Чёрный',bg:'#333333',border:'#111111',chance:6,coeff:2.0},{name:'Серебряный',bg:'#c0c0c0',border:'#999999',chance:10,coeff:1.5},{name:'Бронзовый',bg:'#cd7f32',border:'#996622',chance:10,coeff:1.5},{name:'Изумрудный',bg:'#50c878',border:'#339955',chance:10,coeff:1.5},{name:'Сапфировый',bg:'#0f52ba',border:'#0a3d88',chance:10,coeff:1.5},{name:'Рубиновый',bg:'#e0115f',border:'#b00d4a',chance:10,coeff:1.5},{name:'Аметистовый',bg:'#9966cc',border:'#664499',chance:10,coeff:1.5},{name:'Янтарный',bg:'#ffbf00',border:'#cc9900',chance:10,coeff:1.5},{name:'Перламутровый',bg:'#f5f5dc',border:'#ccccaa',chance:10,coeff:1.5}];
+const TYPES={'⭐':{t:1,p:1,v:50,w:40,n:'Звезда'},'❤️':{t:1,p:1,v:50,w:40,n:'Сердце'},'🍀':{t:1,p:1,v:50,w:40,n:'Клевер'},'💎':{t:2,p:3,v:250,w:25,n:'Алмаз'},'🔥':{t:2,p:3,v:250,w:25,n:'Огонь'},'👑':{t:2,p:3,v:250,w:25,n:'Корона'},'🟡':{t:3,p:10,v:1000,w:8,n:'Золотой'},'🐉':{t:3,p:10,v:1000,w:8,n:'Дракон'},'🌈':{t:4,p:30,v:500000,w:2,n:'Радуга'},'🌌':{t:4,p:30,v:500000,w:2,n:'Галактика'},'🏆':{t:5,p:100,v:5000000,w:0.5,n:'Трофей'},'🦄':{t:5,p:100,v:5000000,w:0.5,n:'Единорог'},'♾️':{t:6,p:300,v:250000000,w:0.03,n:'Бесконечность'},'🌠':{t:6,p:300,v:250000000,w:0.03,n:'Падающая звезда'},'💫':{t:6,p:300,v:250000000,w:0.03,n:'Комета'},'🔮':{t:6,p:300,v:250000000,w:0.03,n:'Хрустальный шар'},'👁️':{t:6,p:300,v:250000000,w:0.03,n:'Всевидящее око'},'🌟':{t:7,p:1000,v:2500000000,w:0,n:'Золотая звезда',secret:true},'💠':{t:7,p:1000,v:2500000000,w:0,n:'Алмазный вихрь',secret:true},'🕳️':{t:7,p:1000,v:2500000000,w:0,n:'Чёрная дыра',secret:true}};
+const STICKER_PACKS=[{name:'Обычный пак',price:60,guaranteed:{tier:1,chance:100},slots:[{tier:1,chance:79},{tier:2,chance:20},{tier:4,chance:1}],id:'common'},{name:'Необычный пак',price:110,guaranteed:{tier:2,chance:100},slots:[{tier:2,chance:69},{tier:1,chance:20},{tier:4,chance:10},{tier:5,chance:1}],id:'uncommon'},{name:'Эпический пак',price:500,guaranteed:{tier:4,chance:100},slots:[{tier:4,chance:75},{tier:2,chance:20},{tier:5,chance:4},{tier:6,chance:1}],id:'epic'},{name:'Легендарный пак',price:500,guaranteed:{tier:5,chance:100},slots:[{tier:5,chance:75},{tier:4,chance:20},{tier:6,chance:5}],id:'legendary'},{name:'Мифический пак',price:2500,guaranteed:{tier:6,chance:100},slots:[{tier:6,chance:95},{tier:5,chance:4},{tier:7,chance:1}],id:'mythic'},{name:'Секретный пак',price:10000,guaranteed:{tier:7,chance:100},slots:[{tier:7,chance:85},{tier:6,chance:15}],id:'secret'}];
+loadClickerData();loadExtra();
 
-// Обновление цен лимитированных стикеров
-setInterval(function(){for(const key of Object.keys(limitedStickers)){if(limitedStickers[key]&&limitedStickers[key].price){limitedStickers[key].price=Math.floor(limitedStickers[key].price*1.01);}}},1000);
+setInterval(function(){for(const key of Object.keys(limitedStickers)){if(limitedStickers[key]&&limitedStickers[key].basePrice){limitedStickers[key].price=Math.floor(limitedStickers[key].price+limitedStickers[key].basePrice*0.01)}}},1000);
 
 // ========== ФУНКЦИИ ==========
 function price(b,g,l){let p=b;for(let i=0;i<Math.min(l,100)&&p<1e15;i++)p=Math.floor(p*g);return Math.min(p,1e15)}
-function getRebMult(){let m=1;for(let i=0;i<Math.min(rebirths,4);i++)m*=REBIRTH_MULTS[i];return m}
-function getMaxLvl(){return MAX_LVLS[Math.min(rebirths,4)]}
-function randomSticker(){const e=Object.entries(TYPES);let r=Math.random()*e.reduce((s,[,v])=>s+v.w,0);for(const[k,v]of e){r-=v.w;if(r<=0)return k;}return e[0][0];}
-function randomLimitedColor(){const totalChance=LIMITED_COLORS.reduce((s,c)=>s+c.chance,0);let r=Math.random()*totalChance;for(const c of LIMITED_COLORS){r-=c.chance;if(r<=0)return c;}return LIMITED_COLORS[0];}
-function getLimitedPrice(baseSticker){const tp=TYPES[baseSticker];if(!tp)return 0;return Math.floor(tp.v*5);}
+function getRebMult(){return REBIRTH_MULTS[Math.min(rebirths,5)]||1}
+function getMaxLvl(type){var rb=Math.min(rebirths,4);if(type==='click')return MAX_LVLS[rb].click;if(type==='auto')return MAX_LVLS[rb].auto;if(type==='multi')return MAX_LVLS[rb].multi;return 10}
+function randomSticker(){const e=Object.entries(TYPES).filter(function(x){return !x[1].secret});let r=Math.random()*e.reduce(function(s,x){return s+x[1].w},0);for(var i=0;i<e.length;i++){r-=e[i][1].w;if(r<=0)return e[i][0]}return e[0][0]}
+function randomLimitedColor(){const tc=LIMITED_COLORS.reduce(function(s,c){return s+c.chance},0);let r=Math.random()*tc;for(var i=0;i<LIMITED_COLORS.length;i++){r-=LIMITED_COLORS[i].chance;if(r<=0)return LIMITED_COLORS[i]}return LIMITED_COLORS[0]}
 
-function mergeStickers(emoji){
-    if(!stickers[emoji]||stickers[emoji]<5)return;
-    stickers[emoji]-=5;
-    if(stickers[emoji]<=0)delete stickers[emoji];
-    const color=randomLimitedColor();
-    const basePrice=getLimitedPrice(emoji);
-    const finalPrice=Math.floor(basePrice*color.coeff);
-    const id='lim_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-    limitedStickers[id]={emoji:emoji,color:color,basePrice:basePrice,price:finalPrice,created:Date.now()};
-    updateUI();saveClickerData();
-    toast('✨ Лимитированный стикер! '+color.name+' фон!','#ffd700');
-}
+function getGradient(bgColor){return 'linear-gradient(135deg,'+bgColor+','+lightenColor(bgColor,0.7)+','+darkenColor(bgColor,0.7)+')'}
+function lightenColor(hex,factor){var r,g,b;if(hex.startsWith('#')){r=parseInt(hex.slice(1,3),16);g=parseInt(hex.slice(3,5),16);b=parseInt(hex.slice(5,7),16)}else{r=255;g=215;b=0}r=Math.min(255,Math.floor(r+(255-r)*factor));g=Math.min(255,Math.floor(g+(255-g)*factor));b=Math.min(255,Math.floor(b+(255-b)*factor));return'rgb('+r+','+g+','+b+')'}
+function darkenColor(hex,factor){var r,g,b;if(hex.startsWith('#')){r=parseInt(hex.slice(1,3),16);g=parseInt(hex.slice(3,5),16);b=parseInt(hex.slice(5,7),16)}else{r=255;g=215;b=0}r=Math.floor(r*factor);g=Math.floor(g*factor);b=Math.floor(b*factor);return'rgb('+r+','+g+','+b+')'}
 
-function sellLimitedSticker(id){
-    if(!limitedStickers[id])return;
-    balance+=limitedStickers[id].price;
-    delete limitedStickers[id];
-    updateUI();saveClickerData();
-    toast('💸 Продан за '+limitedStickers[id].price.toLocaleString()+'💰','#ffd700');
-}
+// ========== ЗАКРЕПЛЕНИЕ ==========
+function applyPinnedBackground(){if(pinned.length>0){document.body.style.background=pinned[0].gradient||getGradient(pinned[0].bg);document.body.style.backgroundAttachment='fixed'}}
+function pinSticker(id){if(pinned.length>0){unpinSticker(0)}var ls=limitedStickers[id];if(!ls)return;pinned=[{id:id,emoji:ls.emoji,bg:ls.color.bg,border:ls.color.border,gradient:getGradient(ls.color.bg),price:ls.price||0,x:100,y:100}];saveExtra();applyPinnedBackground();updatePinned();updateUI();updateUnpinButton();toast('📌 Закреплён!')}
+function unpinSticker(index){pinned=[];document.body.style.background='';document.body.style.backgroundAttachment='';if(darkTheme)document.body.classList.add('dark-theme');saveExtra();updatePinned();updateUI();updateUnpinButton();toast('Откреплено')}
+function updateUnpinButton(){var btn=document.getElementById('unpinBtn');if(btn)btn.style.display=pinned.length>0?'block':'none'}
+function updatePinned(){var container=document.getElementById('pinnedArea');if(!container)return;container.innerHTML='';if(pinned.length===0)return;var p=pinned[0];var item=document.createElement('div');item.className='pinned-item';item.style.background=p.gradient;item.style.borderColor=p.border;item.style.position='relative';item.style.left=p.x+'px';item.style.top=p.y+'px';item.style.cursor='grab';item.innerHTML=p.emoji+'<span class="pinned-coin">💰'+p.price.toLocaleString()+'</span>';item.addEventListener('mousedown',function(e){e.preventDefault();var startX=e.clientX,startY=e.clientY,origX=p.x,origY=p.y;function onMove(e2){p.x=origX+(e2.clientX-startX);p.y=origY+(e2.clientY-startY);updatePinned()}function onUp(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveExtra()}document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});container.appendChild(item)}
 
+// ========== ПРОДАЖА ЗА МОНЕТЫ ==========
+function getLimitedCoinValue(ls){if(!ls)return 0;var tier=TYPES[ls.emoji]?TYPES[ls.emoji].t:1;var vals={1:10,2:20,3:40,4:100,5:500,6:1500,7:2250};return Math.floor((vals[tier]||10)*(ls.color?ls.color.coeff:1.5))}
+function sellLimitedForCoins(id){var ls=limitedStickers[id];if(!ls)return;var coinVal=getLimitedCoinValue(ls),moneyVal=ls.price||0;if(confirm('Продать стикер?\n\n🪙 Монеты: '+coinVal+'\n💰 Накоплено: '+moneyVal.toLocaleString())){coins+=coinVal;balance+=moneyVal;delete limitedStickers[id];pinned=pinned.filter(function(p){return p.id!==id});updateUI();saveClickerData();saveExtra();updatePinned();updateStickerLB();toast('💎 +'+coinVal+'🪙 | 💰 +'+moneyVal.toLocaleString())}}
+
+// ========== СЛИЯНИЕ ==========
+function mergeStickers(emoji){if(!stickers[emoji]||stickers[emoji]<5)return;stickers[emoji]-=5;if(stickers[emoji]<=0)delete stickers[emoji];var color=randomLimitedColor();var basePrice=Math.floor(Math.min(TYPES[emoji].v,5000000000)*5*color.coeff);var id='lim_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);limitedStickers[id]={emoji:emoji,color:color,basePrice:basePrice,price:basePrice,created:Date.now()};updateUI();saveClickerData();updateStickerLB();toast('✨ Лимитированный стикер! '+color.name+' фон!','#ffd700')}
+
+// ========== ЛИДЕРБОРД ==========
+function updateStickerLB(){var users=getAllUsers(),best={};for(var u in users){if(!users[u].clicker||!users[u].clicker.limitedStickers)continue;var ls=users[u].clicker.limitedStickers;for(var id in ls){if(!ls[id])continue;if(!best[u]||ls[id].price>best[u].price)best[u]={username:u,emoji:ls[id].emoji,colorName:ls[id].color?ls[id].color.name:'?',colorBg:ls[id].color?ls[id].color.bg:'#ccc',price:ls[id].price}}}for(var id in limitedStickers){if(!limitedStickers[id])continue;var un=currentUser?currentUser.username:'Гость';if(!best[un]||limitedStickers[id].price>best[un].price)best[un]={username:un,emoji:limitedStickers[id].emoji,colorName:limitedStickers[id].color?limitedStickers[id].color.name:'?',colorBg:limitedStickers[id].color?limitedStickers[id].color.bg:'#ccc',price:limitedStickers[id].price}}var arr=Object.values(best);arr.sort(function(a,b){return b.price-a.price});document.getElementById('stickerLB').innerHTML=arr.slice(0,5).map(function(s,i){return'<li><span><span class="lb-rank">'+['🥇','🥈','🥉'][i]+'</span>'+s.username+'</span><span>'+s.emoji+' <span class="lb-color" style="background:'+s.colorBg+'"></span> 💰'+s.price.toLocaleString()+'</span></li>'}).join('')||'<li>Нет стикеров</li>'}
+
+// ========== СТИКЕРПАКИ ==========
+function openPack(packId){var pack=STICKER_PACKS.find(function(p){return p.id===packId});if(!pack)return;if(coins<pack.price){toast('Недостаточно монет! Нужно '+pack.price+'🪙','#f44');return}coins-=pack.price;saveExtra();updateCoins();var stickersWon=[],tiersWon=[],colorsWon=[],allStickers=[];var guaranteedStickers=Object.entries(TYPES).filter(function(e){return e[1].t===pack.guaranteed.tier}).map(function(e){return e[0]});if(guaranteedStickers.length>0){allStickers.push({emoji:guaranteedStickers[Math.floor(Math.random()*guaranteedStickers.length)],tier:pack.guaranteed.tier})}for(var i=0;i<2;i++){var rand=Math.random()*100,cumulative=0,selectedTier=1;for(var j=0;j<pack.slots.length;j++){cumulative+=pack.slots[j].chance;if(rand<=cumulative){selectedTier=pack.slots[j].tier;break}}var poolStickers=Object.entries(TYPES).filter(function(e){return e[1].t===selectedTier}).map(function(e){return e[0]});if(poolStickers.length>0){allStickers.push({emoji:poolStickers[Math.floor(Math.random()*poolStickers.length)],tier:selectedTier})}}for(var i=0;i<allStickers.length;i++){var sticker=allStickers[i];var color=randomLimitedColor();var basePrice=Math.floor(TYPES[sticker.emoji].v*5*color.coeff);var id='lim_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);limitedStickers[id]={emoji:sticker.emoji,color:color,basePrice:basePrice,price:basePrice,created:Date.now()};stickersWon.push('✨'+sticker.emoji);tiersWon.push(sticker.tier+0.5);colorsWon.push(color)}showPackAnimation(pack.name,stickersWon,tiersWon,colorsWon);updateUI();saveClickerData()}
+
+function showPackAnimation(packName,stickers,tiers,colors){var overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';var title=document.createElement('div');title.style.cssText='font-size:32px;color:#ffd700;font-weight:bold;margin-bottom:40px;text-shadow:0 0 30px rgba(255,215,0,0.6);';title.textContent='🎁 '+packName;overlay.appendChild(title);var cards=document.createElement('div');cards.style.cssText='display:flex;gap:20px;justify-content:center;flex-wrap:wrap;';overlay.appendChild(cards);var hint=document.createElement('div');hint.style.cssText='color:#666;font-size:14px;margin-top:40px;';hint.textContent='Кликните чтобы закрыть';overlay.appendChild(hint);document.body.appendChild(overlay);var tierNames=['','Обычный','Необычный','Редкий','Эпический','Легендарный','Мифический','Секретный'];var tierColors=['','#aaa','#4caf50','#4488ff','#cc44ff','#ff8800','#ff4444','#ffd700'];var delays=[300,1000,2000];for(var i=0;i<stickers.length;i++){var displayEmoji=stickers[i].replace('✨','');var tier=tiers[i];var color=colors[i]||{bg:'#444',border:'#888',name:'Неизвестный'};var delay=delays[i]||300;var stickerType=TYPES[displayEmoji];var stickerName=stickerType?stickerType.n:displayEmoji;var card=document.createElement('div');card.style.cssText='width:140px;padding:20px 15px;border-radius:15px;text-align:center;opacity:0;transform:scale(0.3);transition:all 0.6s ease-out;margin:5px;';card.style.background=getGradient(color.bg);card.style.border='3px solid '+color.border;card.style.boxShadow='0 0 20px '+color.border;var stickerNameDiv=document.createElement('div');stickerNameDiv.textContent=stickerName;stickerNameDiv.style.cssText='color:#fff;font-weight:bold;font-size:11px;margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,0.5);opacity:0.9;';card.appendChild(stickerNameDiv);var emojiDiv=document.createElement('div');emojiDiv.textContent=displayEmoji;emojiDiv.style.cssText='font-size:55px;margin-bottom:8px;';card.appendChild(emojiDiv);var nameDiv=document.createElement('div');nameDiv.textContent=color.name;nameDiv.style.cssText='color:#fff;font-weight:bold;font-size:13px;text-shadow:0 1px 3px rgba(0,0,0,0.5);';card.appendChild(nameDiv);var typeDiv=document.createElement('div');typeDiv.textContent='ЛИМИТ';typeDiv.style.cssText='color:#333;font-size:10px;margin-top:5px;background:rgba(255,255,255,0.9);border-radius:8px;padding:2px 8px;display:inline-block;font-weight:bold;';card.appendChild(typeDiv);var tierText=tierNames[Math.floor(tier)]||'';if(tierText){var tierDiv=document.createElement('div');tierDiv.textContent=tierText;tierDiv.style.cssText='color:'+(tierColors[Math.floor(tier)]||'#fff')+';font-size:10px;margin-top:4px;font-weight:bold;';card.appendChild(tierDiv)}cards.appendChild(card);(function(card,tier){setTimeout(function(){card.style.opacity='1';card.style.transform='scale(1)';if(Math.floor(tier)>=5){card.style.animation='glowPulse 0.5s ease-in-out 3'}},delay)})(card,tier)}overlay.addEventListener('click',function(){overlay.style.opacity='0';overlay.style.transition='0.3s';setTimeout(function(){overlay.remove()},300)})}
+
+// ========== ОТРИСОВКА ==========
 function updateUI(){
-    const rm=getRebMult(),ml=getMaxLvl();
+    var rm=getRebMult();
     document.getElementById('bal').textContent=Math.floor(balance).toLocaleString();
     document.getElementById('clicks').textContent=Math.floor(totalClicks).toLocaleString();
     document.getElementById('cps').textContent=cps;document.getElementById('boostVal').textContent=boostPct+'%';
-    document.getElementById('maxLvl').textContent=ml;
+    document.getElementById('maxLvl').textContent='С:'+getMaxLvl('click')+' А:'+getMaxLvl('auto')+' М:'+getMaxLvl('multi');
     document.getElementById('clvl').textContent=clickPower;document.getElementById('cpr').textContent=price(10,1.5,clickPower-1).toLocaleString();
     document.getElementById('alvl').textContent=autoClicker;document.getElementById('apr').textContent=price(50,1.8,autoClicker).toLocaleString();
     document.getElementById('mlvl').textContent=multiplier;document.getElementById('mpr').textContent=price(500,3,multiplier).toLocaleString();
-    document.getElementById('rebLvl').textContent=rebirths;document.getElementById('rebMult').textContent=rm;document.getElementById('rebMax').textContent=ml;
+    document.getElementById('rebLvl').textContent=rebirths;document.getElementById('rebMult').textContent=rm;document.getElementById('rebMax').textContent='С:'+getMaxLvl('click')+' А:'+getMaxLvl('auto')+' М:'+getMaxLvl('multi');
     document.getElementById('rebBtn').textContent=rebirths>=4?'Максимум!':'Переродиться ('+REBIRTH_COSTS[rebirths].toLocaleString()+'💰)';
     document.getElementById('craftCnt').textContent=craftCnt;
     document.getElementById('craftTargetName').textContent=TYPES[craftTarget]?TYPES[craftTarget].emoji+' '+TYPES[craftTarget].n:'Не выбрана (нажмите)';
     
-    const md=document.getElementById('myStickers');md.innerHTML='';let total=0;
-    
-    // Обычные стикеры
-    for(const[t,c]of Object.entries(stickers)){
-        if(c<=0)continue;total+=c;const tp=TYPES[t];if(!tp)continue;
-        const d=document.createElement('div');d.className='sticker';d.style.cursor='pointer';
+    var md=document.getElementById('myStickers');md.innerHTML='';var total=0;
+    for(var t in stickers){var c=stickers[t];if(c<=0)continue;total+=c;var tp=TYPES[t];if(!tp)continue;
+        var d=document.createElement('div');d.className='sticker'+(favorites[t]?' fav':'');d.style.cursor='pointer';
         d.innerHTML='<div class="sticker-emoji">'+t+'</div><div>×'+c+'</div><div style="font-size:9px;color:#999;">💰'+tp.v.toLocaleString()+'</div>';
-        // ВСЕГДА добавляем в крафт по клику
-        d.onclick=function(){addToCraft(t);};
-        // Если 5+ - показываем кнопку слияния
-        if(c>=5){
-            d.style.border='2px solid #ff9800';
-            d.style.background='#fff3e0';
-            const mergeBtn=document.createElement('div');
-            mergeBtn.style.cssText='font-size:8px;color:#ff6600;cursor:pointer;margin-top:2px;font-weight:bold;';
-            mergeBtn.textContent='🔄 Слить 5';
-            mergeBtn.onclick=function(e){e.stopPropagation();mergeStickers(t);};
-            d.appendChild(mergeBtn);
-        }
+        d.onclick=(function(emoji){return function(){addToCraft(emoji)}})(t);
+        if(c>=5){d.style.border='2px solid #ff9800';d.style.background='#fff3e0';
+            var mb=document.createElement('div');mb.style.cssText='font-size:8px;color:#ff6600;cursor:pointer;margin-top:2px;font-weight:bold';mb.textContent='🔄 Слить 5';
+            mb.onclick=(function(emoji){return function(e){e.stopPropagation();mergeStickers(emoji)}})(t);d.appendChild(mb);}
+        var fb=document.createElement('div');fb.style.cssText='font-size:8px;cursor:pointer;margin-top:1px';fb.textContent=favorites[t]?'⭐':'☆';
+        fb.onclick=(function(emoji){return function(e){e.stopPropagation();toggleFavorite(emoji)}})(t);d.appendChild(fb);
         md.appendChild(d);
     }
-    
-    // Лимитированные стикеры
-    for(const[id,ls]of Object.entries(limitedStickers)){
-        if(!ls)continue;total++;
-        const d=document.createElement('div');d.className='sticker';
-        d.style.background=ls.color.bg;d.style.border='3px solid '+ls.color.border;
-        d.style.boxShadow='0 0 10px '+ls.color.border;
-        d.title=ls.color.name+' | Цена: '+ls.price.toLocaleString()+'💰 | +1%/сек';
-        d.innerHTML='<div class="sticker-emoji">'+ls.emoji+'</div><div style="font-size:9px;color:#333;background:rgba(255,255,255,0.7);border-radius:4px;padding:1px 3px;">💰'+ls.price.toLocaleString()+'</div>';
-        d.onclick=function(e){e.stopPropagation();if(confirm('Продать за '+ls.price.toLocaleString()+'💰?')){sellLimitedSticker(id);}};
+    for(var id in limitedStickers){var ls=limitedStickers[id];if(!ls)continue;total++;
+        var d=document.createElement('div');d.className='sticker';d.style.background=getGradient(ls.color.bg);d.style.border='3px solid '+ls.color.border;d.style.boxShadow='0 0 10px '+ls.color.border;
+        d.title=ls.color.name+' | 💰'+ls.price.toLocaleString()+' | +1%/сек';
+        d.innerHTML='<div class="sticker-emoji">'+ls.emoji+'</div><div style="font-size:9px;color:#333;background:rgba(255,255,255,0.7);border-radius:4px;padding:1px 3px">💰'+ls.price.toLocaleString()+'</div>';
+        var sb=document.createElement('div');sb.style.cssText='font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px';sb.textContent='💎'+getLimitedCoinValue(ls);
+        sb.onclick=(function(id){return function(e){e.stopPropagation();sellLimitedForCoins(id)}})(id);d.appendChild(sb);
+        var isPinned=pinned.some(function(p){return p.id===id});var pb=document.createElement('div');pb.style.cssText='font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px';pb.textContent=isPinned?'📌✅':'📌';
+        pb.onclick=(function(id){return function(e){e.stopPropagation();pinSticker(id)}})(id);d.appendChild(pb);
         md.appendChild(d);
     }
+    if(total===0)md.innerHTML='<div style="color:#999;font-size:12px;">Нет стикеров</div>';document.getElementById('stCnt').textContent=total;
     
-    if(total===0)md.innerHTML='<div style="color:#999;font-size:12px;">Нет стикеров</div>';
-    document.getElementById('stCnt').textContent=total;
-    
-    // Крафт слоты
-    const cd=document.getElementById('craftSlots');cd.innerHTML='';let pts=0;
-    for(const[t,c]of Object.entries(craftSel)){if(c<=0)continue;const tp=TYPES[t];if(!tp)continue;pts+=tp.p*c;
-        const d=document.createElement('div');d.className='sticker sel';
-        d.innerHTML='<div class="sticker-emoji">'+t+'</div><div>×'+c+'</div><div style="font-size:9px;color:#4caf50;">'+(tp.p*c)+'очк</div>';
-        d.onclick=function(){removeFromCraft(t);};cd.appendChild(d);}
-    const info=document.getElementById('craftInfo'),btn=document.getElementById('craftBtn');
-    if(craftTarget&&pts>0){const ct=TYPES[craftTarget],need=Math.ceil(ct.p*1.3);info.textContent='Нужно: '+need+' | Есть: '+pts+' | Шанс: '+Math.min(100,(pts/need)*100).toFixed(0)+'%';btn.disabled=false;}
-    else if(!craftTarget&&pts>0){info.textContent='Выберите цель';btn.disabled=true;}
-    else{if(cd.children.length===0)cd.innerHTML='<div style="color:#999;font-size:12px;">Нажимайте на стикеры</div>';info.textContent='';btn.disabled=true;}
+    var cd=document.getElementById('craftSlots');cd.innerHTML='';var pts=0;
+    for(var t in craftSel){var c=craftSel[t];if(c<=0)continue;var tp=TYPES[t];if(!tp)continue;pts+=tp.p*c;
+        var d=document.createElement('div');d.className='sticker sel';d.innerHTML='<div class="sticker-emoji">'+t+'</div><div>×'+c+'</div><div style="font-size:9px;color:#4caf50">'+(tp.p*c)+'очк</div>';d.onclick=(function(emoji){return function(){removeFromCraft(emoji)}})(t);cd.appendChild(d)}
+    var info=document.getElementById('craftInfo'),btn=document.getElementById('craftBtn');
+    if(craftTarget&&pts>0){var ct=TYPES[craftTarget],need=Math.ceil(ct.p*1.3);info.textContent='Нужно: '+need+' | Есть: '+pts+' | Шанс: '+Math.min(100,(pts/need)*100).toFixed(0)+'%';btn.disabled=false}
+    else if(!craftTarget&&pts>0){info.textContent='Выберите цель';btn.disabled=true}
+    else{if(cd.children.length===0)cd.innerHTML='<div style="color:#999;font-size:12px;">Нажимайте на стикеры</div>';info.textContent='';btn.disabled=true}
     if(boostActive)document.getElementById('safe').classList.add('boosting');else document.getElementById('safe').classList.remove('boosting');
+    
+    var packDiv=document.getElementById('packShop');
+    if(packDiv){packDiv.innerHTML=STICKER_PACKS.map(function(pack){return'<button class="btn btn-gold" onclick="openPack(\''+pack.id+'\')" style="flex-shrink:0;width:auto;padding:8px 14px;font-size:11px;white-space:nowrap;">🎁 '+pack.name+' 🪙'+pack.price+'</button>'}).join('')}
+    updateUnpinButton();
 }
 
-function openCraftModal(){
-    document.getElementById('modalLogin').style.display='none';document.getElementById('modalRegister').style.display='none';
-    document.getElementById('modalOverlay').style.display='flex';document.getElementById('modalCraft').style.display='block';
-    const list=document.getElementById('craftList');list.innerHTML='';
-    const tn=['','Обычный','Необычный','Редкий','Эпический','Легендарный','Мифический'];
-    for(let tier=1;tier<=6;tier++){const items=Object.entries(TYPES).filter(([,v])=>v.t===tier);if(items.length===0)continue;
-        const td=document.createElement('div');td.style.cssText='font-weight:bold;margin:10px 0 5px;color:#0077b6;text-align:left;';td.textContent=tn[tier];list.appendChild(td);
-        items.forEach(([emoji,st])=>{const div=document.createElement('div');div.className='craft-option';if(craftTarget===emoji)div.classList.add('selected');
-            div.innerHTML='<span style="font-size:30px;">'+emoji+'</span><span style="flex:1;text-align:left;"><b>'+st.n+'</b><br><span style="font-size:11px;color:#666;">Очков: '+Math.ceil(st.p*1.3)+' | 💰'+st.v.toLocaleString()+'</span></span>';
-            div.onclick=function(e){e.stopPropagation();craftTarget=emoji;closeCraftModal();updateUI();saveClickerData();};list.appendChild(div);});}
-}
+// ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
+function toggleFavorite(emoji){favorites[emoji]=!favorites[emoji];if(!favorites[emoji])delete favorites[emoji];saveExtra();updateUI()}
+function openCraftModal(){document.getElementById('modalLogin').style.display='none';document.getElementById('modalRegister').style.display='none';document.getElementById('modalOverlay').style.display='flex';document.getElementById('modalCraft').style.display='block';var list=document.getElementById('craftList');list.innerHTML='';var tn=['','Обычный','Необычный','Редкий','Эпический','Легендарный','Мифический'];for(var tier=1;tier<=6;tier++){var items=Object.entries(TYPES).filter(function(e){return e[1].t===tier});if(items.length===0)continue;var td=document.createElement('div');td.style.cssText='font-weight:bold;margin:10px 0 5px;color:#0077b6;text-align:left';td.textContent=tn[tier];list.appendChild(td);items.forEach(function(entry){var emoji=entry[0],st=entry[1];var div=document.createElement('div');div.className='craft-option';if(craftTarget===emoji)div.classList.add('selected');div.innerHTML='<span style="font-size:30px">'+emoji+'</span><span style="flex:1;text-align:left"><b>'+st.n+'</b><br><span style="font-size:11px;color:#666">Очков: '+Math.ceil(st.p*1.3)+' | 💰'+st.v.toLocaleString()+'</span></span>';div.onclick=(function(emoji){return function(e){e.stopPropagation();craftTarget=emoji;closeCraftModal();updateUI();saveClickerData()}})(emoji);list.appendChild(div)})}}
+function activateBooster(){if(boostActive)return;boostActive=true;boostPct=Math.min(boostPct+50,500);document.getElementById('safe').classList.add('boosting');toast('💥 БУСТЕР +50%!','#ff6600');setTimeout(function(){boostActive=false;boostPct=Math.max(0,boostPct-50);updateUI()},10000)}
+function getClickBonus(){var r=Math.random()*100;if(r<0.1)return 100;if(r<1.1)return 10;if(r<11.1)return 2;return 1}
+function showBonusPopup(mult){var w=document.getElementById('safeWrap'),p=document.createElement('div');p.className='bonus-popup';p.textContent='🔥 ×'+mult+'!';w.appendChild(p);setTimeout(function(){p.remove()},1500)}
+document.getElementById('safeWrap').onclick=function(e){var now=Date.now();if(now-clickTime>1000)cps=0;clickTime=now;if(cps>=15)return;cps++;if(!boostActive&&Math.random()<0.02&&boostPct<500)activateBooster();var cb=getClickBonus();if(cb>1)showBonusPopup(cb);var earn=clickPower*Math.pow(2,Math.min(multiplier,50))*getRebMult()*cb*(1+boostPct/100);if(!isFinite(earn))earn=clickPower;balance+=earn;totalClicks++;if(Math.random()<0.05){var s=randomSticker();stickers[s]=(stickers[s]||0)+1}var safe=document.getElementById('safe'),rect=safe.getBoundingClientRect();var p=document.createElement('div');p.className='floating-text';p.textContent='+'+Math.floor(earn)+'💰';p.style.left=Math.max(0,e.clientX-rect.left-20)+'px';p.style.top=Math.max(0,e.clientY-rect.top-10)+'px';safe.appendChild(p);setTimeout(function(){p.remove()},700);safe.style.transform='scale(0.94)';setTimeout(function(){safe.style.transform='scale(1)'},150);updateUI();saveClickerData()}
+function buyUpgrade(type){var ml;if(type==='clickPower')ml=getMaxLvl('click');else if(type==='autoClicker')ml=getMaxLvl('auto');else if(type==='multiplier')ml=getMaxLvl('multi');if(type==='clickPower'){if(clickPower>=ml){toast('Макс!','#f44');return}var p=price(10,1.5,clickPower-1);if(balance>=p){balance-=p;clickPower++}else{toast('Мало!','#f44');return}}else if(type==='autoClicker'){if(autoClicker>=ml){toast('Макс!','#f44');return}var p=price(50,1.8,autoClicker);if(balance>=p){balance-=p;autoClicker++}else{toast('Мало!','#f44');return}}else if(type==='multiplier'){if(multiplier>=ml||multiplier>=50){toast('Макс!','#f44');return}var p=price(500,3,multiplier);if(balance>=p){balance-=p;multiplier++}else{toast('Мало!','#f44');return}}updateUI();saveClickerData()}
+function rebirth(){if(rebirths>=4){toast('Макс!','#f44');return}if(balance<REBIRTH_COSTS[rebirths]){toast('Нужно '+REBIRTH_COSTS[rebirths].toLocaleString()+'💰','#f44');return}if(!confirm('Перерождение '+(rebirths+1)+'?'))return;balance=0;totalClicks=0;clickPower=1;autoClicker=0;multiplier=0;rebirths++;updateUI();saveClickerData();toast('🌟 Перерождение '+rebirths+'!','#ffd700')}
+function addToCraft(t){if(!stickers[t])return;if(favorites[t]){toast('⭐ В избранном!','#f44');return}stickers[t]--;if(stickers[t]<=0)delete stickers[t];craftSel[t]=(craftSel[t]||0)+1;updateUI()}
+function removeFromCraft(t){if(!craftSel[t])return;craftSel[t]--;if(craftSel[t]<=0)delete craftSel[t];stickers[t]=(stickers[t]||0)+1;updateUI()}
+function clearCraft(){for(var t in craftSel){stickers[t]=(stickers[t]||0)+craftSel[t]}craftSel={};updateUI()}
+function doCraft(){if(!craftTarget){toast('Выберите цель!','#f44');return}if(TYPES[craftTarget]&&TYPES[craftTarget].secret){toast('❌ Секретные стикеры нельзя скрафтить!','#f44');return}var pts=0;for(var t in craftSel){var tp=TYPES[t];if(!tp)continue;pts+=tp.p*craftSel[t]}if(pts<=0){toast('Выберите стикеры!','#f44');return}var ct=TYPES[craftTarget],need=Math.ceil(ct.p*1.3),chance=Math.min(100,(pts/need)*100);craftSel={};if(Math.random()*100<chance){stickers[craftTarget]=(stickers[craftTarget]||0)+1;craftCnt++;toast('✅ '+ct.emoji+' '+ct.n+'!','#4caf50')}else toast('❌ Неудача ('+chance.toFixed(0)+'%)','#f44');updateUI();saveClickerData()}
+function sellStickers(){var total=0,ts=[];for(var t in stickers){if(favorites[t])continue;var tp=TYPES[t];if(tp)total+=tp.v*stickers[t];ts.push(t)}if(total===0){toast('Нет стикеров!','#f44');return}if(!confirm('Продать за '+total.toLocaleString()+'💰?'))return;balance+=total;ts.forEach(function(t){delete stickers[t]});updateUI();saveClickerData();toast('💸 +'+total.toLocaleString()+'💰','#ffd700')}
 
-function activateBooster(){if(boostActive)return;boostActive=true;boostPct=Math.min(boostPct+50,500);document.getElementById('safe').classList.add('boosting');toast('💥 БУСТЕР +50%!','#ff6600');setTimeout(function(){boostActive=false;boostPct=Math.max(0,boostPct-50);updateUI();},10000);}
-function getClickBonus(){const r=Math.random()*100;if(r<0.1)return 100;if(r<1.1)return 10;if(r<11.1)return 2;return 1;}
-function showBonusPopup(mult){const w=document.getElementById('safeWrap'),p=document.createElement('div');p.className='bonus-popup';p.textContent='🔥 ×'+mult+'!';w.appendChild(p);setTimeout(function(){p.remove();},1500);}
-
-document.getElementById('safeWrap').onclick=function(e){
-    const now=Date.now();if(now-clickTime>1000)cps=0;clickTime=now;if(cps>=15)return;cps++;
-    if(!boostActive&&Math.random()<0.02&&boostPct<500)activateBooster();
-    const cb=getClickBonus();if(cb>1)showBonusPopup(cb);
-    let earn=clickPower*Math.pow(2,Math.min(multiplier,50))*getRebMult()*cb*(1+boostPct/100);if(!isFinite(earn))earn=clickPower;
-    balance+=earn;totalClicks++;if(Math.random()<0.05){const s=randomSticker();stickers[s]=(stickers[s]||0)+1;}
-    const safe=document.getElementById('safe'),rect=safe.getBoundingClientRect();
-    const p=document.createElement('div');p.className='floating-text';p.textContent='+'+Math.floor(earn)+'💰';
-    p.style.left=Math.max(0,e.clientX-rect.left-20)+'px';p.style.top=Math.max(0,e.clientY-rect.top-10)+'px';
-    safe.appendChild(p);setTimeout(function(){p.remove();},700);
-    safe.style.transform='scale(0.94)';setTimeout(function(){safe.style.transform='scale(1)';},150);updateUI();saveClickerData();
-};
-
-function buyUpgrade(type){
-    const ml=getMaxLvl();
-    if(type==='clickPower'){if(clickPower>=ml){toast('Макс!','#f44');return;}const p=price(10,1.5,clickPower-1);if(balance>=p){balance-=p;clickPower++;}else{toast('Мало!','#f44');return;}}
-    else if(type==='autoClicker'){if(autoClicker>=ml){toast('Макс!','#f44');return;}const p=price(50,1.8,autoClicker);if(balance>=p){balance-=p;autoClicker++;}else{toast('Мало!','#f44');return;}}
-    else if(type==='multiplier'){if(multiplier>=ml||multiplier>=50){toast('Макс!','#f44');return;}const p=price(500,3,multiplier);if(balance>=p){balance-=p;multiplier++;}else{toast('Мало!','#f44');return;}}
-    updateUI();saveClickerData();
-}
-function rebirth(){if(rebirths>=4){toast('Макс!','#f44');return;}if(balance<REBIRTH_COSTS[rebirths]){toast('Нужно '+REBIRTH_COSTS[rebirths].toLocaleString()+'💰','#f44');return;}if(!confirm('Перерождение '+(rebirths+1)+'?'))return;balance=0;totalClicks=0;clickPower=1;autoClicker=0;multiplier=0;rebirths++;updateUI();saveClickerData();toast('🌟 Перерождение '+rebirths+'!','#ffd700');}
-
-// ========== КРАФТ И СЛИЯНИЕ ==========
-function addToCraft(t){
-    if(!stickers[t])return;
-    stickers[t]--;
-    if(stickers[t]<=0)delete stickers[t];
-    craftSel[t]=(craftSel[t]||0)+1;
-    updateUI();
-}
-function removeFromCraft(t){if(!craftSel[t])return;craftSel[t]--;if(craftSel[t]<=0)delete craftSel[t];stickers[t]=(stickers[t]||0)+1;updateUI();}
-function clearCraft(){for(const t of Object.keys(craftSel)){stickers[t]=(stickers[t]||0)+craftSel[t];}craftSel={};updateUI();}
-function doCraft(){
-    if(!craftTarget){toast('Выберите цель!','#f44');return;}
-    let pts=0;for(const[t,c]of Object.entries(craftSel)){const tp=TYPES[t];if(!tp)continue;pts+=tp.p*c;}
-    if(pts<=0){toast('Выберите стикеры!','#f44');return;}
-    const ct=TYPES[craftTarget],need=Math.ceil(ct.p*1.3),chance=Math.min(100,(pts/need)*100);craftSel={};
-    if(Math.random()*100<chance){stickers[craftTarget]=(stickers[craftTarget]||0)+1;craftCnt++;toast('✅ '+ct.emoji+' '+ct.n+'!','#4caf50');}
-    else toast('❌ Неудача ('+chance.toFixed(0)+'%)','#f44');
-    updateUI();saveClickerData();
-}
-function sellStickers(){
-    let total=0;for(const[t,c]of Object.entries(stickers)){const tp=TYPES[t];if(tp)total+=tp.v*c;}
-    if(total===0){toast('Нет!','#f44');return;}
-    if(!confirm('Продать обычные стикеры за '+total.toLocaleString()+'💰? (Лимитированные не будут проданы)'))return;
-    balance+=total;stickers={};updateUI();saveClickerData();toast('💸 +'+total.toLocaleString()+'💰','#ffd700');
-}
-
-setInterval(function(){if(autoClicker>0){balance+=autoClicker*Math.pow(2,Math.min(multiplier,50))*getRebMult()*(1+boostPct/100);totalClicks+=autoClicker;updateUI();saveClickerData();}},1000);
-setInterval(function(){cps=0;},1000);
+// ========== АВТО-ДОХОД ==========
+setInterval(function(){if(autoClicker>0){balance+=autoClicker*Math.pow(2,Math.min(multiplier,50))*getRebMult()*(1+boostPct/100);totalClicks+=autoClicker;updateUI();saveClickerData()}},1000);
+setInterval(function(){cps=0},1000);
 setInterval(saveClickerData,5000);
 window.addEventListener('beforeunload',saveClickerData);
-updateProfileUI();updateUI();
+updateProfileUI();updateUI();updatePinned();updateStickerLB();
 </script>
 </body>
 </html>
