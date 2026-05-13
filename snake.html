@@ -567,17 +567,43 @@ let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null')
 function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
 function saveUsers(u) { localStorage.setItem('snakeUsers', JSON.stringify(u)); }
 
-function updateProfileUI() {
+async function updateProfileUI() {
     if (currentUser) {
         document.getElementById('profileName').textContent = currentUser.username;
         document.getElementById('profileBtn').textContent = 'Выйти';
         document.getElementById('profileBtn').onclick = logout;
+        
+        // Загружаем ВСЕ данные из Supabase при входе
+        if (sb) {
+            try {
+                const { data } = await sb
+                    .from('players')
+                    .select('achievements, sparks, owned_skins, selected_skin, stats')
+                    .eq('username', currentUser.username)
+                    .single();
+                
+                if (data) {
+                    const users = getAllUsers();
+                    if (users[currentUser.username]) {
+                        if (data.achievements) users[currentUser.username].achievements = data.achievements;
+                        if (data.sparks) users[currentUser.username].sparks = data.sparks;
+                        if (data.owned_skins) users[currentUser.username].ownedSkins = data.owned_skins;
+                        if (data.selected_skin) users[currentUser.username].selectedSkin = data.selected_skin;
+                        if (data.stats) users[currentUser.username].stats = data.stats;
+                        saveUsers(users);
+                        loadUserStats();
+                    }
+                }
+            } catch(e) {
+                console.log('⚠️ Загружены локальные данные');
+            }
+        }
     } else {
         document.getElementById('profileName').textContent = 'Гость';
         document.getElementById('profileBtn').textContent = 'Войти';
         document.getElementById('profileBtn').onclick = openAuthModal;
     }
-    loadUserStats();
+    
     updateStatsDisplay();
     updateSparkBalance();
     updateSparkButtons();
