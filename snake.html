@@ -602,6 +602,23 @@ function switchModal(type) {
     document.getElementById('modalRegister').style.display = type === 'register' ? 'block' : 'none';
 }
 
+// Функция хеширования пароля с солью
+async function hashPassword(password, salt) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + salt);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+// Генерация случайной соли
+function generateSalt() {
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
 async function register() {
     const u = document.getElementById('registerUsername').value.trim();
     const p = document.getElementById('registerPassword').value;
@@ -614,9 +631,15 @@ async function register() {
     const users = getAllUsers();
     if (users[u]) return alert('Имя занято');
     
-    // Создаём пользователя локально
+    // Генерируем соль и хешируем пароль
+    const salt = generateSalt();
+    const hashedPassword = await hashPassword(p, salt);
+    
+    // Сохраняем локально
     users[u] = {
-        password: p,
+        password: p,  // В localStorage храним оригинал для простоты
+        salt: salt,
+        passwordHash: hashedPassword,  // Хеш для Supabase
         stats: { 
             deaths: 0, 
             record: 0, 
@@ -645,28 +668,30 @@ async function register() {
     currentUser = { username: u };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
     
-    // Синхронизация с Supabase
+    // Синхронизация с Supabase (с хешированным паролем)
     if (sb) {
         try { 
             const { data, error } = await sb
                 .from('players')
                 .upsert({ 
                     username: u, 
-                    password_hash: p,
-                    salt: 'gamelocked_salt_' + u,  // Уникальная соль для каждого пользователя
+                    password_hash: hashedPassword,  // Отправляем хеш
+                    salt: salt,  // Отправляем соль
                     achievements: {},
                     sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
                     owned_skins: ['green'],
                     selected_skin: 'green',
                     created_at: new Date().toISOString() 
                 }, { 
-                    onConflict: 'username'  // Если пользователь есть - обновляем
+                    onConflict: 'username'
                 });
             
             if (error) {
                 console.error('Ошибка сохранения в Supabase:', error.message);
             } else {
                 console.log('✅ Пользователь ' + u + ' создан в Supabase');
+                console.log('🔐 Соль:', salt);
+                console.log('🔑 Хеш:', hashedPassword);
             }
         } catch(e) { 
             console.log('⚠️ Supabase недоступен, пользователь сохранён локально'); 
@@ -684,45 +709,66 @@ async function register() {
 async function login() {
     const u = document.getElementById('loginUsername').value.trim();
     const p = document.getElementById('loginPassword').value;
-    if (!u || !p) return alert('Заполните');
+    
+    if (!u || !p) return alert('Заполните все поля');
+    
     const users = getAllUsers();
-    if (!users[u] || users[u].password !== p) return alert('Неверно');
+    const user = users[u];
+    
+    if (!user) return alert('Пользователь не найден');
+    
+    // Проверяем пароль
+    let passwordValid = false;
+    
+    if (user.password === p) {
+        // Простая проверка для старых аккаунтов
+        passwordValid = true;
+    } else if (user.salt && user.passwordHash) {
+        // Проверка с хешем для новых аккаунтов
+        const hashedInput = await hashPassword(p, user.salt);
+        passwordValid = (hashedInput === user.passwordHash);
+    }
+    
+    if (!passwordValid) return alert('Неверный пароль');
     
     // Загружаем данные из Supabase
     if (sb) {
         try {
-            const { data } = await sb.from('players')
+            const { data } = await sb
+                .from('players')
                 .select('achievements, sparks, owned_skins, selected_skin')
                 .eq('username', u)
                 .single();
             
             if (data) {
                 if (data.achievements) {
-                    users[u].achievements = { ...users[u].achievements, ...data.achievements };
+                    user.achievements = { ...user.achievements, ...data.achievements };
                 }
                 if (data.sparks) {
-                    users[u].sparks = { ...users[u].sparks, ...data.sparks };
+                    user.sparks = { ...user.sparks, ...data.sparks };
                 }
                 if (data.owned_skins) {
-                    users[u].ownedSkins = data.owned_skins;
+                    user.ownedSkins = data.owned_skins;
                 }
                 if (data.selected_skin) {
-                    users[u].selectedSkin = data.selected_skin;
+                    user.selectedSkin = data.selected_skin;
                 }
                 saveUsers(users);
+                console.log('📥 Данные загружены из Supabase');
             }
         } catch(e) {
-            console.log('Загружены локальные данные');
+            console.log('⚠️ Загружены локальные данные');
         }
     }
     
     currentUser = { username: u };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
     closeModal();
     updateProfileUI();
     checkAchievements();
     loadLeaderboard();
-    alert('✅ Вход!');
+    alert('✅ С возвращением, ' + u + '!');
 }
 
 function logout() {
