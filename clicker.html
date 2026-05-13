@@ -978,9 +978,22 @@ async function loadFromSupabase(){
 async function saveToSupabase(){
     if(!currentUser)return;
     try{
+        // Копируем limitedStickers с ограничением цены
+        var safeStickers = {};
+        for(var id in limitedStickers){
+            if(!limitedStickers[id]) continue;
+            safeStickers[id] = {
+                emoji: limitedStickers[id].emoji,
+                color: limitedStickers[id].color,
+                basePrice: limitedStickers[id].basePrice,
+                price: Math.min(limitedStickers[id].price, 9000000000000), // макс 9 трлн
+                created: limitedStickers[id].created
+            };
+        }
+        
         await sb.from('clicker_data').upsert({
             username:currentUser.username,
-            balance:Math.floor(balance),
+            balance:Math.floor(Math.min(balance, 9000000000000)),
             total_clicks:Math.floor(totalClicks),
             click_power:clickPower,
             auto_clicker:autoClicker,
@@ -990,7 +1003,7 @@ async function saveToSupabase(){
             craft_sel:JSON.stringify(craftSel),
             craft_count:craftCnt,
             craft_target:craftTarget||'',
-            limited_stickers:JSON.stringify(limitedStickers),
+            limited_stickers:JSON.stringify(safeStickers),
             coins:coins,
             favorites:JSON.stringify(favorites),
             pinned:JSON.stringify(pinned),
