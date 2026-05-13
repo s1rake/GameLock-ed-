@@ -928,7 +928,6 @@ function register(){
     saveClickerData();
     users[u]={password:p,clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}},created:Date.now()};
     saveUsers(users);currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
-    saveToSupabase();
     closeModal();updateProfileUI();toast('✅ Готово!');
 }
 function login(){
@@ -939,10 +938,9 @@ function login(){
     if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};
     saveClickerData();
     currentUser={username:u};localStorage.setItem('snakeCurrentUser',JSON.stringify(currentUser));
-    loadFromSupabase();
     closeModal();updateProfileUI();toast('✅ Вход!');
 }
-function logout(){saveClickerData();saveToSupabase();currentUser=null;localStorage.removeItem('snakeCurrentUser');updateProfileUI();}
+function logout(){saveClickerData();currentUser=null;localStorage.removeItem('snakeCurrentUser');updateProfileUI();}
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
 function toast(msg,c){const t=document.createElement('div');t.className='toast';t.textContent=msg;t.style.background=c||'#4caf50';document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='0.5s';setTimeout(function(){t.remove();},500)},2500);}
 
@@ -1015,7 +1013,7 @@ async function saveToSupabase(){
 
 // ========== ДАННЫЕ ==========
 function getClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}}};if(!users[u].clicker)users[u].clicker={balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}};if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};return users[u].clicker;}
-function saveClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={};users[u].clicker={balance:Math.floor(balance),totalClicks:Math.floor(totalClicks),clickPower,autoClicker,multiplier,rebirths,stickers,craftSel,craftCnt,craftTarget,limitedStickers};saveUsers(users);saveToSupabase();}
+function saveClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={};users[u].clicker={balance:Math.floor(balance),totalClicks:Math.floor(totalClicks),clickPower,autoClicker,multiplier,rebirths,stickers,craftSel,craftCnt,craftTarget,limitedStickers};saveUsers(users);}
 function loadClickerData(){const d=getClickerData();balance=d.balance||0;totalClicks=d.totalClicks||0;clickPower=d.clickPower||1;autoClicker=d.autoClicker||0;multiplier=d.multiplier||0;rebirths=d.rebirths||0;stickers=d.stickers||{};craftSel=d.craftSel||{};craftCnt=d.craftCnt||0;craftTarget=d.craftTarget||null;limitedStickers=d.limitedStickers||{};boostPct=0;boostActive=false;updateUI();}
 
 function loadExtra(){const e=JSON.parse(localStorage.getItem('clicker_extra_'+(currentUser?currentUser.username:'guest'))||'{}');coins=e.coins||0;favorites=e.favorites||{};pinned=e.pinned||[];updateCoins();setTimeout(function(){applyPinnedBackground();updatePinned();updateUnpinButton();},100);}
