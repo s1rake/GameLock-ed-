@@ -805,14 +805,19 @@ function getSparks() {
 async function saveSparks(sp) {
     if (currentUser) { 
         currentUser.sparks = sp;
-        // Сохраняем в Supabase
         if (sb) {
             try {
-                await sb.from('players').update({ 
-                    sparks: sp 
-                }).eq('username', currentUser.username);
+                const { error } = await sb.from('players')
+                    .update({ sparks: sp })
+                    .eq('username', currentUser.username);
+                    
+                if (error) {
+                    console.error('Ошибка сохранения огоньков:', error);
+                } else {
+                    console.log('✅ Огоньки сохранены в Supabase');
+                }
             } catch(e) { 
-                console.log('Supabase: оффлайн, сохранено локально'); 
+                console.log('Supabase оффлайн, сохранено локально'); 
             }
         }
     } else { 
