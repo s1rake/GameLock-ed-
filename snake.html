@@ -921,17 +921,13 @@ async function saveStats(s) {
             users[currentUser.username].stats = s; 
             saveUsers(users); 
         }
-        // Сохраняем в Supabase если нужно
+        // Сохраняем в Supabase только существующие колонки
         if (sb) {
             try {
                 await sb
                     .from('players')
                     .update({ 
-                        stats: s,
-                        total_score: s.totalScore || 0,
-                        total_gold_apples: s.totalGoldApples || 0,
-                        total_events: s.totalEvents || 0,
-                        deaths: s.deaths || 0
+                        stats: s
                     })
                     .eq('username', currentUser.username);
             } catch(e) { 
@@ -1647,7 +1643,30 @@ function endGame() {
     updateStatsDisplay();
     updateSparkBalance();
     
-    // Отправка в Supabase с проверкой на чита (только если sb доступен)
+function endGame() {
+    if (isGameOver) return;
+    isGameOver = true;
+    
+    const s = getStats();
+    s.deaths++;
+    
+    if (score > s.record) s.record = score;
+    if (!s.totalScore) s.totalScore = 0;
+    if (!s.totalGoldApples) s.totalGoldApples = 0;
+    if (!s.totalEvents) s.totalEvents = 0;
+    
+    s.totalScore += score;
+    s.totalGoldApples += sessionGoldApples;
+    s.totalEvents += sessionEvents;
+    
+    if (deathType === 'self') s.selfDeaths = (s.selfDeaths || 0) + 1;
+    if (deathType === 'wall') s.wallDeaths = (s.wallDeaths || 0) + 1;
+    
+    saveStats(s);
+    updateStatsDisplay();
+    updateSparkBalance();
+    
+    // Отправка в Supabase (лидерборд)
     if (currentUser && sb) {
         const skinColor = getCurrentSkinColor();
         const gameDuration = Math.floor((Date.now() - _st) / 1000);
@@ -1660,41 +1679,74 @@ function endGame() {
             updateStatsDisplay();
         }
         
-        // Удаляем старый рекорд и вставляем новый
-        fetch(`https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.${encodeURIComponent(currentUser.username)}`, {
-            method: 'DELETE',
-            headers: {
-                'apikey': SB_KEY,
-                'Authorization': 'Bearer ' + SB_KEY
-            }
-        }).then(() => {
-            return fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard', {
-                method: 'POST',
+        // Отправляем рекорд в лидерборд
+        try {
+            // Сначала удаляем старую запись
+            fetch(`https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.${encodeURIComponent(currentUser.username)}`, {
+                method: 'DELETE',
                 headers: {
                     'apikey': SB_KEY,
                     'Authorization': 'Bearer ' + SB_KEY,
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: currentUser.username,
-                    score: s.record,
-                    gold_apples: s.totalGoldApples || 0,
-                    events: s.totalEvents || 0,
-                    deaths: s.deaths,
-                    skin_color: skinColor,
-                    created_at: new Date().toISOString()
-                })
+                }
+            }).then(() => {
+                // Вставляем новую запись
+                return fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard', {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SB_KEY,
+                        'Authorization': 'Bearer ' + SB_KEY,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        username: currentUser.username,
+                        score: s.record,
+                        gold_apples: s.totalGoldApples || 0,
+                        events: s.totalEvents || 0,
+                        deaths: s.deaths,
+                        skin_color: skinColor,
+                        created_at: new Date().toISOString()
+                    })
+                });
+            }).then(r => {
+                if (r && r.ok) {
+                    console.log('🏆 Рекорд отправлен в лидерборд!');
+                    loadLeaderboard();
+                }
+            }).catch(e => {
+                console.log('⚠️ Лидерборд недоступен, рекорд сохранён локально');
             });
-        }).then(r => {
-            if (r && r.status === 201) loadLeaderboard();
-        }).catch(e => console.log('Рекорд сохранён локально'));
+            
+            // Обновляем статистику в таблице players
+            sb.from('players')
+                .update({ 
+                    stats: s
+                })
+                .eq('username', currentUser.username)
+                .then(() => console.log('📊 Статистика обновлена в Supabase'))
+                .catch(() => console.log('⚠️ Статистика сохранена локально'));
+                
+        } catch(e) {
+            console.log('⚠️ Supabase недоступен, данные сохранены локально');
+        }
     }
     
+    // Показываем экран окончания игры
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = 'Счёт: ' + score;
     document.getElementById('highScore').textContent = 'Рекорд: ' + s.record;
+    
+    // Завершаем ивенты
     endEvent();
-    if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
+    
+    // Останавливаем игровой цикл
+    if (gameLoopInterval) { 
+        clearInterval(gameLoopInterval); 
+        gameLoopInterval = null; 
+    }
+    
+    // Проверяем достижения
     checkAchievements(deathType);
     deathType = null;
 }
