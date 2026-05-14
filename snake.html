@@ -860,11 +860,12 @@ function loadUserStats() {
 
 function updateStatsDisplay() {
     const s = getStats();
-    document.getElementById('statDeaths').textContent = s.deaths;
-    document.getElementById('statRecord').textContent = s.record;
-    document.getElementById('statApples').textContent = s.applesEaten;
-    document.getElementById('statGoldApples').textContent = s.goldApplesEaten;
-    document.getElementById('highScore').textContent = 'Рекорд: ' + s.record;
+    document.getElementById('statDeaths').textContent = s.deaths || 0;
+    document.getElementById('statRecord').textContent = s.record || 0;
+    document.getElementById('statApples').textContent = s.applesEaten || 0;
+    document.getElementById('statGoldApples').textContent = s.goldApplesEaten || 0;
+    const highScoreEl = document.getElementById('highScore');
+    if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
 }
 
 function updateStat(f, v) {
@@ -910,12 +911,23 @@ function updateSparkBalance() {
 
 function updateSparkButtons() {
     const sp = getSparks();
+    const sparkNames = {
+        golden: '⭐ Золотая еда',
+        rainbow: '🌈 Радужный дождь',
+        bonus: '🎁 Бонусная еда',
+        random: '🎲 Рандом'
+    };
+    
     ['golden', 'rainbow', 'bonus', 'random'].forEach(type => {
         const c = sp[type] || 0;
         const item = document.getElementById('spark' + type.charAt(0).toUpperCase() + type.slice(1));
         if (!item) return;
         const btn = item.querySelector('.spark-use-btn');
-        item.querySelector('.spark-name').textContent = ({ golden: '⭐ Золотая еда', rainbow: '🌈 Радужный дождь', bonus: '🎁 Бонусная еда', random: '🎲 Рандом' }[type]) + ' (' + c + ' шт.)';
+        const nameEl = item.querySelector('.spark-name');
+        const price = SPARK_PRICES[type];
+        
+        if (nameEl) nameEl.textContent = sparkNames[type] + ' (' + c + ' шт.) - ' + price + '🍎';
+        
         if (c > 0) {
             btn.textContent = 'Использовать 🔥';
             btn.onclick = () => useSpark(type);
@@ -1457,8 +1469,8 @@ function endGame() {
     if (isGameOver) return;
     isGameOver = true;
     const s = getStats();
-    s.deaths++;
-    if (score > s.record) s.record = score;
+    s.deaths = (s.deaths || 0) + 1;
+    if (score > (s.record || 0)) s.record = score;
     if (!s.totalScore) s.totalScore = 0;
     if (!s.totalGoldApples) s.totalGoldApples = 0;
     if (!s.totalEvents) s.totalEvents = 0;
@@ -1471,38 +1483,29 @@ function endGame() {
     updateStatsDisplay();
     updateSparkBalance();
     
-    if (currentUser && sb) {
-        const skinColor = getCurrentSkinColor();
-        fetch(`https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.${encodeURIComponent(currentUser.username)}`, {
-            method: 'DELETE',
-            headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-        }).then(() => {
-            return fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard', {
-                method: 'POST',
-                headers: {
-                    'apikey': SB_KEY,
-                    'Authorization': 'Bearer ' + SB_KEY,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify({
-                    username: currentUser.username,
-                    score: s.record,
-                    gold_apples: s.totalGoldApples || 0,
-                    events: s.totalEvents || 0,
-                    deaths: s.deaths,
-                    skin_color: skinColor,
-                    created_at: new Date().toISOString()
-                })
-            });
-        }).then(r => {
-            if (r && r.ok) loadLeaderboard();
-        }).catch(e => console.log('Рекорд сохранён локально'));
-    }
-    
+    // Показываем результат
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = 'Счёт: ' + score;
-    document.getElementById('highScore').textContent = 'Рекорд: ' + s.record;
+    const highScoreEl = document.getElementById('highScore');
+    if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
+    
+    // Отправка в Supabase (упрощённо, без fetch)
+    if (currentUser && sb) {
+        try {
+            sb.from('snake_leaderboard').upsert({
+                username: currentUser.username,
+                score: s.record,
+                gold_apples: s.totalGoldApples || 0,
+                events: s.totalEvents || 0,
+                deaths: s.deaths,
+                skin_color: getCurrentSkinColor(),
+                created_at: new Date().toISOString()
+            }, { onConflict: 'username' }).then(() => {
+                loadLeaderboard();
+            }).catch(() => {});
+        } catch(e) {}
+    }
+    
     endEvent();
     if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
     checkAchievements(deathType);
