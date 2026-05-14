@@ -1160,7 +1160,6 @@ async function loadFromSupabase() {
             multiplier = data.multiplier || 0;
             rebirths = data.rebirths || 0;
             
-            // Парсим стикеры
             var parsedStickers = {};
             try { parsedStickers = JSON.parse(data.stickers || '{}'); } catch(e) {}
             stickers = parsedStickers;
@@ -1172,7 +1171,6 @@ async function loadFromSupabase() {
             craftCnt = data.craft_count || 0;
             craftTarget = data.craft_target || null;
             
-            // Парсим лимитированные стикеры
             var parsedLimited = {};
             try { parsedLimited = JSON.parse(data.limited_stickers || '{}'); } catch(e) {}
             limitedStickers = parsedLimited;
@@ -1202,7 +1200,6 @@ async function loadFromSupabase() {
 async function saveToSupabase() {
     if (!currentUser || !sb) return;
     try {
-        // Копируем limitedStickers правильно
         var safeStickers = {};
         for (var id in limitedStickers) {
             if (!limitedStickers[id]) continue;
@@ -1237,12 +1234,12 @@ async function saveToSupabase() {
         var { data, error } = await sb.from('clicker_data').upsert(updateData, { onConflict: 'username' });
         
         if (error) {
-            console.error('❌ Ошибка сохранения в Supabase:', error.message);
+            console.error('❌ Ошибка сохранения:', error.message);
         } else {
             console.log('✅ Сохранено в Supabase. Стикеров:', Object.keys(safeStickers).length);
         }
     } catch(e) {
-        console.log('⚠️ Сохранено локально (Supabase недоступен)');
+        console.log('⚠️ Сохранено локально');
     }
 }
 
@@ -1267,13 +1264,11 @@ async function updateStickerLB() {
         }
     }
     
-    // 1. Текущий пользователь
     var un = currentUser ? currentUser.username : 'Гость';
     for (var id in limitedStickers) {
         if (limitedStickers[id]) addSticker(un, limitedStickers[id]);
     }
     
-    // 2. Все из localStorage
     var users = getAllUsers();
     for (var u in users) {
         var clicker = users[u]?.clicker;
@@ -1283,47 +1278,31 @@ async function updateStickerLB() {
         }
     }
     
-    // 3. Все из Supabase
     if (sb) {
         try {
             var { data, error } = await sb.from('clicker_data').select('username, limited_stickers');
-            
-            if (error) {
-                console.log('⚠️ Ошибка загрузки ЛБ:', error.message);
-            } else if (data) {
-                console.log('📦 Загружено из Supabase:', data.length, 'игроков');
-                
+            if (data) {
                 for (var row of data) {
                     var stickers = row.limited_stickers;
-                    
                     if (typeof stickers === 'string') {
                         try { stickers = JSON.parse(stickers); } catch(e) { continue; }
                     }
-                    
-                    if (!stickers || typeof stickers !== 'object') continue;
-                    
+                    if (!stickers) continue;
                     for (var id in stickers) {
                         if (stickers[id]) addSticker(row.username, stickers[id]);
                     }
                 }
             }
-        } catch(e) {
-            console.log('⚠️ Supabase недоступен для ЛБ');
-        }
+        } catch(e) {}
     }
     
-    // Сортируем
     var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price);
     
-    console.log('🏆 Игроков в ЛБ:', sorted.length);
-    
-    // Показываем топ-10
     listEl.innerHTML = sorted.slice(0, 10).map(function(s, i) {
         return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span>' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> 💰' + (s.price || 0).toLocaleString() + '</span></li>';
     }).join('') || '<li>Нет стикеров</li>';
 }
 
-// Загружаем лидерборд при старте и каждые 30 секунд
 setTimeout(updateStickerLB, 2000);
 setInterval(updateStickerLB, 30000);
     // ========== ДАННЫЕ ==========
