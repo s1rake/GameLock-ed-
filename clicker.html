@@ -1230,8 +1230,65 @@
     function mergeStickers(emoji) { if (!stickers[emoji] || stickers[emoji] < 5) return; stickers[emoji] -= 5; if (stickers[emoji] <= 0) delete stickers[emoji]; var color = randomLimitedColor(); var basePrice = Math.floor(Math.min(TYPES[emoji].v, 5000000000) * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; updateUI(); saveClickerData(); updateStickerLB(); toast('✨ Лимитированный стикер! ' + color.name + ' фон!', '#ffd700') }
 
     // ========== ЛИДЕРБОРД ==========
-    function updateStickerLB() { var users = getAllUsers(), best = {}; for (var u in users) { if (!users[u].clicker || !users[u].clicker.limitedStickers) continue; var ls = users[u].clicker.limitedStickers; for (var id in ls) { if (!ls[id]) continue; if (!best[u] || ls[id].price > best[u].price) best[u] = { username: u, emoji: ls[id].emoji, colorName: ls[id].color ? ls[id].color.name : '?', colorBg: ls[id].color ? ls[id].color.bg : '#ccc', price: ls[id].price } } } for (var id in limitedStickers) { if (!limitedStickers[id]) continue; var un = currentUser ? currentUser.username : 'Гость'; if (!best[un] || limitedStickers[id].price > best[un].price) best[un] = { username: un, emoji: limitedStickers[id].emoji, colorName: limitedStickers[id].color ? limitedStickers[id].color.name : '?', colorBg: limitedStickers[id].color ? limitedStickers[id].color.bg : '#ccc', price: limitedStickers[id].price } } var arr = Object.values(best); arr.sort(function (a, b) { return b.price - a.price }); document.getElementById('stickerLB').innerHTML = arr.slice(0, 5).map(function (s, i) { return '<li><span><span class="lb-rank">' + ['🥇', '🥈', '🥉'][i] + '</span>' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> 💰' + s.price.toLocaleString() + '</span></li>' }).join('') || '<li>Нет стикеров</li>' }
+   async function updateStickerLB() {
+    const listEl = document.getElementById('stickerLB');
+    if (!listEl) return;
+    
+    if (!sb) {
+        // Оффлайн - из localStorage
+        var users = getAllUsers(), best = {};
+        for (var u in users) {
+            if (!users[u].clicker || !users[u].clicker.limitedStickers) continue;
+            var ls = users[u].clicker.limitedStickers;
+            for (var id in ls) {
+                if (!ls[id]) continue;
+                if (!best[u] || ls[id].price > best[u].price) {
+                    best[u] = { username: u, emoji: ls[id].emoji, colorName: ls[id].color?.name || '?', colorBg: ls[id].color?.bg || '#ccc', price: ls[id].price };
+                }
+            }
+        }
+        renderStickerLB(Object.values(best).sort((a, b) => b.price - a.price));
+        return;
+    }
+    
+    // Онлайн - из Supabase
+    try {
+        const { data } = await sb.from('clicker_data').select('username, limited_stickers');
+        
+        var allStickers = [];
+        for (var row of (data || [])) {
+            var stickers = row.limited_stickers;
+            if (typeof stickers === 'string') stickers = JSON.parse(stickers);
+            if (!stickers) continue;
+            
+            for (var id in stickers) {
+                if (!stickers[id]) continue;
+                allStickers.push({
+                    username: row.username,
+                    emoji: stickers[id].emoji,
+                    colorName: stickers[id].color?.name || '?',
+                    colorBg: stickers[id].color?.bg || '#ccc',
+                    price: stickers[id].price || 0
+                });
+            }
+        }
+        
+        // Сортируем по цене и берём топ-10
+        allStickers.sort((a, b) => b.price - a.price);
+        renderStickerLB(allStickers.slice(0, 10));
+        
+    } catch(e) {
+        console.log('Лидерборд стикеров недоступен');
+    }
+}
 
+function renderStickerLB(arr) {
+    var listEl = document.getElementById('stickerLB');
+    var medals = ['🥇', '🥈', '🥉'];
+    listEl.innerHTML = arr.map(function(s, i) {
+        return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span>' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> 💰' + (s.price || 0).toLocaleString() + '</span></li>';
+    }).join('') || '<li>Нет стикеров</li>';
+}
     // ========== СТИКЕРПАКИ ==========
     function openPack(packId) { var pack = STICKER_PACKS.find(function (p) { return p.id === packId }); if (!pack) return; if (coins < pack.price) { toast('Недостаточно монет! Нужно ' + pack.price + '🪙', '#f44'); return } coins -= pack.price; saveExtra(); updateCoins(); var stickersWon = [], tiersWon = [], colorsWon = [], allStickers = []; var guaranteedStickers = Object.entries(TYPES).filter(function (e) { return e[1].t === pack.guaranteed.tier }).map(function (e) { return e[0] }); if (guaranteedStickers.length > 0) { allStickers.push({ emoji: guaranteedStickers[Math.floor(Math.random() * guaranteedStickers.length)], tier: pack.guaranteed.tier }) } for (var i = 0; i < 2; i++) { var rand = Math.random() * 100, cumulative = 0, selectedTier = 1; for (var j = 0; j < pack.slots.length; j++) { cumulative += pack.slots[j].chance; if (rand <= cumulative) { selectedTier = pack.slots[j].tier; break } } var poolStickers = Object.entries(TYPES).filter(function (e) { return e[1].t === selectedTier }).map(function (e) { return e[0] }); if (poolStickers.length > 0) { allStickers.push({ emoji: poolStickers[Math.floor(Math.random() * poolStickers.length)], tier: selectedTier }) } } for (var i = 0; i < allStickers.length; i++) { var sticker = allStickers[i]; var color = randomLimitedColor(); var basePrice = Math.floor(TYPES[sticker.emoji].v * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: sticker.emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; stickersWon.push('✨' + sticker.emoji); tiersWon.push(sticker.tier + 0.5); colorsWon.push(color) } showPackAnimation(pack.name, stickersWon, tiersWon, colorsWon); updateUI(); saveClickerData() }
 
