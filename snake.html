@@ -534,7 +534,7 @@ body.dark-theme .achievement-desc { color: #aaa; }
 
 <script>
 // ================================================================
-// ЗОНА 1: SUPABASE - МОЖНО МЕНЯТЬ
+// ЗОНА 1: SUPABASE
 // ================================================================
 const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
@@ -548,7 +548,7 @@ try {
 }
 
 // ================================================================
-// ЗОНА 2: ТЕМА - НЕ ТРОГАТЬ
+// ЗОНА 2: ТЕМА
 // ================================================================
 let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true';
 if (darkTheme) document.body.classList.add('dark-theme');
@@ -561,16 +561,29 @@ function toggleTheme() {
 document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙';
 
 // ================================================================
-// ЗОНА 3: АККАУНТЫ (LOCALSTORAGE + SUPABASE) - МОЖНО МЕНЯТЬ
+// ЗОНА 3: АККАУНТЫ
 // ================================================================
 let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
 
-// Загрузка данных из Supabase при старте
+function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
+function saveUsers(u) { localStorage.setItem('snakeUsers', JSON.stringify(u)); }
+
+async function hashPassword(password, salt) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + salt);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateSalt() {
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function loadUserDataFromSupabase() {
     if (currentUser && sb) {
         try {
             console.log('📥 Загружаем данные из Supabase для', currentUser.username);
-            
             const { data, error } = await sb
                 .from('players')
                 .select('achievements, sparks, owned_skins, selected_skin, stats')
@@ -579,8 +592,6 @@ async function loadUserDataFromSupabase() {
             
             if (data && !error) {
                 const users = getAllUsers();
-                
-                // Если пользователь есть в localStorage - обновляем
                 if (users[currentUser.username]) {
                     if (data.achievements) {
                         users[currentUser.username].achievements = data.achievements;
@@ -602,17 +613,10 @@ async function loadUserDataFromSupabase() {
                         users[currentUser.username].stats = data.stats;
                         currentUser.stats = data.stats;
                     }
-                    
                     saveUsers(users);
                     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-                    
-                    console.log('✅ Данные загружены из Supabase:');
-                    console.log('  🕯️ Огоньки:', data.sparks);
-                    console.log('  🏆 Достижения:', Object.keys(data.achievements || {}).length, 'шт.');
-                    console.log('  🎨 Скины:', data.owned_skins);
+                    console.log('✅ Данные загружены из Supabase');
                 }
-            } else {
-                console.log('⚠️ Пользователь не найден в Supabase, используем локальные данные');
             }
         } catch(e) {
             console.log('⚠️ Оффлайн-режим, используем локальные данные');
@@ -620,16 +624,8 @@ async function loadUserDataFromSupabase() {
     }
 }
 
-// Вызываем загрузку сразу при старте
-loadUserDataFromSupabase();
-function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
-function saveUsers(u) { localStorage.setItem('snakeUsers', JSON.stringify(u)); }
-
-async function updateProfileUI() {
+function updateProfileUI() {
     if (currentUser) {
-        // Сначала загружаем свежие данные из Supabase
-        await loadUserDataFromSupabase();
-        
         document.getElementById('profileName').textContent = currentUser.username;
         document.getElementById('profileBtn').textContent = 'Выйти';
         document.getElementById('profileBtn').onclick = logout;
@@ -638,7 +634,6 @@ async function updateProfileUI() {
         document.getElementById('profileBtn').textContent = 'Войти';
         document.getElementById('profileBtn').onclick = openAuthModal;
     }
-    
     updateStatsDisplay();
     updateSparkBalance();
     updateSparkButtons();
@@ -663,23 +658,6 @@ function switchModal(type) {
     document.getElementById('modalRegister').style.display = type === 'register' ? 'block' : 'none';
 }
 
-// Функция хеширования пароля с солью
-async function hashPassword(password, salt) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + salt);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-}
-
-// Генерация случайной соли
-function generateSalt() {
-    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-}
-
 async function register() {
     const u = document.getElementById('registerUsername').value.trim();
     const p = document.getElementById('registerPassword').value;
@@ -692,31 +670,14 @@ async function register() {
     const users = getAllUsers();
     if (users[u]) return alert('Имя занято');
     
-    // Генерируем соль и хешируем пароль
     const salt = generateSalt();
     const hashedPassword = await hashPassword(p, salt);
     
-    // Сохраняем локально
     users[u] = {
-        password: p,  // В localStorage храним оригинал для простоты
+        password: p,
         salt: salt,
-        passwordHash: hashedPassword,  // Хеш для Supabase
-        stats: { 
-            deaths: 0, 
-            record: 0, 
-            eventsEncountered: 0, 
-            applesEaten: 0, 
-            goldApplesEaten: 0, 
-            totalScore: 0, 
-            totalGoldApples: 0, 
-            totalEvents: 0, 
-            bonusEvents: 0, 
-            rainbowEvents: 0, 
-            goldenEvents: 0, 
-            attackEvents: 0, 
-            selfDeaths: 0, 
-            wallDeaths: 0 
-        },
+        passwordHash: hashedPassword,
+        stats: { deaths: 0, record: 0, eventsEncountered: 0, applesEaten: 0, goldApplesEaten: 0, totalScore: 0, totalGoldApples: 0, totalEvents: 0, bonusEvents: 0, rainbowEvents: 0, goldenEvents: 0, attackEvents: 0, selfDeaths: 0, wallDeaths: 0 },
         sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
         ownedSkins: ['green'],
         selectedSkin: 'green',
@@ -729,42 +690,26 @@ async function register() {
     currentUser = { username: u };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
     
-    // Синхронизация с Supabase (с хешированным паролем)
     if (sb) {
-        try { 
-            const { data, error } = await sb
-                .from('players')
-                .upsert({ 
-                    username: u, 
-                    password_hash: hashedPassword,  // Отправляем хеш
-                    salt: salt,  // Отправляем соль
-                    achievements: {},
-                    sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-                    owned_skins: ['green'],
-                    selected_skin: 'green',
-                    created_at: new Date().toISOString() 
-                }, { 
-                    onConflict: 'username'
-                });
-            
-            if (error) {
-                console.error('Ошибка сохранения в Supabase:', error.message);
-            } else {
-                console.log('✅ Пользователь ' + u + ' создан в Supabase');
-                console.log('🔐 Соль:', salt);
-                console.log('🔑 Хеш:', hashedPassword);
-            }
-        } catch(e) { 
-            console.log('⚠️ Supabase недоступен, пользователь сохранён локально'); 
-        }
-    } else {
-        console.log('ℹ️ Supabase не подключен, работаем оффлайн');
+        try {
+            await sb.from('players').upsert({
+                username: u,
+                password_hash: hashedPassword,
+                salt: salt,
+                achievements: {},
+                sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
+                owned_skins: ['green'],
+                selected_skin: 'green',
+                created_at: new Date().toISOString()
+            }, { onConflict: 'username' });
+            console.log('✅ Пользователь создан в Supabase');
+        } catch(e) { console.log('⚠️ Supabase недоступен'); }
     }
     
     closeModal();
     updateProfileUI();
     checkAchievements();
-    alert('✅ Аккаунт создан! Добро пожаловать, ' + u + '!');
+    alert('✅ Аккаунт создан!');
 }
 
 async function login() {
@@ -778,9 +723,7 @@ async function login() {
     
     if (!user) return alert('Пользователь не найден');
     
-    // Проверяем пароль
     let passwordValid = false;
-    
     if (user.password === p) {
         passwordValid = true;
     } else if (user.salt && user.passwordHash) {
@@ -790,8 +733,7 @@ async function login() {
     
     if (!passwordValid) return alert('Неверный пароль');
     
-    // Создаём currentUser с базовыми данными
-    currentUser = { 
+    currentUser = {
         username: u,
         achievements: user.achievements || {},
         sparks: user.sparks || { golden: 0, rainbow: 0, bonus: 0, random: 0 },
@@ -800,7 +742,6 @@ async function login() {
         stats: user.stats || {}
     };
     
-    // Загружаем свежие данные из Supabase
     if (sb) {
         try {
             const { data } = await sb
@@ -810,42 +751,22 @@ async function login() {
                 .single();
             
             if (data) {
-                if (data.achievements) {
-                    currentUser.achievements = data.achievements;
-                    user.achievements = data.achievements;
-                }
-                if (data.sparks) {
-                    currentUser.sparks = data.sparks;
-                    user.sparks = data.sparks;
-                }
-                if (data.owned_skins) {
-                    currentUser.ownedSkins = data.owned_skins;
-                    user.ownedSkins = data.owned_skins;
-                }
-                if (data.selected_skin) {
-                    currentUser.selectedSkin = data.selected_skin;
-                    user.selectedSkin = data.selected_skin;
-                }
-                if (data.stats) {
-                    currentUser.stats = data.stats;
-                    user.stats = data.stats;
-                }
-                
+                if (data.achievements) { currentUser.achievements = data.achievements; user.achievements = data.achievements; }
+                if (data.sparks) { currentUser.sparks = data.sparks; user.sparks = data.sparks; }
+                if (data.owned_skins) { currentUser.ownedSkins = data.owned_skins; user.ownedSkins = data.owned_skins; }
+                if (data.selected_skin) { currentUser.selectedSkin = data.selected_skin; user.selectedSkin = data.selected_skin; }
+                if (data.stats) { currentUser.stats = data.stats; user.stats = data.stats; }
                 saveUsers(users);
-                console.log('📥 Данные синхронизированы из Supabase');
             }
-        } catch(e) {
-            console.log('⚠️ Используем локальные данные');
-        }
+        } catch(e) { console.log('⚠️ Используем локальные данные'); }
     }
     
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-    
     closeModal();
     updateProfileUI();
     checkAchievements();
     loadLeaderboard();
-    alert('✅ С возвращением, ' + u + '!');
+    alert('✅ С возвращением!');
 }
 
 function logout() {
@@ -856,12 +777,12 @@ function logout() {
     }
 }
 
-document.getElementById('modalOverlay').addEventListener('click', function(e) { 
-    if (e.target === this) closeModal(); 
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
 });
 
 // ================================================================
-// ЗОНА 4: ЛИДЕРБОРД - МОЖНО МЕНЯТЬ
+// ЗОНА 4: ЛИДЕРБОРД
 // ================================================================
 function switchLeaderTab(tab) {
     document.querySelectorAll('.leaders-tab').forEach(t => t.classList.remove('active'));
@@ -880,22 +801,22 @@ async function loadLeaderboard() {
         const { data } = await sb.from('snake_leaderboard').select('*').order('score', { ascending: false }).limit(10);
         const medals = ['🥇', '🥈', '🥉'];
         
-        document.getElementById('leaderScore').innerHTML = (data || []).map((d, i) => 
+        document.getElementById('leaderScore').innerHTML = (data || []).map((d, i) =>
             `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.score} очк</span></li>`
         ).join('') || '<li>Нет записей</li>';
         
         const goldSorted = data ? [...data].sort((a, b) => b.gold_apples - a.gold_apples) : [];
-        document.getElementById('leaderGoldApples').innerHTML = goldSorted.slice(0, 10).map((d, i) => 
+        document.getElementById('leaderGoldApples').innerHTML = goldSorted.slice(0, 10).map((d, i) =>
             `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.gold_apples} ⭐</span></li>`
         ).join('') || '<li>Нет записей</li>';
         
         const eventsSorted = data ? [...data].sort((a, b) => b.events - a.events) : [];
-        document.getElementById('leaderEvents').innerHTML = eventsSorted.slice(0, 10).map((d, i) => 
+        document.getElementById('leaderEvents').innerHTML = eventsSorted.slice(0, 10).map((d, i) =>
             `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.events} ив</span></li>`
         ).join('') || '<li>Нет записей</li>';
         
         const deathsSorted = data ? [...data].sort((a, b) => b.deaths - a.deaths) : [];
-        document.getElementById('leaderDeaths').innerHTML = deathsSorted.slice(0, 10).map((d, i) => 
+        document.getElementById('leaderDeaths').innerHTML = deathsSorted.slice(0, 10).map((d, i) =>
             `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.deaths} см</span></li>`
         ).join('') || '<li>Нет записей</li>';
     } catch (e) {
@@ -904,7 +825,7 @@ async function loadLeaderboard() {
 }
 
 // ================================================================
-// ЗОНА 5: СТАТИСТИКА - НЕ ТРОГАТЬ
+// ЗОНА 5: СТАТИСТИКА
 // ================================================================
 function getStats() {
     if (currentUser) {
@@ -917,22 +838,11 @@ function getStats() {
 async function saveStats(s) {
     if (currentUser) {
         const users = getAllUsers();
-        if (users[currentUser.username]) { 
-            users[currentUser.username].stats = s; 
-            saveUsers(users); 
-        }
-        // Сохраняем в Supabase только существующие колонки
+        if (users[currentUser.username]) { users[currentUser.username].stats = s; saveUsers(users); }
         if (sb) {
             try {
-                await sb
-                    .from('players')
-                    .update({ 
-                        stats: s
-                    })
-                    .eq('username', currentUser.username);
-            } catch(e) { 
-                console.log('⚠️ Статистика сохранена локально'); 
-            }
+                await sb.from('players').update({ stats: s }).eq('username', currentUser.username);
+            } catch(e) {}
         }
     } else {
         localStorage.setItem('snakeGuestStats', JSON.stringify(s));
@@ -965,7 +875,7 @@ function updateStat(f, v) {
 }
 
 // ================================================================
-// ЗОНА 6: ОГОНЬКИ - НЕ ТРОГАТЬ
+// ЗОНА 6: ОГОНЬКИ
 // ================================================================
 const SPARK_PRICES = { golden: 100, rainbow: 95, bonus: 10, random: 65 };
 
@@ -975,35 +885,24 @@ function getSparks() {
 }
 
 async function saveSparks(sp) {
-    if (currentUser) { 
+    if (currentUser) {
         currentUser.sparks = sp;
-        // Сохраняем в localStorage
         const users = getAllUsers();
         if (users[currentUser.username]) {
             users[currentUser.username].sparks = sp;
             saveUsers(users);
         }
-        // Сохраняем в Supabase
         if (sb) {
             try {
-                const { error } = await sb
-                    .from('players')
-                    .update({ sparks: sp })
-                    .eq('username', currentUser.username);
-                    
-                if (error) {
-                    console.error('Ошибка сохранения огоньков:', error.message);
-                } else {
-                    console.log('🕯️ Огоньки сохранены в Supabase:', sp);
-                }
-            } catch(e) { 
-                console.log('⚠️ Оффлайн, огоньки сохранены локально'); 
-            }
+                await sb.from('players').update({ sparks: sp }).eq('username', currentUser.username);
+                console.log('🕯️ Огоньки сохранены в Supabase');
+            } catch(e) {}
         }
-    } else { 
-        localStorage.setItem('snakeGuestSparks', JSON.stringify(sp)); 
+    } else {
+        localStorage.setItem('snakeGuestSparks', JSON.stringify(sp));
     }
 }
+
 function updateSparkBalance() {
     document.getElementById('sparkBalance').textContent = (getStats().applesEaten || 0);
     updateSparkButtons();
@@ -1060,7 +959,7 @@ function useSpark(type) {
 }
 
 // ================================================================
-// ЗОНА 7: СКИНЫ - НЕ ТРОГАТЬ
+// ЗОНА 7: СКИНЫ
 // ================================================================
 const SKIN_COLORS = [
     { name: 'Зелёный', color: '#00FF00', price: 0, id: 'green' },
@@ -1082,80 +981,32 @@ const SKIN_COLORS = [
 ];
 
 function getOwnedSkins() { return currentUser ? (currentUser.ownedSkins || ['green']) : JSON.parse(localStorage.getItem('snakeGuestOwnedSkins') || '["green"]'); }
+
 async function saveOwnedSkins(sk) {
-    if (currentUser) { 
+    if (currentUser) {
         currentUser.ownedSkins = sk;
-        // Сохраняем в localStorage
         const users = getAllUsers();
-        if (users[currentUser.username]) {
-            users[currentUser.username].ownedSkins = sk;
-            saveUsers(users);
-        }
-        // Сохраняем в Supabase
+        if (users[currentUser.username]) { users[currentUser.username].ownedSkins = sk; saveUsers(users); }
         if (sb) {
-            try {
-                const { error } = await sb
-                    .from('players')
-                    .update({ owned_skins: sk })
-                    .eq('username', currentUser.username);
-                    
-                if (error) {
-                    console.error('Ошибка сохранения скинов:', error.message);
-                } else {
-                    console.log('🎨 Скины сохранены в Supabase:', sk);
-                }
-            } catch(e) { 
-                console.log('⚠️ Оффлайн, скины сохранены локально'); 
-            }
+            try { await sb.from('players').update({ owned_skins: sk }).eq('username', currentUser.username); } catch(e) {}
         }
-    } else { 
-        localStorage.setItem('snakeGuestOwnedSkins', JSON.stringify(sk)); 
+    } else {
+        localStorage.setItem('snakeGuestOwnedSkins', JSON.stringify(sk));
     }
 }
 
-async function saveSelectedSkin(id) {
-    if (currentUser) { 
-        currentUser.selectedSkin = id;
-        // Сохраняем в localStorage
-        const users = getAllUsers();
-        if (users[currentUser.username]) {
-            users[currentUser.username].selectedSkin = id;
-            saveUsers(users);
-        }
-        // Сохраняем в Supabase
-        if (sb) {
-            try {
-                const { error } = await sb
-                    .from('players')
-                    .update({ selected_skin: id })
-                    .eq('username', currentUser.username);
-                    
-                if (error) {
-                    console.error('Ошибка сохранения скина:', error.message);
-                } else {
-                    console.log('👕 Скин сохранён в Supabase:', id);
-                }
-            } catch(e) { 
-                console.log('⚠️ Оффлайн, скин сохранён локально'); 
-            }
-        }
-    } else { 
-        localStorage.setItem('snakeGuestSelectedSkin', id); 
-    }
-}
 function getSelectedSkin() { return currentUser ? (currentUser.selectedSkin || 'green') : (localStorage.getItem('snakeGuestSelectedSkin') || 'green'); }
+
 async function saveSelectedSkin(id) {
-    if (currentUser) { 
+    if (currentUser) {
         currentUser.selectedSkin = id;
+        const users = getAllUsers();
+        if (users[currentUser.username]) { users[currentUser.username].selectedSkin = id; saveUsers(users); }
         if (sb) {
-            try {
-                await sb.from('players').update({ 
-                    selected_skin: id 
-                }).eq('username', currentUser.username);
-            } catch(e) {}
+            try { await sb.from('players').update({ selected_skin: id }).eq('username', currentUser.username); } catch(e) {}
         }
-    } else { 
-        localStorage.setItem('snakeGuestSelectedSkin', id); 
+    } else {
+        localStorage.setItem('snakeGuestSelectedSkin', id);
     }
 }
 
@@ -1199,7 +1050,7 @@ function selectSkin(id) { saveSelectedSkin(id); updateSkinShop(); }
 function getCurrentSkinColor() { const s = SKIN_COLORS.find(s => s.id === getSelectedSkin()); return s ? s.color : '#00FF00'; }
 
 // ================================================================
-// ЗОНА 8: ДОСТИЖЕНИЯ - НЕ ТРОГАТЬ
+// ЗОНА 8: ДОСТИЖЕНИЯ
 // ================================================================
 const ACHIEVEMENTS = [
     { id: 'register', name: 'Добро пожаловать!', desc: 'Зарегистрируйтесь', icon: '👋', reward: { type: 'apples', amount: 10 }, condition: () => currentUser !== null },
@@ -1232,33 +1083,15 @@ function getAchData() {
 }
 
 async function saveAchData(d) {
-    if (currentUser) { 
+    if (currentUser) {
         currentUser.achievements = d;
-        // Сохраняем в localStorage
         const users = getAllUsers();
-        if (users[currentUser.username]) {
-            users[currentUser.username].achievements = d;
-            saveUsers(users);
-        }
-        // Сохраняем в Supabase
+        if (users[currentUser.username]) { users[currentUser.username].achievements = d; saveUsers(users); }
         if (sb) {
-            try {
-                const { error } = await sb
-                    .from('players')
-                    .update({ achievements: d })
-                    .eq('username', currentUser.username);
-                    
-                if (error) {
-                    console.error('Ошибка сохранения достижений:', error.message);
-                } else {
-                    console.log('🏆 Достижения сохранены в Supabase');
-                }
-            } catch(e) { 
-                console.log('⚠️ Оффлайн, достижения сохранены локально'); 
-            }
+            try { await sb.from('players').update({ achievements: d }).eq('username', currentUser.username); } catch(e) {}
         }
-    } else { 
-        localStorage.setItem('snakeGuestAch', JSON.stringify(d)); 
+    } else {
+        localStorage.setItem('snakeGuestAch', JSON.stringify(d));
     }
 }
 
@@ -1316,7 +1149,6 @@ async function claimAchievement(id) {
     ach[id] = 'claimed';
     saveAchData(ach);
     saveStats(s);
-    if (currentUser && sb) { try { await sb.from('players').update({ achievements: ach }).eq('username', currentUser.username); } catch (e) {} }
     updateStatsDisplay();
     updateSparkBalance();
     updateSparkButtons();
@@ -1334,7 +1166,7 @@ function renderAchievements() {
 }
 
 // ================================================================
-// ЗОНА 9: НАСТРОЙКИ - НЕ ТРОГАТЬ
+// ЗОНА 9: НАСТРОЙКИ
 // ================================================================
 const DEFAULT_SETTINGS = { up: 'w', down: 's', left: 'a', right: 'd' };
 
@@ -1378,7 +1210,7 @@ function resetSettings() {
 }
 
 // ================================================================
-// ЗОНА 10: ИГРОВОЙ КОД - НЕ ТРОГАТЬ!!!
+// ЗОНА 10: ИГРА
 // ================================================================
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -1395,7 +1227,6 @@ let eventActive = false, eventType = null, eventEndTime = 0, manualEvent = false
 let attackBalls = [], attackInterval = null;
 let sessionGoldApples = 0, sessionEvents = 0, deathType = null;
 let eventDuration = 0;
-
 let _st = 0;
 
 function drawGame() {
@@ -1428,8 +1259,7 @@ function drawGame() {
     
     for (let i = bonusFoods.length - 1; i >= 0; i--) {
         if (head.x === bonusFoods[i].x && head.y === bonusFoods[i].y) {
-            ate = true;
-            score++;
+            ate = true; score++;
             updateStat('applesEaten', 1);
             scoreText.textContent = 'Счёт: ' + score;
             currentSpeed = Math.max(40, baseSpeed - score * 0.5);
@@ -1440,8 +1270,7 @@ function drawGame() {
     
     for (let i = rainbowApples.length - 1; i >= 0; i--) {
         if (head.x === rainbowApples[i].x && head.y === rainbowApples[i].y) {
-            ate = true;
-            score++;
+            ate = true; score++;
             updateStat('applesEaten', 1);
             updateStat('goldApplesEaten', 1);
             sessionGoldApples++;
@@ -1457,8 +1286,7 @@ function drawGame() {
         if (head.x === b.x && head.y === b.y) {
             if (b.active) { deathType = 'attack'; endGame(); return; }
             else {
-                ate = true;
-                score += 4;
+                ate = true; score += 4;
                 for (let j = 0; j < 4; j++) updateStat('applesEaten', 1);
                 scoreText.textContent = 'Счёт: ' + score;
                 currentSpeed = Math.max(40, baseSpeed - score * 0.5);
@@ -1623,7 +1451,7 @@ function startAttackEvent() {
 }
 
 // ================================================================
-// ЗОНА 11: КОНЕЦ ИГРЫ + SUPABASE - МОЖНО МЕНЯТЬ
+// ЗОНА 11: КОНЕЦ ИГРЫ
 // ================================================================
 function endGame() {
     if (isGameOver) return;
@@ -1643,110 +1471,40 @@ function endGame() {
     updateStatsDisplay();
     updateSparkBalance();
     
-function endGame() {
-    if (isGameOver) return;
-    isGameOver = true;
-    
-    const s = getStats();
-    s.deaths++;
-    
-    if (score > s.record) s.record = score;
-    if (!s.totalScore) s.totalScore = 0;
-    if (!s.totalGoldApples) s.totalGoldApples = 0;
-    if (!s.totalEvents) s.totalEvents = 0;
-    
-    s.totalScore += score;
-    s.totalGoldApples += sessionGoldApples;
-    s.totalEvents += sessionEvents;
-    
-    if (deathType === 'self') s.selfDeaths = (s.selfDeaths || 0) + 1;
-    if (deathType === 'wall') s.wallDeaths = (s.wallDeaths || 0) + 1;
-    
-    saveStats(s);
-    updateStatsDisplay();
-    updateSparkBalance();
-    
-    // Отправка в Supabase (лидерборд)
     if (currentUser && sb) {
         const skinColor = getCurrentSkinColor();
-        const gameDuration = Math.floor((Date.now() - _st) / 1000);
-        const maxScorePerSec = gameDuration > 0 ? score / gameDuration : 0;
-        const absoluteMax = 16;
-        
-        if (gameDuration > 0 && maxScorePerSec > absoluteMax) {
-            s.record = Math.max(0, Math.floor(gameDuration * absoluteMax));
-            saveStats(s);
-            updateStatsDisplay();
-        }
-        
-        // Отправляем рекорд в лидерборд
-        try {
-            // Сначала удаляем старую запись
-            fetch(`https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.${encodeURIComponent(currentUser.username)}`, {
-                method: 'DELETE',
+        fetch(`https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard?username=eq.${encodeURIComponent(currentUser.username)}`, {
+            method: 'DELETE',
+            headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+        }).then(() => {
+            return fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard', {
+                method: 'POST',
                 headers: {
                     'apikey': SB_KEY,
                     'Authorization': 'Bearer ' + SB_KEY,
-                    'Content-Type': 'application/json'
-                }
-            }).then(() => {
-                // Вставляем новую запись
-                return fetch('https://omrajmxjntinlzcdyufd.supabase.co/rest/v1/snake_leaderboard', {
-                    method: 'POST',
-                    headers: {
-                        'apikey': SB_KEY,
-                        'Authorization': 'Bearer ' + SB_KEY,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({
-                        username: currentUser.username,
-                        score: s.record,
-                        gold_apples: s.totalGoldApples || 0,
-                        events: s.totalEvents || 0,
-                        deaths: s.deaths,
-                        skin_color: skinColor,
-                        created_at: new Date().toISOString()
-                    })
-                });
-            }).then(r => {
-                if (r && r.ok) {
-                    console.log('🏆 Рекорд отправлен в лидерборд!');
-                    loadLeaderboard();
-                }
-            }).catch(e => {
-                console.log('⚠️ Лидерборд недоступен, рекорд сохранён локально');
-            });
-            
-            // Обновляем статистику в таблице players
-            sb.from('players')
-                .update({ 
-                    stats: s
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                    username: currentUser.username,
+                    score: s.record,
+                    gold_apples: s.totalGoldApples || 0,
+                    events: s.totalEvents || 0,
+                    deaths: s.deaths,
+                    skin_color: skinColor,
+                    created_at: new Date().toISOString()
                 })
-                .eq('username', currentUser.username)
-                .then(() => console.log('📊 Статистика обновлена в Supabase'))
-                .catch(() => console.log('⚠️ Статистика сохранена локально'));
-                
-        } catch(e) {
-            console.log('⚠️ Supabase недоступен, данные сохранены локально');
-        }
+            });
+        }).then(r => {
+            if (r && r.ok) loadLeaderboard();
+        }).catch(e => console.log('Рекорд сохранён локально'));
     }
     
-    // Показываем экран окончания игры
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = 'Счёт: ' + score;
     document.getElementById('highScore').textContent = 'Рекорд: ' + s.record;
-    
-    // Завершаем ивенты
     endEvent();
-    
-    // Останавливаем игровой цикл
-    if (gameLoopInterval) { 
-        clearInterval(gameLoopInterval); 
-        gameLoopInterval = null; 
-    }
-    
-    // Проверяем достижения
+    if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
     checkAchievements(deathType);
     deathType = null;
 }
@@ -1784,7 +1542,7 @@ function startGameLoop() {
 }
 
 // ================================================================
-// ЗОНА 12: УПРАВЛЕНИЕ - НЕ ТРОГАТЬ
+// ЗОНА 12: УПРАВЛЕНИЕ
 // ================================================================
 document.addEventListener('keydown', e => {
     if (isGameOver) return;
@@ -1808,8 +1566,9 @@ document.addEventListener('keydown', e => {
 });
 
 // ================================================================
-// ЗОНА 13: ИНИЦИАЛИЗАЦИЯ - НЕ ТРОГАТЬ
+// ЗОНА 13: ИНИЦИАЛИЗАЦИЯ
 // ================================================================
+loadUserDataFromSupabase();
 updateProfileUI();
 updateStatsDisplay();
 updateSparkBalance();
