@@ -1230,56 +1230,84 @@
     function mergeStickers(emoji) { if (!stickers[emoji] || stickers[emoji] < 5) return; stickers[emoji] -= 5; if (stickers[emoji] <= 0) delete stickers[emoji]; var color = randomLimitedColor(); var basePrice = Math.floor(Math.min(TYPES[emoji].v, 5000000000) * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; updateUI(); saveClickerData(); updateStickerLB(); toast('✨ Лимитированный стикер! ' + color.name + ' фон!', '#ffd700') }
 
     // ========== ЛИДЕРБОРД ==========
-   async function updateStickerLB() {
-    const listEl = document.getElementById('stickerLB');
+async function updateStickerLB() {
+    var listEl = document.getElementById('stickerLB');
     if (!listEl) return;
     
-    if (!sb) {
-        // Оффлайн - из localStorage
-        var users = getAllUsers(), best = {};
-        for (var u in users) {
-            if (!users[u].clicker || !users[u].clicker.limitedStickers) continue;
-            var ls = users[u].clicker.limitedStickers;
-            for (var id in ls) {
-                if (!ls[id]) continue;
-                if (!best[u] || ls[id].price > best[u].price) {
-                    best[u] = { username: u, emoji: ls[id].emoji, colorName: ls[id].color?.name || '?', colorBg: ls[id].color?.bg || '#ccc', price: ls[id].price };
-                }
-            }
-        }
-        renderStickerLB(Object.values(best).sort((a, b) => b.price - a.price));
-        return;
+    var allStickers = [];
+    var medals = ['🥇', '🥈', '🥉'];
+    
+    // 1. Собираем локальные стикеры текущего пользователя
+    var un = currentUser ? currentUser.username : 'Гость';
+    for (var id in limitedStickers) {
+        if (!limitedStickers[id]) continue;
+        allStickers.push({
+            username: un,
+            emoji: limitedStickers[id].emoji,
+            colorName: limitedStickers[id].color ? limitedStickers[id].color.name : '?',
+            colorBg: limitedStickers[id].color ? limitedStickers[id].color.bg : '#ccc',
+            price: limitedStickers[id].price || 0
+        });
     }
     
-    // Онлайн - из Supabase
-    try {
-        const { data } = await sb.from('clicker_data').select('username, limited_stickers');
-        
-        var allStickers = [];
-        for (var row of (data || [])) {
-            var stickers = row.limited_stickers;
-            if (typeof stickers === 'string') stickers = JSON.parse(stickers);
-            if (!stickers) continue;
-            
-            for (var id in stickers) {
-                if (!stickers[id]) continue;
-                allStickers.push({
-                    username: row.username,
-                    emoji: stickers[id].emoji,
-                    colorName: stickers[id].color?.name || '?',
-                    colorBg: stickers[id].color?.bg || '#ccc',
-                    price: stickers[id].price || 0
-                });
-            }
+    // 2. Собираем стикеры других пользователей из localStorage
+    var users = getAllUsers();
+    for (var u in users) {
+        if (u === un) continue; // Пропускаем себя (уже добавили)
+        if (!users[u].clicker || !users[u].clicker.limitedStickers) continue;
+        var ls = users[u].clicker.limitedStickers;
+        for (var id in ls) {
+            if (!ls[id]) continue;
+            allStickers.push({
+                username: u,
+                emoji: ls[id].emoji,
+                colorName: ls[id].color ? ls[id].color.name : '?',
+                colorBg: ls[id].color ? ls[id].color.bg : '#ccc',
+                price: ls[id].price || 0
+            });
         }
-        
-        // Сортируем по цене и берём топ-10
-        allStickers.sort((a, b) => b.price - a.price);
-        renderStickerLB(allStickers.slice(0, 10));
-        
-    } catch(e) {
-        console.log('Лидерборд стикеров недоступен');
     }
+    
+    // 3. Загружаем из Supabase (если доступен)
+    if (sb) {
+        try {
+            var { data } = await sb.from('clicker_data').select('username, limited_stickers');
+            for (var row of (data || [])) {
+                if (row.username === un) continue; // Пропускаем себя
+                var stickers = row.limited_stickers;
+                if (typeof stickers === 'string') {
+                    try { stickers = JSON.parse(stickers); } catch(e) { continue; }
+                }
+                if (!stickers) continue;
+                for (var id in stickers) {
+                    if (!stickers[id]) continue;
+                    // Проверяем что такого стикера ещё нет в списке
+                    var exists = allStickers.some(function(s) {
+                        return s.username === row.username && s.emoji === stickers[id].emoji && s.price === stickers[id].price;
+                    });
+                    if (!exists) {
+                        allStickers.push({
+                            username: row.username,
+                            emoji: stickers[id].emoji,
+                            colorName: stickers[id].color ? stickers[id].color.name : '?',
+                            colorBg: stickers[id].color ? stickers[id].color.bg : '#ccc',
+                            price: stickers[id].price || 0
+                        });
+                    }
+                }
+            }
+        } catch(e) {
+            console.log('Supabase недоступен для ЛБ');
+        }
+    }
+    
+    // Сортируем по цене
+    allStickers.sort(function(a, b) { return b.price - a.price; });
+    
+    // Показываем топ-10
+    listEl.innerHTML = allStickers.slice(0, 10).map(function(s, i) {
+        return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span>' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> 💰' + (s.price || 0).toLocaleString() + '</span></li>';
+    }).join('') || '<li>Нет стикеров</li>';
 }
 
 function renderStickerLB(arr) {
