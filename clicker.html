@@ -1234,46 +1234,48 @@ async function updateStickerLB() {
     var listEl = document.getElementById('stickerLB');
     if (!listEl) return;
     
-    var allStickers = [];
+    var bestStickers = {}; // username -> лучший стикер
     var medals = ['🥇', '🥈', '🥉'];
     
-    // 1. Собираем локальные стикеры текущего пользователя
+    // Функция добавления стикера (оставляем только лучший для каждого игрока)
+    function addSticker(username, sticker) {
+        if (!sticker || !sticker.price) return;
+        if (!bestStickers[username] || sticker.price > bestStickers[username].price) {
+            bestStickers[username] = {
+                username: username,
+                emoji: sticker.emoji,
+                colorName: sticker.color ? sticker.color.name : '?',
+                colorBg: sticker.color ? sticker.color.bg : '#ccc',
+                price: sticker.price
+            };
+        }
+    }
+    
+    // 1. Текущий пользователь
     var un = currentUser ? currentUser.username : 'Гость';
     for (var id in limitedStickers) {
         if (!limitedStickers[id]) continue;
-        allStickers.push({
-            username: un,
-            emoji: limitedStickers[id].emoji,
-            colorName: limitedStickers[id].color ? limitedStickers[id].color.name : '?',
-            colorBg: limitedStickers[id].color ? limitedStickers[id].color.bg : '#ccc',
-            price: limitedStickers[id].price || 0
-        });
+        addSticker(un, limitedStickers[id]);
     }
     
-    // 2. Собираем стикеры других пользователей из localStorage
+    // 2. Другие пользователи из localStorage
     var users = getAllUsers();
     for (var u in users) {
-        if (u === un) continue; // Пропускаем себя (уже добавили)
+        if (u === un) continue;
         if (!users[u].clicker || !users[u].clicker.limitedStickers) continue;
         var ls = users[u].clicker.limitedStickers;
         for (var id in ls) {
             if (!ls[id]) continue;
-            allStickers.push({
-                username: u,
-                emoji: ls[id].emoji,
-                colorName: ls[id].color ? ls[id].color.name : '?',
-                colorBg: ls[id].color ? ls[id].color.bg : '#ccc',
-                price: ls[id].price || 0
-            });
+            addSticker(u, ls[id]);
         }
     }
     
-    // 3. Загружаем из Supabase (если доступен)
+    // 3. Supabase
     if (sb) {
         try {
             var { data } = await sb.from('clicker_data').select('username, limited_stickers');
             for (var row of (data || [])) {
-                if (row.username === un) continue; // Пропускаем себя
+                if (row.username === un) continue;
                 var stickers = row.limited_stickers;
                 if (typeof stickers === 'string') {
                     try { stickers = JSON.parse(stickers); } catch(e) { continue; }
@@ -1281,31 +1283,17 @@ async function updateStickerLB() {
                 if (!stickers) continue;
                 for (var id in stickers) {
                     if (!stickers[id]) continue;
-                    // Проверяем что такого стикера ещё нет в списке
-                    var exists = allStickers.some(function(s) {
-                        return s.username === row.username && s.emoji === stickers[id].emoji && s.price === stickers[id].price;
-                    });
-                    if (!exists) {
-                        allStickers.push({
-                            username: row.username,
-                            emoji: stickers[id].emoji,
-                            colorName: stickers[id].color ? stickers[id].color.name : '?',
-                            colorBg: stickers[id].color ? stickers[id].color.bg : '#ccc',
-                            price: stickers[id].price || 0
-                        });
-                    }
+                    addSticker(row.username, stickers[id]);
                 }
             }
-        } catch(e) {
-            console.log('Supabase недоступен для ЛБ');
-        }
+        } catch(e) {}
     }
     
     // Сортируем по цене
-    allStickers.sort(function(a, b) { return b.price - a.price; });
+    var sorted = Object.values(bestStickers).sort(function(a, b) { return b.price - a.price; });
     
     // Показываем топ-10
-    listEl.innerHTML = allStickers.slice(0, 10).map(function(s, i) {
+    listEl.innerHTML = sorted.slice(0, 10).map(function(s, i) {
         return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span>' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> 💰' + (s.price || 0).toLocaleString() + '</span></li>';
     }).join('') || '<li>Нет стикеров</li>';
 }
