@@ -1234,65 +1234,85 @@ async function updateStickerLB() {
     var listEl = document.getElementById('stickerLB');
     if (!listEl) return;
     
-    var bestStickers = {}; // username -> лучший стикер
+    var bestStickers = {};
     var medals = ['🥇', '🥈', '🥉'];
     
-    // Функция добавления стикера (оставляем только лучший для каждого игрока)
     function addSticker(username, sticker) {
-        if (!sticker || !sticker.price) return;
+        if (!sticker || !sticker.price || !sticker.emoji) return;
         if (!bestStickers[username] || sticker.price > bestStickers[username].price) {
             bestStickers[username] = {
                 username: username,
                 emoji: sticker.emoji,
-                colorName: sticker.color ? sticker.color.name : '?',
-                colorBg: sticker.color ? sticker.color.bg : '#ccc',
+                colorName: sticker.color?.name || '?',
+                colorBg: sticker.color?.bg || '#ccc',
                 price: sticker.price
             };
         }
     }
     
-    // 1. Текущий пользователь
+    // 1. Текущий пользователь (из переменной)
     var un = currentUser ? currentUser.username : 'Гость';
     for (var id in limitedStickers) {
-        if (!limitedStickers[id]) continue;
-        addSticker(un, limitedStickers[id]);
+        if (limitedStickers[id]) addSticker(un, limitedStickers[id]);
     }
     
-    // 2. Другие пользователи из localStorage
+    // 2. Все из localStorage
     var users = getAllUsers();
     for (var u in users) {
-        if (u === un) continue;
-        if (!users[u].clicker || !users[u].clicker.limitedStickers) continue;
-        var ls = users[u].clicker.limitedStickers;
-        for (var id in ls) {
-            if (!ls[id]) continue;
-            addSticker(u, ls[id]);
+        var clicker = users[u]?.clicker;
+        if (!clicker?.limitedStickers) continue;
+        for (var id in clicker.limitedStickers) {
+            if (clicker.limitedStickers[id]) addSticker(u, clicker.limitedStickers[id]);
         }
     }
     
-    // 3. Supabase
+    // 3. Все из Supabase (без пропусков!)
     if (sb) {
         try {
-            var { data } = await sb.from('clicker_data').select('username, limited_stickers');
-            for (var row of (data || [])) {
-                if (row.username === un) continue;
-                var stickers = row.limited_stickers;
-                if (typeof stickers === 'string') {
-                    try { stickers = JSON.parse(stickers); } catch(e) { continue; }
-                }
-                if (!stickers) continue;
-                for (var id in stickers) {
-                    if (!stickers[id]) continue;
-                    addSticker(row.username, stickers[id]);
+            var { data, error } = await sb.from('clicker_data').select('username, limited_stickers');
+            
+            if (error) {
+                console.log('Ошибка Supabase:', error);
+            } else if (data) {
+                console.log('📦 Загружено из Supabase:', data.length, 'игроков');
+                
+                for (var row of data) {
+                    var stickers = row.limited_stickers;
+                    
+                    // Парсим если строка
+                    if (typeof stickers === 'string') {
+                        try { stickers = JSON.parse(stickers); } catch(e) { 
+                            console.log('Ошибка парсинга стикеров для', row.username);
+                            continue; 
+                        }
+                    }
+                    
+                    if (!stickers || typeof stickers !== 'object') {
+                        console.log('Нет стикеров у', row.username);
+                        continue;
+                    }
+                    
+                    console.log('🔄 Обрабатываю', row.username, ':', Object.keys(stickers).length, 'стикеров');
+                    
+                    for (var id in stickers) {
+                        if (stickers[id]) {
+                            addSticker(row.username, stickers[id]);
+                        }
+                    }
                 }
             }
-        } catch(e) {}
+        } catch(e) {
+            console.log('❌ Supabase недоступен:', e);
+        }
     }
     
-    // Сортируем по цене
-    var sorted = Object.values(bestStickers).sort(function(a, b) { return b.price - a.price; });
+    // Сортируем
+    var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price);
     
-    // Показываем топ-10
+    console.log('🏆 Игроков в ЛБ:', sorted.length);
+    sorted.slice(0, 10).forEach((s, i) => console.log(i+1, s.username, s.emoji, s.price));
+    
+    // Показываем
     listEl.innerHTML = sorted.slice(0, 10).map(function(s, i) {
         return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span>' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> 💰' + (s.price || 0).toLocaleString() + '</span></li>';
     }).join('') || '<li>Нет стикеров</li>';
