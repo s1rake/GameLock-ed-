@@ -1032,6 +1032,62 @@ async function initAntiCheat() {
     }
 }
 
+    function checkGameIntegrity() {
+    if (typeof balance !== 'number' || !isFinite(balance) || balance < 0) {
+        console.warn('⚠️ Обнаружено изменение баланса!');
+        balance = 0;
+    }
+    if (typeof clickPower !== 'number' || clickPower < 1 || clickPower > 1000) {
+        console.warn('⚠️ Обнаружено изменение силы клика!');
+        clickPower = 1;
+    }
+    if (typeof multiplier !== 'number' || multiplier < 0 || multiplier > 100) {
+        console.warn('⚠️ Обнаружено изменение множителя!');
+        multiplier = 0;
+    }
+    if (typeof autoClicker !== 'number' || autoClicker < 0 || autoClicker > 100) {
+        console.warn('⚠️ Обнаружено изменение автокликера!');
+        autoClicker = 0;
+    }
+    if (typeof coins !== 'number' || !isFinite(coins) || coins < 0) {
+        console.warn('⚠️ Обнаружено изменение монет!');
+        coins = 0;
+    }
+    
+    // Проверка limitedStickers
+    for (var id in limitedStickers) {
+        var ls = limitedStickers[id];
+        if (!ls || !ls.emoji || !ls.color) continue;
+        if (!TYPES[ls.emoji]) {
+            console.warn('⚠️ Поддельный стикер:', id);
+            delete limitedStickers[id];
+            continue;
+        }
+        var validColor = LIMITED_COLORS.some(function(c) {
+            return c.bg === ls.color.bg && c.border === ls.color.border;
+        });
+        if (!validColor) {
+            console.warn('⚠️ Поддельный цвет:', id);
+            delete limitedStickers[id];
+            continue;
+        }
+        var expectedPrice = Math.floor(TYPES[ls.emoji].v * 5 * ls.color.coeff);
+        if (Math.abs(ls.basePrice - expectedPrice) > expectedPrice * 0.1) {
+            console.warn('⚠️ Поддельная цена:', id);
+            delete limitedStickers[id];
+            continue;
+        }
+    }
+    
+    // Проверка pinned
+    for (var i = pinned.length - 1; i >= 0; i--) {
+        if (pinned[i] && pinned[i].id && !limitedStickers[pinned[i].id]) {
+            console.warn('⚠️ Закреплён несуществующий стикер');
+            pinned.splice(i, 1);
+        }
+    }
+}
+
 // ========== АККАУНТЫ ==========
 let currentUser=JSON.parse(localStorage.getItem('snakeCurrentUser'))||null;
 function getAllUsers(){return JSON.parse(localStorage.getItem('snakeUsers'))||{};}
@@ -1215,8 +1271,7 @@ async function saveToSupabase(){
 // ========== ДАННЫЕ ==========
 function getClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={clicker:{balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}}};if(!users[u].clicker)users[u].clicker={balance:0,totalClicks:0,clickPower:1,autoClicker:0,multiplier:0,rebirths:0,stickers:{},craftCnt:0,craftTarget:null,limitedStickers:{}};if(!users[u].clicker.limitedStickers)users[u].clicker.limitedStickers={};return users[u].clicker;}
 function saveClickerData(){const users=getAllUsers();const u=currentUser?currentUser.username:'guest';if(!users[u])users[u]={};users[u].clicker={balance:Math.floor(balance),totalClicks:Math.floor(totalClicks),clickPower,autoClicker,multiplier,rebirths,stickers,craftSel,craftCnt,craftTarget,limitedStickers};saveUsers(users);}
-function loadClickerData(){const d=getClickerData();balance=d.balance||0;totalClicks=d.totalClicks||0;clickPower=d.clickPower||1;autoClicker=d.autoClicker||0;multiplier=d.multiplier||0;rebirths=d.rebirths||0;stickers=d.stickers||{};craftSel=d.craftSel||{};craftCnt=d.craftCnt||0;craftTarget=d.craftTarget||null;limitedStickers=d.limitedStickers||{};boostPct=0;boostActive=false;updateUI();}
-
+function loadClickerData(){const d=getClickerData();balance=d.balance||0;totalClicks=d.totalClicks||0;clickPower=d.clickPower||1;autoClicker=d.autoClicker||0;multiplier=d.multiplier||0;rebirths=d.rebirths||0;stickers=d.stickers||{};craftSel=d.craftSel||{};craftCnt=d.craftCnt||0;craftTarget=d.craftTarget||null;limitedStickers=d.limitedStickers||{};boostPct=0;boostActive=false;checkGameIntegrity();updateUI();}
 function loadExtra(){const e=JSON.parse(localStorage.getItem('clicker_extra_'+(currentUser?currentUser.username:'guest'))||'{}');coins=e.coins||0;favorites=e.favorites||{};pinned=e.pinned||[];updateCoins();setTimeout(function(){applyPinnedBackground();updatePinned();updateUnpinButton();},100);}
 function saveExtra(){localStorage.setItem('clicker_extra_'+(currentUser?currentUser.username:'guest'),JSON.stringify({coins,favorites,pinned}));updateCoins();}
 function updateCoins(){document.getElementById('coinsDisplay').textContent=coins;}
