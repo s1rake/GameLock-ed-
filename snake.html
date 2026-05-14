@@ -1096,7 +1096,19 @@ const ACHIEVEMENTS = [
 ];
 
 function getAchData() {
-    if (currentUser) return currentUser.achievements || {};
+    if (currentUser) {
+        // Сначала пробуем взять из currentUser
+        if (currentUser.achievements && Object.keys(currentUser.achievements).length > 0) {
+            return currentUser.achievements;
+        }
+        // Если нет - из users
+        const users = getAllUsers();
+        if (users[currentUser.username] && users[currentUser.username].achievements) {
+            currentUser.achievements = users[currentUser.username].achievements;
+            return currentUser.achievements;
+        }
+        return {};
+    }
     return JSON.parse(localStorage.getItem('snakeGuestAch') || '{}');
 }
 
@@ -1161,12 +1173,48 @@ async function claimAchievement(id) {
     if (!a) return;
     const s = getStats();
     const sp = getSparks();
+    
     if (a.reward.type === 'apples') s.applesEaten += a.reward.amount;
     if (a.reward.type === 'goldApples') s.goldApplesEaten += a.reward.amount;
-    if (a.reward.type === 'spark') { sp[a.reward.sparkType] = (sp[a.reward.sparkType] || 0) + a.reward.amount; saveSparks(sp); }
+    if (a.reward.type === 'spark') { 
+        sp[a.reward.sparkType] = (sp[a.reward.sparkType] || 0) + a.reward.amount; 
+        saveSparks(sp);
+    }
+    
     ach[id] = 'claimed';
+    
+    // СОХРАНЯЕМ ВЕЗДЕ
     saveAchData(ach);
     saveStats(s);
+    
+    // Обновляем currentUser сразу
+    if (currentUser) {
+        currentUser.achievements = ach;
+        localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+        
+        // Сохраняем в users
+        const users = getAllUsers();
+        if (users[currentUser.username]) {
+            users[currentUser.username].achievements = ach;
+            users[currentUser.username].sparks = sp;
+            users[currentUser.username].stats = s;
+            saveUsers(users);
+        }
+    }
+    
+    // Сохраняем в Supabase
+    if (currentUser && sb) { 
+        try { 
+            await sb.from('players').update({ 
+                achievements: ach,
+                sparks: sp,
+                stats: s
+            }).eq('username', currentUser.username); 
+        } catch (e) {
+            console.log('Сохранено локально');
+        }
+    }
+    
     updateStatsDisplay();
     updateSparkBalance();
     updateSparkButtons();
