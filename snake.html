@@ -801,23 +801,29 @@ async function loadLeaderboard() {
         const { data } = await sb.from('snake_leaderboard').select('*').order('score', { ascending: false }).limit(10);
         const medals = ['🥇', '🥈', '🥉'];
         
+        // Функция для форматирования с цветом
+        const formatName = (d) => {
+            const color = d.skin_color || '#ffffff';
+            return `<span style="color:${color};font-weight:bold;text-shadow:0 0 5px ${color}">${d.username}</span>`;
+        };
+        
         document.getElementById('leaderScore').innerHTML = (data || []).map((d, i) =>
-            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.score} очк</span></li>`
+            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${formatName(d)} <span class="leader-value">${d.score} очк</span></li>`
         ).join('') || '<li>Нет записей</li>';
         
-        const goldSorted = data ? [...data].sort((a, b) => b.gold_apples - a.gold_apples) : [];
+        const goldSorted = data ? [...data].sort((a, b) => (b.gold_apples || 0) - (a.gold_apples || 0)) : [];
         document.getElementById('leaderGoldApples').innerHTML = goldSorted.slice(0, 10).map((d, i) =>
-            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.gold_apples} ⭐</span></li>`
+            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${formatName(d)} <span class="leader-value">${d.gold_apples || 0} ⭐</span></li>`
         ).join('') || '<li>Нет записей</li>';
         
-        const eventsSorted = data ? [...data].sort((a, b) => b.events - a.events) : [];
+        const eventsSorted = data ? [...data].sort((a, b) => (b.events || 0) - (a.events || 0)) : [];
         document.getElementById('leaderEvents').innerHTML = eventsSorted.slice(0, 10).map((d, i) =>
-            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.events} ив</span></li>`
+            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${formatName(d)} <span class="leader-value">${d.events || 0} ив</span></li>`
         ).join('') || '<li>Нет записей</li>';
         
-        const deathsSorted = data ? [...data].sort((a, b) => b.deaths - a.deaths) : [];
+        const deathsSorted = data ? [...data].sort((a, b) => (b.deaths || 0) - (a.deaths || 0)) : [];
         document.getElementById('leaderDeaths').innerHTML = deathsSorted.slice(0, 10).map((d, i) =>
-            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${d.username} <span class="leader-value">${d.deaths} см</span></li>`
+            `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${formatName(d)} <span class="leader-value">${d.deaths || 0} см</span></li>`
         ).join('') || '<li>Нет записей</li>';
     } catch (e) {
         console.log('Supabase недоступен');
@@ -1250,6 +1256,7 @@ function drawGame() {
     snake.unshift(head);
     let ate = false;
     
+    // Проверка обычной еды
     if (head.x === food.x && head.y === food.y && !attackBalls.some(b => b.x === food.x && b.y === food.y)) {
         ate = true;
         if (goldenActive) {
@@ -1269,6 +1276,7 @@ function drawGame() {
         updateSparkBalance();
     }
     
+    // Проверка бонусной еды
     for (let i = bonusFoods.length - 1; i >= 0; i--) {
         if (head.x === bonusFoods[i].x && head.y === bonusFoods[i].y) {
             ate = true; score++;
@@ -1280,6 +1288,7 @@ function drawGame() {
         }
     }
     
+    // Проверка радужных яблок
     for (let i = rainbowApples.length - 1; i >= 0; i--) {
         if (head.x === rainbowApples[i].x && head.y === rainbowApples[i].y) {
             ate = true; score++;
@@ -1293,6 +1302,7 @@ function drawGame() {
         }
     }
     
+    // Проверка шариков атаки
     for (let i = attackBalls.length - 1; i >= 0; i--) {
         const b = attackBalls[i];
         if (head.x === b.x && head.y === b.y) {
@@ -1310,33 +1320,152 @@ function drawGame() {
     
     if (!ate) snake.pop();
     
+    // Проверка столкновений
     if (head.x < 0 || head.y < 0 || head.x >= tileCount || head.y >= tileCount) { deathType = 'wall'; endGame(); return; }
     for (let i = 1; i < snake.length; i++) { if (head.x === snake[i].x && head.y === snake[i].y) { deathType = 'self'; endGame(); return; } }
     
-    ctx.fillStyle = goldenActive ? "#FFD700" : "red";
-    if (!attackBalls.some(b => b.x === food.x && b.y === food.y)) ctx.fillRect(food.x * size, food.y * size, size, size);
+    // Отрисовка обычной/золотой еды
+    if (!attackBalls.some(b => b.x === food.x && b.y === food.y)) {
+        if (goldenActive) {
+            // ✨ Свечение для золотой еды
+            const glowSize = size + Math.sin(Date.now() / 200) * 4;
+            const gradient = ctx.createRadialGradient(
+                food.x * size + size/2, food.y * size + size/2, size/4,
+                food.x * size + size/2, food.y * size + size/2, glowSize
+            );
+            gradient.addColorStop(0, '#FFD700');
+            gradient.addColorStop(0.5, '#FFA500');
+            gradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(
+                food.x * size - glowSize/2 + size/2, 
+                food.y * size - glowSize/2 + size/2, 
+                glowSize, glowSize
+            );
+            
+            // Само золотое яблоко
+            ctx.fillStyle = '#FFD700';
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 15;
+            ctx.fillRect(food.x * size, food.y * size, size - 2, size - 2);
+            ctx.shadowBlur = 0;
+            
+            // Блик
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fillRect(food.x * size + 3, food.y * size + 3, 5, 5);
+        } else {
+            // Обычное красное яблоко
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x * size, food.y * size, size, size);
+            
+            // Блик на обычном яблоке
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.fillRect(food.x * size + 3, food.y * size + 3, 4, 4);
+        }
+    }
     
+    // Отрисовка бонусной еды
     ctx.fillStyle = "#00BFFF";
-    bonusFoods.forEach(bf => ctx.fillRect(bf.x * size, bf.y * size, size, size));
+    bonusFoods.forEach(bf => {
+        ctx.fillRect(bf.x * size, bf.y * size, size, size);
+        // Блик
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillRect(bf.x * size + 3, bf.y * size + 3, 4, 4);
+        ctx.fillStyle = "#00BFFF";
+    });
     
+    // Отрисовка радужных яблок
     rainbowApples.forEach(ra => {
         const g = ctx.createRadialGradient(ra.x * size + size/2, ra.y * size + size/2, 2, ra.x * size + size/2, ra.y * size + size/2, size/2);
-        g.addColorStop(0, "#FFD700"); g.addColorStop(0.5, "#FF6B6B"); g.addColorStop(1, "#FF4500");
+        g.addColorStop(0, "#FFD700");
+        g.addColorStop(0.5, "#FF6B6B");
+        g.addColorStop(1, "#FF4500");
         ctx.fillStyle = g;
         ctx.fillRect(ra.x * size, ra.y * size, size, size);
+        
+        // Блик
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillRect(ra.x * size + 2, ra.y * size + 2, 4, 4);
     });
     
+    // Отрисовка синих шариков атаки со свечением
     attackBalls.forEach(b => {
-        ctx.fillStyle = b.active ? "#4488FF" : "#FF4444";
-        ctx.beginPath();
-        ctx.arc(b.x * size + size/2, b.y * size + size/2, size/2 - 2, 0, Math.PI * 2);
-        ctx.fill();
+        const pulseSize = b.active ? (Math.sin(Date.now() / 150) * 3 + size/2) : size/2;
+        
+        if (b.active) {
+            // ✨ Свечение для активных шариков
+            const gradient = ctx.createRadialGradient(
+                b.x * size + size/2, b.y * size + size/2, size/6,
+                b.x * size + size/2, b.y * size + size/2, size
+            );
+            gradient.addColorStop(0, '#4488FF');
+            gradient.addColorStop(0.7, '#0066FF');
+            gradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(b.x * size + size/2, b.y * size + size/2, size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Сам шарик
+            ctx.fillStyle = '#4488FF';
+            ctx.shadowColor = '#4488FF';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(b.x * size + size/2, b.y * size + size/2, pulseSize - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Блик на шарике
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.beginPath();
+            ctx.arc(b.x * size + size/2 - 2, b.y * size + size/2 - 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Неактивные шарики (после окончания атаки)
+            ctx.fillStyle = '#FF4444';
+            ctx.beginPath();
+            ctx.arc(b.x * size + size/2, b.y * size + size/2, size/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Блик на неактивном
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath();
+            ctx.arc(b.x * size + size/2 - 1, b.y * size + size/2 - 1, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
     });
     
+    // Отрисовка змейки с скином
     const skinColor = getCurrentSkinColor();
     snake.forEach((p, i) => {
-        ctx.fillStyle = i === 0 ? skinColor : darkenColor(skinColor, 0.7 - (i * 0.02));
-        ctx.fillRect(p.x * size, p.y * size, size - 2, size - 2);
+        if (i === 0) {
+            // Голова змейки (ярче)
+            ctx.fillStyle = skinColor;
+            ctx.shadowColor = skinColor;
+            ctx.shadowBlur = 5;
+            ctx.fillRect(p.x * size, p.y * size, size - 2, size - 2);
+            ctx.shadowBlur = 0;
+            
+            // Глаза
+            ctx.fillStyle = 'white';
+            if (dx === 1) { // Вправо
+                ctx.fillRect(p.x * size + 12, p.y * size + 4, 4, 4);
+                ctx.fillRect(p.x * size + 12, p.y * size + 12, 4, 4);
+            } else if (dx === -1) { // Влево
+                ctx.fillRect(p.x * size + 4, p.y * size + 4, 4, 4);
+                ctx.fillRect(p.x * size + 4, p.y * size + 12, 4, 4);
+            } else if (dy === -1) { // Вверх
+                ctx.fillRect(p.x * size + 4, p.y * size + 4, 4, 4);
+                ctx.fillRect(p.x * size + 12, p.y * size + 4, 4, 4);
+            } else { // Вниз
+                ctx.fillRect(p.x * size + 4, p.y * size + 12, 4, 4);
+                ctx.fillRect(p.x * size + 12, p.y * size + 12, 4, 4);
+            }
+        } else {
+            // Тело змейки (темнее)
+            ctx.fillStyle = darkenColor(skinColor, 0.7 - (i * 0.02));
+            ctx.fillRect(p.x * size, p.y * size, size - 2, size - 2);
+        }
     });
     
     updateEventTimer();
@@ -1489,22 +1618,23 @@ function endGame() {
     const highScoreEl = document.getElementById('highScore');
     if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
     
-    // Отправка в Supabase (упрощённо, без fetch)
-    if (currentUser && sb) {
-        try {
-            sb.from('snake_leaderboard').upsert({
-                username: currentUser.username,
-                score: s.record,
-                gold_apples: s.totalGoldApples || 0,
-                events: s.totalEvents || 0,
-                deaths: s.deaths,
-                skin_color: getCurrentSkinColor(),
-                created_at: new Date().toISOString()
-            }, { onConflict: 'username' }).then(() => {
-                loadLeaderboard();
-            }).catch(() => {});
-        } catch(e) {}
-    }
+// Отправка в Supabase (упрощённо, без fetch)
+if (currentUser && sb) {
+    try {
+        const skinColor = getCurrentSkinColor();
+        sb.from('snake_leaderboard').upsert({
+            username: currentUser.username,
+            score: s.record,
+            gold_apples: s.totalGoldApples || 0,
+            events: s.totalEvents || 0,
+            deaths: s.deaths,
+            skin_color: skinColor, 
+            created_at: new Date().toISOString()
+        }, { onConflict: 'username' }).then(() => {
+            loadLeaderboard();
+        }).catch(() => {});
+    } catch(e) {}
+}
     
     endEvent();
     if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
