@@ -1142,41 +1142,220 @@
     function toast(msg, c) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.style.background = c || '#4caf50'; document.body.appendChild(t); setTimeout(function () { t.style.opacity = '0'; t.style.transition = '0.5s'; setTimeout(function () { t.remove(); }, 500) }, 2500); }
 
     // ========== SUPABASE СИНХРОНИЗАЦИЯ ==========
-    async function loadFromSupabase() {
-        if (!currentUser) return;
-        try {
-            const { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
-            if (data) {
-                balance = data.balance || 0; totalClicks = data.total_clicks || 0; clickPower = data.click_power || 1; autoClicker = data.auto_clicker || 0; multiplier = data.multiplier || 0; rebirths = data.rebirths || 0;
-                stickers = JSON.parse(data.stickers || '{}'); craftSel = JSON.parse(data.craft_sel || '{}'); craftCnt = data.craft_count || 0; craftTarget = data.craft_target || null;
-                limitedStickers = JSON.parse(data.limited_stickers || '{}'); coins = data.coins || 0; favorites = JSON.parse(data.favorites || '{}'); pinned = JSON.parse(data.pinned || '[]');
-                updateCoins(); applyPinnedBackground(); updatePinned(); updateUI(); updateStickerLB();
-            }
-        } catch (e) { console.log('Загружено локально') }
-    }
+const SB_URL='https://omrajmxjntinlzcdyufd.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
+let sb = null;
+try { sb = window.supabase.createClient(SB_URL, SB_KEY); console.log('✅ Supabase подключен'); } catch(e) { console.warn('⚠️ Supabase не загрузился'); }
 
-    async function saveToSupabase() {
-        if (!currentUser || !sb) return;
-        try {
-            var safeStickers = {};
-            for (var id in limitedStickers) {
-                if (!limitedStickers[id]) continue;
-                safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: limitedStickers[id].basePrice, price: Math.min(limitedStickers[id].price, 9000000000000), created: limitedStickers[id].created };
-            }
-            await sb.from('clicker_data').upsert({
-                username: currentUser.username, balance: Math.floor(Math.min(balance, 9000000000000)), total_clicks: Math.floor(totalClicks),
-                click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
-                stickers: JSON.stringify(stickers), craft_sel: JSON.stringify(craftSel), craft_count: craftCnt, craft_target: craftTarget || '',
-                limited_stickers: JSON.stringify(safeStickers), coins: coins, favorites: JSON.stringify(favorites), pinned: JSON.stringify(pinned),
-                anti_cheat_token: antiCheatToken, updated_at: new Date().toISOString()
-            });
-        } catch (e) { console.log('Сохранено локально') }
+// ========== SUPABASE СИНХРОНИЗАЦИЯ ==========
+async function loadFromSupabase() {
+    if (!currentUser || !sb) return;
+    try {
+        const { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
+        if (data) {
+            balance = data.balance || 0;
+            totalClicks = data.total_clicks || 0;
+            clickPower = data.click_power || 1;
+            autoClicker = data.auto_clicker || 0;
+            multiplier = data.multiplier || 0;
+            rebirths = data.rebirths || 0;
+            
+            // Парсим стикеры
+            var parsedStickers = {};
+            try { parsedStickers = JSON.parse(data.stickers || '{}'); } catch(e) {}
+            stickers = parsedStickers;
+            
+            var parsedCraftSel = {};
+            try { parsedCraftSel = JSON.parse(data.craft_sel || '{}'); } catch(e) {}
+            craftSel = parsedCraftSel;
+            
+            craftCnt = data.craft_count || 0;
+            craftTarget = data.craft_target || null;
+            
+            // Парсим лимитированные стикеры
+            var parsedLimited = {};
+            try { parsedLimited = JSON.parse(data.limited_stickers || '{}'); } catch(e) {}
+            limitedStickers = parsedLimited;
+            
+            coins = data.coins || 0;
+            
+            var parsedFav = {};
+            try { parsedFav = JSON.parse(data.favorites || '{}'); } catch(e) {}
+            favorites = parsedFav;
+            
+            var parsedPinned = [];
+            try { parsedPinned = JSON.parse(data.pinned || '[]'); } catch(e) {}
+            pinned = parsedPinned;
+            
+            updateCoins();
+            applyPinnedBackground();
+            updatePinned();
+            updateUI();
+            updateStickerLB();
+            console.log('✅ Данные загружены из Supabase');
+        }
+    } catch(e) {
+        console.log('⚠️ Загружены локальные данные');
     }
+}
 
+async function saveToSupabase() {
+    if (!currentUser || !sb) return;
+    try {
+        // Копируем limitedStickers правильно
+        var safeStickers = {};
+        for (var id in limitedStickers) {
+            if (!limitedStickers[id]) continue;
+            safeStickers[id] = {
+                emoji: limitedStickers[id].emoji,
+                color: limitedStickers[id].color,
+                basePrice: limitedStickers[id].basePrice,
+                price: Math.min(limitedStickers[id].price || 0, 9000000000000),
+                created: limitedStickers[id].created || Date.now()
+            };
+        }
+        
+        var updateData = {
+            username: currentUser.username,
+            balance: Math.floor(Math.min(balance, 9000000000000)),
+            total_clicks: Math.floor(Math.min(totalClicks, 9000000000000)),
+            click_power: clickPower,
+            auto_clicker: autoClicker,
+            multiplier: multiplier,
+            rebirths: rebirths,
+            stickers: JSON.stringify(stickers || {}),
+            craft_sel: JSON.stringify(craftSel || {}),
+            craft_count: craftCnt,
+            craft_target: craftTarget || '',
+            limited_stickers: JSON.stringify(safeStickers),
+            coins: Math.floor(Math.min(coins, 9000000000000)),
+            favorites: JSON.stringify(favorites || {}),
+            pinned: JSON.stringify(pinned || []),
+            updated_at: new Date().toISOString()
+        };
+        
+        var { data, error } = await sb.from('clicker_data').upsert(updateData, { onConflict: 'username' });
+        
+        if (error) {
+            console.error('❌ Ошибка сохранения в Supabase:', error.message);
+        } else {
+            console.log('✅ Сохранено в Supabase. Стикеров:', Object.keys(safeStickers).length);
+        }
+    } catch(e) {
+        console.log('⚠️ Сохранено локально (Supabase недоступен)');
+    }
+}
+
+// ========== ЛИДЕРБОРД СТИКЕРОВ ==========
+async function updateStickerLB() {
+    var listEl = document.getElementById('stickerLB');
+    if (!listEl) return;
+    
+    var bestStickers = {};
+    var medals = ['🥇', '🥈', '🥉'];
+    
+    function addSticker(username, sticker) {
+        if (!sticker || !sticker.price || !sticker.emoji) return;
+        if (!bestStickers[username] || sticker.price > bestStickers[username].price) {
+            bestStickers[username] = {
+                username: username,
+                emoji: sticker.emoji,
+                colorName: sticker.color?.name || '?',
+                colorBg: sticker.color?.bg || '#ccc',
+                price: sticker.price
+            };
+        }
+    }
+    
+    // 1. Текущий пользователь
+    var un = currentUser ? currentUser.username : 'Гость';
+    for (var id in limitedStickers) {
+        if (limitedStickers[id]) addSticker(un, limitedStickers[id]);
+    }
+    
+    // 2. Все из localStorage
+    var users = getAllUsers();
+    for (var u in users) {
+        var clicker = users[u]?.clicker;
+        if (!clicker?.limitedStickers) continue;
+        for (var id in clicker.limitedStickers) {
+            if (clicker.limitedStickers[id]) addSticker(u, clicker.limitedStickers[id]);
+        }
+    }
+    
+    // 3. Все из Supabase
+    if (sb) {
+        try {
+            var { data, error } = await sb.from('clicker_data').select('username, limited_stickers');
+            
+            if (error) {
+                console.log('⚠️ Ошибка загрузки ЛБ:', error.message);
+            } else if (data) {
+                console.log('📦 Загружено из Supabase:', data.length, 'игроков');
+                
+                for (var row of data) {
+                    var stickers = row.limited_stickers;
+                    
+                    if (typeof stickers === 'string') {
+                        try { stickers = JSON.parse(stickers); } catch(e) { continue; }
+                    }
+                    
+                    if (!stickers || typeof stickers !== 'object') continue;
+                    
+                    for (var id in stickers) {
+                        if (stickers[id]) addSticker(row.username, stickers[id]);
+                    }
+                }
+            }
+        } catch(e) {
+            console.log('⚠️ Supabase недоступен для ЛБ');
+        }
+    }
+    
+    // Сортируем
+    var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price);
+    
+    console.log('🏆 Игроков в ЛБ:', sorted.length);
+    
+    // Показываем топ-10
+    listEl.innerHTML = sorted.slice(0, 10).map(function(s, i) {
+        return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span>' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> 💰' + (s.price || 0).toLocaleString() + '</span></li>';
+    }).join('') || '<li>Нет стикеров</li>';
+}
+
+// Загружаем лидерборд при старте и каждые 30 секунд
+setTimeout(updateStickerLB, 2000);
+setInterval(updateStickerLB, 30000);
     // ========== ДАННЫЕ ==========
     function getClickerData() { const users = getAllUsers(); const u = currentUser ? currentUser.username : 'guest'; if (!users[u]) users[u] = { clicker: { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {} } }; if (!users[u].clicker) users[u].clicker = { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {} }; if (!users[u].clicker.limitedStickers) users[u].clicker.limitedStickers = {}; return users[u].clicker; }
-    function saveClickerData() { const users = getAllUsers(); const u = currentUser ? currentUser.username : 'guest'; if (!users[u]) users[u] = {}; users[u].clicker = { balance: Math.floor(balance), totalClicks: Math.floor(totalClicks), clickPower, autoClicker, multiplier, rebirths, stickers, craftSel, craftCnt, craftTarget, limitedStickers }; saveUsers(users); }
-    function loadClickerData() { const d = getClickerData(); balance = d.balance || 0; totalClicks = d.totalClicks || 0; clickPower = d.clickPower || 1; autoClicker = d.autoClicker || 0; multiplier = d.multiplier || 0; rebirths = d.rebirths || 0; stickers = d.stickers || {}; craftSel = d.craftSel || {}; craftCnt = d.craftCnt || 0; craftTarget = d.craftTarget || null; limitedStickers = d.limitedStickers || {}; boostPct = 0; boostActive = false; checkGameIntegrity(); updateUI(); }
+function saveClickerData(){
+    const users=getAllUsers();
+    const u=currentUser?currentUser.username:'guest';
+    if(!users[u])users[u]={};
+    
+    // Копируем limitedStickers правильно
+    var lsCopy = {};
+    for(var id in limitedStickers){
+        if(limitedStickers[id]){
+            lsCopy[id] = {
+                emoji: limitedStickers[id].emoji,
+                color: limitedStickers[id].color,
+                basePrice: limitedStickers[id].basePrice,
+                price: limitedStickers[id].price,
+                created: limitedStickers[id].created
+            };
+        }
+    }
+    
+    users[u].clicker={
+        balance:Math.floor(balance),
+        totalClicks:Math.floor(totalClicks),
+        clickPower,autoClicker,multiplier,rebirths,
+        stickers,craftSel,craftCnt,craftTarget,
+        limitedStickers: lsCopy
+    };
+    saveUsers(users);
+}    function loadClickerData() { const d = getClickerData(); balance = d.balance || 0; totalClicks = d.totalClicks || 0; clickPower = d.clickPower || 1; autoClicker = d.autoClicker || 0; multiplier = d.multiplier || 0; rebirths = d.rebirths || 0; stickers = d.stickers || {}; craftSel = d.craftSel || {}; craftCnt = d.craftCnt || 0; craftTarget = d.craftTarget || null; limitedStickers = d.limitedStickers || {}; boostPct = 0; boostActive = false; checkGameIntegrity(); updateUI(); }
 
     function loadExtra() { const e = JSON.parse(localStorage.getItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest')) || '{}'); coins = e.coins || 0; favorites = e.favorites || {}; pinned = e.pinned || []; updateCoins(); setTimeout(function () { applyPinnedBackground(); updatePinned(); updateUnpinButton(); }, 100); }
     function saveExtra() { localStorage.setItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest'), JSON.stringify({ coins, favorites, pinned })); updateCoins(); }
