@@ -907,12 +907,7 @@
     const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
     let sb = null;
-    try {
-        sb = window.supabase.createClient(SB_URL, SB_KEY);
-        console.log('✅ Supabase подключен');
-    } catch (e) {
-        console.warn('⚠️ Supabase не загрузился');
-    }
+    try { sb = window.supabase.createClient(SB_URL, SB_KEY); console.log('✅ Supabase подключен'); } catch (e) { console.warn('⚠️ Supabase не загрузился'); }
 
     // ========== ЗАЩИТА ОТ СНИФФЕРОВ SUPABASE ==========
     if (sb) {
@@ -920,7 +915,6 @@
         sb.from = function (table) {
             const allowedTables = ['clicker_data', 'players', 'snake_leaderboard'];
             if (!allowedTables.includes(table)) {
-                console.warn('⚠️ Заблокирован запрос к:', table);
                 return {
                     select: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'Blocked' } }) }),
                     upsert: () => Promise.resolve({ error: { message: 'Blocked' } }),
@@ -939,7 +933,7 @@
     function toggleTheme() { darkTheme = !darkTheme; localStorage.setItem('snakeDarkTheme', darkTheme); document.body.classList.toggle('dark-theme'); document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙'; }
     document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙';
 
-    // ========== АНТИ-ЧИТ СИСТЕМА ==========
+    // ========== АНТИ-ЧИТ СИСТЕМА (ТИХАЯ) ==========
     let antiCheatToken = null;
     let antiCheatInterval = null;
 
@@ -962,10 +956,7 @@
                 anti_cheat_code: randomCode,
                 last_check: new Date().toISOString()
             });
-            if (!error) {
-                antiCheatToken = token;
-                return token;
-            }
+            if (!error) { antiCheatToken = token; return token; }
         } catch (e) { }
         return null;
     }
@@ -973,15 +964,11 @@
     async function verifyAntiCheat() {
         if (!currentUser || !sb) return true;
         try {
-            const { data, error } = await sb
-                .from('clicker_data')
+            const { data, error } = await sb.from('clicker_data')
                 .select('anti_cheat_token, anti_cheat_code, last_check')
-                .eq('username', currentUser.username)
-                .single();
-            if (error || !data || !data.anti_cheat_token) {
-                await generateAntiCheatToken();
-                return true;
-            }
+                .eq('username', currentUser.username).single();
+            if (error || !data || !data.anti_cheat_token) { await generateAntiCheatToken(); return true; }
+
             const key = 'gamelock_anti_cheat_2026';
             const decrypted = atob(data.anti_cheat_token);
             let original = '';
@@ -996,157 +983,58 @@
             const now = Date.now();
             const tokenAge = (now - timestamp) / 1000;
 
-            if (tokenAge > 300) {
-                await generateAntiCheatToken();
-                return true;
-            }
-            if (username !== currentUser.username) {
-                console.warn('⚠️ Обнаружена подмена пользователя!');
-                return false;
-            }
-            if (savedCode !== data.anti_cheat_code) {
-                console.warn('⚠️ Обнаружена подмена токена!');
-                return false;
-            }
-            if (scriptHash !== SCRIPT_HASH) {
-                console.warn('⚠️ Обнаружена модификация скрипта!');
-                return false;
-            }
+            if (tokenAge > 300) { await generateAntiCheatToken(); return true; }
+            if (username !== currentUser.username) return false;
+            if (savedCode !== data.anti_cheat_code) return false;
+            if (scriptHash !== SCRIPT_HASH) return false;
+
             antiCheatToken = data.anti_cheat_token;
             return true;
-        } catch (e) {
-            return true;
-        }
+        } catch (e) { return true; }
     }
 
     function checkGameIntegrity() {
         let changed = false;
 
-        if (typeof balance !== 'number' || !isFinite(balance) || balance < 0 || balance > 9000000000000) {
-            console.warn('⚠️ Обнаружено изменение баланса!');
-            balance = 0;
-            changed = true;
-        }
-        if (typeof totalClicks !== 'number' || !isFinite(totalClicks) || totalClicks < 0) {
-            console.warn('⚠️ Обнаружено изменение кликов!');
-            totalClicks = 0;
-            changed = true;
-        }
-        if (typeof clickPower !== 'number' || clickPower < 1 || clickPower > 1000) {
-            console.warn('⚠️ Обнаружено изменение силы клика!');
-            clickPower = 1;
-            changed = true;
-        }
-        if (typeof multiplier !== 'number' || multiplier < 0 || multiplier > 100) {
-            console.warn('⚠️ Обнаружено изменение множителя!');
-            multiplier = 0;
-            changed = true;
-        }
-        if (typeof autoClicker !== 'number' || autoClicker < 0 || autoClicker > 100) {
-            console.warn('⚠️ Обнаружено изменение автокликера!');
-            autoClicker = 0;
-            changed = true;
-        }
-        if (typeof rebirths !== 'number' || rebirths < 0 || rebirths > 4) {
-            console.warn('⚠️ Обнаружено изменение перерождений!');
-            rebirths = 0;
-            changed = true;
-        }
-        if (typeof coins !== 'number' || !isFinite(coins) || coins < 0) {
-            console.warn('⚠️ Обнаружено изменение монет!');
-            coins = 0;
-            changed = true;
-        }
-        if (typeof boostPct !== 'number' || boostPct < 0 || boostPct > 500) {
-            console.warn('⚠️ Обнаружено изменение бустера!');
-            boostPct = 0;
-            changed = true;
-        }
-        if (typeof craftCnt !== 'number' || craftCnt < 0) {
-            console.warn('⚠️ Обнаружено изменение счётчика крафтов!');
-            craftCnt = 0;
-            changed = true;
-        }
+        if (typeof balance !== 'number' || !isFinite(balance) || balance < 0 || balance > 9000000000000) { balance = 0; changed = true; }
+        if (typeof clickPower !== 'number' || clickPower < 1 || clickPower > 1000) { clickPower = 1; changed = true; }
+        if (typeof multiplier !== 'number' || multiplier < 0 || multiplier > 100) { multiplier = 0; changed = true; }
+        if (typeof autoClicker !== 'number' || autoClicker < 0 || autoClicker > 100) { autoClicker = 0; changed = true; }
+        if (typeof rebirths !== 'number' || rebirths < 0 || rebirths > 4) { rebirths = 0; changed = true; }
+        if (typeof coins !== 'number' || !isFinite(coins) || coins < 0) { coins = 0; changed = true; }
+        if (typeof boostPct !== 'number' || boostPct < 0 || boostPct > 500) { boostPct = 0; changed = true; }
+        if (typeof craftCnt !== 'number' || craftCnt < 0) { craftCnt = 0; changed = true; }
 
         // Проверка limitedStickers
         for (var id in limitedStickers) {
             var ls = limitedStickers[id];
-            if (!ls || !ls.emoji || !ls.color) {
-                delete limitedStickers[id];
-                changed = true;
-                continue;
-            }
-            if (!ls.created) {
-                console.warn('⚠️ Стикер без даты создания:', id);
-                delete limitedStickers[id];
-                changed = true;
-                continue;
-            }
+            if (!ls || !ls.emoji || !ls.color) { delete limitedStickers[id]; changed = true; continue; }
+            if (!ls.created) { delete limitedStickers[id]; changed = true; continue; }
 
             var stickerAge = (Date.now() - ls.created) / 1000;
 
-            // Стикеру больше 10 секунд - строгая проверка
             if (stickerAge >= 10) {
-                if (!TYPES[ls.emoji]) {
-                    console.warn('⚠️ Поддельный стикер (эмодзи):', id);
-                    delete limitedStickers[id];
-                    changed = true;
-                    continue;
-                }
-                var validColor = LIMITED_COLORS.some(function (c) {
-                    return c.bg === ls.color.bg && c.border === ls.color.border;
-                });
-                if (!validColor) {
-                    console.warn('⚠️ Поддельный стикер (цвет):', id);
-                    delete limitedStickers[id];
-                    changed = true;
-                    continue;
-                }
-                if (!ls.basePrice || ls.basePrice <= 0) {
-                    console.warn('⚠️ Поддельный стикер (цена):', id);
-                    delete limitedStickers[id];
-                    changed = true;
-                    continue;
-                }
+                if (!TYPES[ls.emoji]) { delete limitedStickers[id]; changed = true; continue; }
+                var validColor = LIMITED_COLORS.some(function (c) { return c.bg === ls.color.bg && c.border === ls.color.border; });
+                if (!validColor) { delete limitedStickers[id]; changed = true; continue; }
+                if (!ls.basePrice || ls.basePrice <= 0) { delete limitedStickers[id]; changed = true; continue; }
                 var expectedPrice = Math.floor(TYPES[ls.emoji].v * 5 * ls.color.coeff);
-                if (Math.abs(ls.basePrice - expectedPrice) > expectedPrice * 0.1) {
-                    console.warn('⚠️ Поддельный стикер (неверная цена):', id);
-                    delete limitedStickers[id];
-                    changed = true;
-                    continue;
-                }
+                if (Math.abs(ls.basePrice - expectedPrice) > expectedPrice * 0.1) { delete limitedStickers[id]; changed = true; continue; }
             }
         }
 
         // Проверка pinned
         for (var i = pinned.length - 1; i >= 0; i--) {
-            if (pinned[i] && pinned[i].id && !limitedStickers[pinned[i].id]) {
-                console.warn('⚠️ Закреплён несуществующий стикер');
-                pinned.splice(i, 1);
-                changed = true;
-            }
+            if (pinned[i] && pinned[i].id && !limitedStickers[pinned[i].id]) { pinned.splice(i, 1); changed = true; }
         }
 
         // Проверка stickers
         for (var t in stickers) {
-            if (!TYPES[t] || TYPES[t].secret) {
-                if (stickers[t] > 0) {
-                    console.warn('⚠️ Обнаружен секретный стикер в обычных:', t);
-                    delete stickers[t];
-                    changed = true;
-                }
-            }
-            if (typeof stickers[t] !== 'number' || stickers[t] < 0 || stickers[t] > 9999) {
-                delete stickers[t];
-                changed = true;
-            }
+            if (!TYPES[t] || TYPES[t].secret) { delete stickers[t]; changed = true; }
+            if (typeof stickers[t] !== 'number' || stickers[t] < 0 || stickers[t] > 9999) { delete stickers[t]; changed = true; }
         }
 
-        if (changed) {
-            saveClickerData();
-            updateUI();
-        }
-
+        if (changed) { saveClickerData(); updateUI(); }
         return !changed;
     }
 
@@ -1154,13 +1042,12 @@
     const MAX_CLICKS_PER_SECOND = 20;
 
     function checkClickSpeed() {
+        if (autoClicker > 0) return true;
         const now = Date.now();
         lastClickTimes.push(now);
         lastClickTimes = lastClickTimes.filter(t => now - t < 1000);
-        if (lastClickTimes.length > MAX_CLICKS_PER_SECOND) {
-            console.warn('⚠️ Обнаружен автокликер! Клик заблокирован');
-            return false;
-        }
+        const maxClicks = 20 + (autoClicker * 2);
+        if (lastClickTimes.length > maxClicks) { return false; }
         return true;
     }
 
@@ -1169,10 +1056,7 @@
             await verifyAntiCheat();
             antiCheatInterval = setInterval(async () => {
                 const isValid = await verifyAntiCheat();
-                if (!isValid) {
-                    toast('⚠️ Обнаружено вмешательство!', '#ff4444');
-                    await loadFromSupabase();
-                }
+                if (!isValid) { console.warn('⚠️ Защита: обнаружена аномалия'); }
                 checkGameIntegrity();
             }, 30000);
             setInterval(checkGameIntegrity, 5000);
@@ -1198,24 +1082,18 @@
         const u = document.getElementById('registerUsername').value.trim();
         const p = document.getElementById('registerPassword').value;
         const p2 = document.getElementById('registerPasswordConfirm').value;
-
         if (!u || u.length < 3) return alert('Имя: мин 3');
         if (!p || p.length < 4) return alert('Пароль: мин 4');
         if (p !== p2) return alert('Не совпадают');
-
         const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
         if (exists) return alert('Занято');
-
         const hashed = await hashPassword(p);
         await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() });
-
         const users = getAllUsers();
         users[u] = { clicker: { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {} }, created: Date.now() };
         saveUsers(users);
-
         currentUser = { username: u };
         localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-
         saveClickerData();
         closeModal();
         updateProfileUI();
@@ -1226,51 +1104,27 @@
     async function login() {
         const u = document.getElementById('loginUsername').value.trim();
         const p = document.getElementById('loginPassword').value;
-
         if (!u || !p) return alert('Заполните');
-
         const { data: user } = await sb.from('players').select('*').eq('username', u).single();
         if (!user) return alert('Не найден');
-
         const hashed = await hashPassword(p);
         if (hashed !== user.password_hash) return alert('Неверный пароль');
-
         try {
             const { data: clickerData } = await sb.from('clicker_data').select('*').eq('username', u).single();
             const users = getAllUsers();
             users[u] = users[u] || {};
             if (clickerData) {
-                users[u].clicker = {
-                    balance: clickerData.balance || 0,
-                    totalClicks: clickerData.total_clicks || 0,
-                    clickPower: clickerData.click_power || 1,
-                    autoClicker: clickerData.auto_clicker || 0,
-                    multiplier: clickerData.multiplier || 0,
-                    rebirths: clickerData.rebirths || 0,
-                    stickers: JSON.parse(clickerData.stickers || '{}'),
-                    craftCnt: clickerData.craft_count || 0,
-                    craftTarget: clickerData.craft_target || null,
-                    limitedStickers: JSON.parse(clickerData.limited_stickers || '{}')
-                };
+                users[u].clicker = { balance: clickerData.balance || 0, totalClicks: clickerData.total_clicks || 0, clickPower: clickerData.click_power || 1, autoClicker: clickerData.auto_clicker || 0, multiplier: clickerData.multiplier || 0, rebirths: clickerData.rebirths || 0, stickers: JSON.parse(clickerData.stickers || '{}'), craftCnt: clickerData.craft_count || 0, craftTarget: clickerData.craft_target || null, limitedStickers: JSON.parse(clickerData.limited_stickers || '{}') };
             } else {
                 users[u].clicker = { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {} };
             }
             saveUsers(users);
-
             const extraKey = 'clicker_extra_' + u;
             const { data: extraData } = await sb.from('clicker_data').select('coins,favorites,pinned').eq('username', u).single();
-            if (extraData) {
-                localStorage.setItem(extraKey, JSON.stringify({
-                    coins: extraData.coins || 0,
-                    favorites: JSON.parse(extraData.favorites || '{}'),
-                    pinned: JSON.parse(extraData.pinned || '[]')
-                }));
-            }
+            if (extraData) { localStorage.setItem(extraKey, JSON.stringify({ coins: extraData.coins || 0, favorites: JSON.parse(extraData.favorites || '{}'), pinned: JSON.parse(extraData.pinned || '[]') })); }
         } catch (e) { }
-
         currentUser = { username: u };
         localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-
         closeModal();
         updateProfileUI();
         initAntiCheat();
@@ -1293,69 +1147,29 @@
         try {
             const { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
             if (data) {
-                balance = data.balance || 0;
-                totalClicks = data.total_clicks || 0;
-                clickPower = data.click_power || 1;
-                autoClicker = data.auto_clicker || 0;
-                multiplier = data.multiplier || 0;
-                rebirths = data.rebirths || 0;
-                stickers = JSON.parse(data.stickers || '{}');
-                craftSel = JSON.parse(data.craft_sel || '{}');
-                craftCnt = data.craft_count || 0;
-                craftTarget = data.craft_target || null;
-                limitedStickers = JSON.parse(data.limited_stickers || '{}');
-                coins = data.coins || 0;
-                favorites = JSON.parse(data.favorites || '{}');
-                pinned = JSON.parse(data.pinned || '[]');
-                updateCoins();
-                applyPinnedBackground();
-                updatePinned();
-                updateUI();
-                updateStickerLB();
+                balance = data.balance || 0; totalClicks = data.total_clicks || 0; clickPower = data.click_power || 1; autoClicker = data.auto_clicker || 0; multiplier = data.multiplier || 0; rebirths = data.rebirths || 0;
+                stickers = JSON.parse(data.stickers || '{}'); craftSel = JSON.parse(data.craft_sel || '{}'); craftCnt = data.craft_count || 0; craftTarget = data.craft_target || null;
+                limitedStickers = JSON.parse(data.limited_stickers || '{}'); coins = data.coins || 0; favorites = JSON.parse(data.favorites || '{}'); pinned = JSON.parse(data.pinned || '[]');
+                updateCoins(); applyPinnedBackground(); updatePinned(); updateUI(); updateStickerLB();
             }
         } catch (e) { console.log('Загружено локально') }
     }
 
     async function saveToSupabase() {
         if (!currentUser || !sb) return;
-        const isValid = await verifyAntiCheat();
-        if (!isValid) {
-            console.warn('⚠️ Сохранение заблокировано защитой');
-            return;
-        }
         try {
             var safeStickers = {};
             for (var id in limitedStickers) {
                 if (!limitedStickers[id]) continue;
-                safeStickers[id] = {
-                    emoji: limitedStickers[id].emoji,
-                    color: limitedStickers[id].color,
-                    basePrice: limitedStickers[id].basePrice,
-                    price: Math.min(limitedStickers[id].price, 9000000000000),
-                    created: limitedStickers[id].created
-                };
+                safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: limitedStickers[id].basePrice, price: Math.min(limitedStickers[id].price, 9000000000000), created: limitedStickers[id].created };
             }
-
             await sb.from('clicker_data').upsert({
-                username: currentUser.username,
-                balance: Math.floor(Math.min(balance, 9000000000000)),
-                total_clicks: Math.floor(totalClicks),
-                click_power: clickPower,
-                auto_clicker: autoClicker,
-                multiplier: multiplier,
-                rebirths: rebirths,
-                stickers: JSON.stringify(stickers),
-                craft_sel: JSON.stringify(craftSel),
-                craft_count: craftCnt,
-                craft_target: craftTarget || '',
-                limited_stickers: JSON.stringify(safeStickers),
-                coins: coins,
-                favorites: JSON.stringify(favorites),
-                pinned: JSON.stringify(pinned),
-                anti_cheat_token: antiCheatToken,
-                updated_at: new Date().toISOString()
+                username: currentUser.username, balance: Math.floor(Math.min(balance, 9000000000000)), total_clicks: Math.floor(totalClicks),
+                click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
+                stickers: JSON.stringify(stickers), craft_sel: JSON.stringify(craftSel), craft_count: craftCnt, craft_target: craftTarget || '',
+                limited_stickers: JSON.stringify(safeStickers), coins: coins, favorites: JSON.stringify(favorites), pinned: JSON.stringify(pinned),
+                anti_cheat_token: antiCheatToken, updated_at: new Date().toISOString()
             });
-            console.log('✅ Сохранено в Supabase');
         } catch (e) { console.log('Сохранено локально') }
     }
 
@@ -1404,20 +1218,12 @@
     function sellLimitedForCoins(id) {
         var ls = limitedStickers[id];
         if (!ls) return;
-
         var stickerAge = (Date.now() - (ls.created || 0)) / 1000;
-        if (stickerAge < 10) {
-            toast('⏳ Стикеру ' + stickerAge.toFixed(1) + ' сек! Подождите ' + (10 - stickerAge).toFixed(0) + ' сек', '#ff8800');
-            return;
-        }
-
+        if (stickerAge < 10) { toast('⏳ Стикеру ' + stickerAge.toFixed(1) + ' сек! Подождите ' + (10 - stickerAge).toFixed(0) + ' сек', '#ff8800'); return; }
         var coinVal = getLimitedCoinValue(ls), moneyVal = ls.price || 0;
         if (confirm('Продать стикер?\n\n🪙 Монеты: ' + coinVal + '\n💰 Накоплено: ' + moneyVal.toLocaleString())) {
-            coins += coinVal; balance += moneyVal;
-            delete limitedStickers[id];
-            pinned = pinned.filter(function (p) { return p.id !== id });
-            updateUI(); saveClickerData(); saveExtra(); updatePinned(); updateStickerLB();
-            toast('💎 +' + coinVal + '🪙 | 💰 +' + moneyVal.toLocaleString());
+            coins += coinVal; balance += moneyVal; delete limitedStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id });
+            updateUI(); saveClickerData(); saveExtra(); updatePinned(); updateStickerLB(); toast('💎 +' + coinVal + '🪙 | 💰 +' + moneyVal.toLocaleString());
         }
     }
 
@@ -1432,7 +1238,7 @@
 
     function showPackAnimation(packName, stickers, tiers, colors) { var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; var title = document.createElement('div'); title.style.cssText = 'font-size:32px;color:#ffd700;font-weight:bold;margin-bottom:40px;text-shadow:0 0 30px rgba(255,215,0,0.6);'; title.textContent = '🎁 ' + packName; overlay.appendChild(title); var cards = document.createElement('div'); cards.style.cssText = 'display:flex;gap:20px;justify-content:center;flex-wrap:wrap;'; overlay.appendChild(cards); var hint = document.createElement('div'); hint.style.cssText = 'color:#666;font-size:14px;margin-top:40px;'; hint.textContent = 'Кликните чтобы закрыть'; overlay.appendChild(hint); document.body.appendChild(overlay); var tierNames = ['', 'Обычный', 'Необычный', 'Редкий', 'Эпический', 'Легендарный', 'Мифический', 'Секретный']; var tierColors = ['', '#aaa', '#4caf50', '#4488ff', '#cc44ff', '#ff8800', '#ff4444', '#ffd700']; var delays = [300, 1000, 2000]; for (var i = 0; i < stickers.length; i++) { var displayEmoji = stickers[i].replace('✨', ''); var tier = tiers[i]; var color = colors[i] || { bg: '#444', border: '#888', name: 'Неизвестный' }; var delay = delays[i] || 300; var stickerType = TYPES[displayEmoji]; var stickerName = stickerType ? stickerType.n : displayEmoji; var card = document.createElement('div'); card.style.cssText = 'width:140px;padding:20px 15px;border-radius:15px;text-align:center;opacity:0;transform:scale(0.3);transition:all 0.6s ease-out;margin:5px;'; card.style.background = getGradient(color.bg); card.style.border = '3px solid ' + color.border; card.style.boxShadow = '0 0 20px ' + color.border; var stickerNameDiv = document.createElement('div'); stickerNameDiv.textContent = stickerName; stickerNameDiv.style.cssText = 'color:#fff;font-weight:bold;font-size:11px;margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,0.5);opacity:0.9;'; card.appendChild(stickerNameDiv); var emojiDiv = document.createElement('div'); emojiDiv.textContent = displayEmoji; emojiDiv.style.cssText = 'font-size:55px;margin-bottom:8px;'; card.appendChild(emojiDiv); var nameDiv = document.createElement('div'); nameDiv.textContent = color.name; nameDiv.style.cssText = 'color:#fff;font-weight:bold;font-size:13px;text-shadow:0 1px 3px rgba(0,0,0,0.5);'; card.appendChild(nameDiv); var typeDiv = document.createElement('div'); typeDiv.textContent = 'ЛИМИТ'; typeDiv.style.cssText = 'color:#333;font-size:10px;margin-top:5px;background:rgba(255,255,255,0.9);border-radius:8px;padding:2px 8px;display:inline-block;font-weight:bold;'; card.appendChild(typeDiv); var tierText = tierNames[Math.floor(tier)] || ''; if (tierText) { var tierDiv = document.createElement('div'); tierDiv.textContent = tierText; tierDiv.style.cssText = 'color:' + (tierColors[Math.floor(tier)] || '#fff') + ';font-size:10px;margin-top:4px;font-weight:bold;'; card.appendChild(tierDiv) } cards.appendChild(card); (function (card, tier) { setTimeout(function () { card.style.opacity = '1'; card.style.transform = 'scale(1)'; if (Math.floor(tier) >= 5) { card.style.animation = 'glowPulse 0.5s ease-in-out 3' } }, delay) })(card, tier) } overlay.addEventListener('click', function () { overlay.style.opacity = '0'; overlay.style.transition = '0.3s'; setTimeout(function () { overlay.remove() }, 300) }) }
 
-    // ========== ОТРИСОВКА (С ТАЙМЕРОМ НА НОВЫХ СТИКЕРАХ) ==========
+    // ========== ОТРИСОВКА ==========
     function updateUI() {
         var rm = getRebMult();
         document.getElementById('bal').textContent = Math.floor(balance).toLocaleString();
@@ -1463,43 +1269,17 @@
             md.appendChild(d);
         }
         for (var id in limitedStickers) {
-            var ls = limitedStickers[id];
-            if (!ls) continue;
-            total++;
-
+            var ls = limitedStickers[id]; if (!ls) continue; total++;
             var stickerAge = (Date.now() - (ls.created || Date.now())) / 1000;
             var canSell = stickerAge >= 10;
-
-            var d = document.createElement('div');
-            d.className = 'sticker';
-            d.style.background = getGradient(ls.color.bg);
-            d.style.border = '3px solid ' + ls.color.border;
-            d.style.boxShadow = '0 0 10px ' + ls.color.border;
+            var d = document.createElement('div'); d.className = 'sticker'; d.style.background = getGradient(ls.color.bg); d.style.border = '3px solid ' + ls.color.border; d.style.boxShadow = '0 0 10px ' + ls.color.border;
             d.title = ls.color.name + ' | 💰' + (ls.price || 0).toLocaleString() + ' | +1%/сек';
-
             d.innerHTML = '<div class="sticker-emoji">' + ls.emoji + '</div>';
-
-            if (!canSell) {
-                d.innerHTML += '<div style="font-size:9px;color:#ff6600;background:rgba(255,255,255,0.9);border-radius:4px;padding:1px 3px">⏳ ' + (10 - stickerAge).toFixed(1) + 'с</div>';
-            } else {
-                d.innerHTML += '<div style="font-size:9px;color:#333;background:rgba(255,255,255,0.7);border-radius:4px;padding:1px 3px">💰' + (ls.price || 0).toLocaleString() + '</div>';
-            }
-
-            if (canSell) {
-                var sb = document.createElement('div');
-                sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px';
-                sb.textContent = '💎' + getLimitedCoinValue(ls);
-                sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellLimitedForCoins(id) } })(id);
-                d.appendChild(sb);
-            }
-
-            var isPinned = pinned.some(function (p) { return p.id === id });
-            var pb = document.createElement('div');
-            pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px';
-            pb.textContent = isPinned ? '📌✅' : '📌';
-            pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id);
-            d.appendChild(pb);
-
+            if (!canSell) { d.innerHTML += '<div style="font-size:9px;color:#ff6600;background:rgba(255,255,255,0.9);border-radius:4px;padding:1px 3px">⏳ ' + (10 - stickerAge).toFixed(1) + 'с</div>'; }
+            else { d.innerHTML += '<div style="font-size:9px;color:#333;background:rgba(255,255,255,0.7);border-radius:4px;padding:1px 3px">💰' + (ls.price || 0).toLocaleString() + '</div>'; }
+            if (canSell) { var sb = document.createElement('div'); sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; sb.textContent = '💎' + getLimitedCoinValue(ls); sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellLimitedForCoins(id) } })(id); d.appendChild(sb); }
+            var isPinned = pinned.some(function (p) { return p.id === id }); var pb = document.createElement('div'); pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; pb.textContent = isPinned ? '📌✅' : '📌';
+            pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); d.appendChild(pb);
             md.appendChild(d);
         }
         if (total === 0) md.innerHTML = '<div style="color:#999;font-size:12px;">Нет стикеров</div>'; document.getElementById('stCnt').textContent = total;
@@ -1527,22 +1307,19 @@
     function getClickBonus() { var r = Math.random() * 100; if (r < 0.1) return 100; if (r < 1.1) return 10; if (r < 11.1) return 2; return 1 }
     function showBonusPopup(mult) { var w = document.getElementById('safeWrap'), p = document.createElement('div'); p.className = 'bonus-popup'; p.textContent = '🔥 ×' + mult + '!'; w.appendChild(p); setTimeout(function () { p.remove() }, 1500) }
 
-    // ========== КЛИК С ЗАЩИТОЙ ==========
+    // ========== КЛИК С ТИХОЙ ЗАЩИТОЙ ==========
     document.getElementById('safeWrap').onclick = async function (e) {
         if (!checkClickSpeed()) return;
 
-        if (totalClicks % 10 === 0) {
+        if (totalClicks % 50 === 0) {
             const isValid = await verifyAntiCheat();
-            if (!isValid) {
-                toast('⚠️ Защита активирована!', '#ff4444');
-                return;
-            }
+            if (!isValid) { console.warn('⚠️ Защита: проверка не пройдена'); }
         }
 
         var now = Date.now();
         if (now - clickTime > 1000) cps = 0;
         clickTime = now;
-        if (cps >= 15) return;
+        if (cps >= 25) return;
         cps++;
         if (!boostActive && Math.random() < 0.02 && boostPct < 500) activateBooster();
         var cb = getClickBonus();
@@ -1551,22 +1328,13 @@
         if (!isFinite(earn)) earn = clickPower;
         balance += earn;
         totalClicks++;
-        if (Math.random() < 0.05) {
-            var s = randomSticker();
-            stickers[s] = (stickers[s] || 0) + 1;
-        }
+        if (Math.random() < 0.05) { var s = randomSticker(); stickers[s] = (stickers[s] || 0) + 1; }
         var safe = document.getElementById('safe'), rect = safe.getBoundingClientRect();
-        var p = document.createElement('div');
-        p.className = 'floating-text';
-        p.textContent = '+' + Math.floor(earn) + '💰';
-        p.style.left = Math.max(0, e.clientX - rect.left - 20) + 'px';
-        p.style.top = Math.max(0, e.clientY - rect.top - 10) + 'px';
-        safe.appendChild(p);
-        setTimeout(function () { p.remove(); }, 700);
-        safe.style.transform = 'scale(0.94)';
-        setTimeout(function () { safe.style.transform = 'scale(1)'; }, 150);
-        updateUI();
-        saveClickerData();
+        var p = document.createElement('div'); p.className = 'floating-text'; p.textContent = '+' + Math.floor(earn) + '💰';
+        p.style.left = Math.max(0, e.clientX - rect.left - 20) + 'px'; p.style.top = Math.max(0, e.clientY - rect.top - 10) + 'px';
+        safe.appendChild(p); setTimeout(function () { p.remove(); }, 700);
+        safe.style.transform = 'scale(0.94)'; setTimeout(function () { safe.style.transform = 'scale(1)'; }, 150);
+        updateUI(); saveClickerData();
     };
 
     function buyUpgrade(type) { var ml; if (type === 'clickPower') ml = getMaxLvl('click'); else if (type === 'autoClicker') ml = getMaxLvl('auto'); else if (type === 'multiplier') ml = getMaxLvl('multi'); if (type === 'clickPower') { if (clickPower >= ml) { toast('Макс!', '#f44'); return } var p = price(10, 1.5, clickPower - 1); if (balance >= p) { balance -= p; clickPower++ } else { toast('Мало!', '#f44'); return } } else if (type === 'autoClicker') { if (autoClicker >= ml) { toast('Макс!', '#f44'); return } var p = price(50, 1.8, autoClicker); if (balance >= p) { balance -= p; autoClicker++ } else { toast('Мало!', '#f44'); return } } else if (type === 'multiplier') { if (multiplier >= ml || multiplier >= 50) { toast('Макс!', '#f44'); return } var p = price(500, 3, multiplier); if (balance >= p) { balance -= p; multiplier++ } else { toast('Мало!', '#f44'); return } } updateUI(); saveClickerData() }
