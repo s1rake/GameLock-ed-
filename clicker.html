@@ -906,6 +906,132 @@ if(darkTheme)document.body.classList.add('dark-theme');
 function toggleTheme(){darkTheme=!darkTheme;localStorage.setItem('snakeDarkTheme',darkTheme);document.body.classList.toggle('dark-theme');document.getElementById('themeToggle').textContent=darkTheme?'☀️':'🌙';}
 document.getElementById('themeToggle').textContent=darkTheme?'☀️':'🌙';
 
+// ========== АНТИ-ЧИТ СИСТЕМА ==========
+let antiCheatToken = null;
+let antiCheatInterval = null;
+
+async function generateAntiCheatToken() {
+    if (!currentUser || !sb) return null;
+    try {
+        const randomCode = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+        const timestamp = Date.now();
+        const dataToEncrypt = randomCode + '|' + timestamp + '|' + currentUser.username;
+        const key = 'gamelock_anti_cheat_2026';
+        let encrypted = '';
+        for (let i = 0; i < dataToEncrypt.length; i++) {
+            encrypted += String.fromCharCode(dataToEncrypt.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        const token = btoa(encrypted);
+        const { error } = await sb.from('clicker_data').upsert({
+            username: currentUser.username,
+            anti_cheat_token: token,
+            anti_cheat_code: randomCode,
+            last_check: new Date().toISOString()
+        });
+        if (!error) {
+            antiCheatToken = token;
+            return token;
+        }
+    } catch(e) {}
+    return null;
+}
+
+async function verifyAntiCheat() {
+    if (!currentUser || !sb) return true;
+    try {
+        const { data, error } = await sb
+            .from('clicker_data')
+            .select('anti_cheat_token, anti_cheat_code, last_check')
+            .eq('username', currentUser.username)
+            .single();
+        if (error || !data || !data.anti_cheat_token) {
+            await generateAntiCheatToken();
+            return true;
+        }
+        const key = 'gamelock_anti_cheat_2026';
+        const decrypted = atob(data.anti_cheat_token);
+        let original = '';
+        for (let i = 0; i < decrypted.length; i++) {
+            original += String.fromCharCode(decrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        const parts = original.split('|');
+        const savedCode = parts[0];
+        const timestamp = parseInt(parts[1]);
+        const username = parts[2];
+        const now = Date.now();
+        const tokenAge = (now - timestamp) / 1000;
+        if (tokenAge > 300) {
+            await generateAntiCheatToken();
+            return true;
+        }
+        if (username !== currentUser.username) {
+            console.warn('⚠️ Обнаружена подмена пользователя!');
+            return false;
+        }
+        if (savedCode !== data.anti_cheat_code) {
+            console.warn('⚠️ Обнаружена подмена токена!');
+            return false;
+        }
+        antiCheatToken = data.anti_cheat_token;
+        return true;
+    } catch(e) {
+        return true;
+    }
+}
+
+function checkGameIntegrity() {
+    if (typeof balance !== 'number' || !isFinite(balance) || balance < 0) {
+        console.warn('⚠️ Обнаружено изменение баланса!');
+        balance = 0;
+    }
+    if (typeof clickPower !== 'number' || clickPower < 1 || clickPower > 1000) {
+        console.warn('⚠️ Обнаружено изменение силы клика!');
+        clickPower = 1;
+    }
+    if (typeof multiplier !== 'number' || multiplier < 0 || multiplier > 100) {
+        console.warn('⚠️ Обнаружено изменение множителя!');
+        multiplier = 0;
+    }
+    if (typeof autoClicker !== 'number' || autoClicker < 0 || autoClicker > 100) {
+        console.warn('⚠️ Обнаружено изменение автокликера!');
+        autoClicker = 0;
+    }
+    if (typeof coins !== 'number' || !isFinite(coins) || coins < 0) {
+        console.warn('⚠️ Обнаружено изменение монет!');
+        coins = 0;
+    }
+}
+
+let lastClickTimes = [];
+const MAX_CLICKS_PER_SECOND = 20;
+
+function checkClickSpeed() {
+    const now = Date.now();
+    lastClickTimes.push(now);
+    lastClickTimes = lastClickTimes.filter(t => now - t < 1000);
+    if (lastClickTimes.length > MAX_CLICKS_PER_SECOND) {
+        console.warn('⚠️ Обнаружен автокликер! Клик заблокирован');
+        return false;
+    }
+    return true;
+}
+
+async function initAntiCheat() {
+    if (currentUser && sb) {
+        await verifyAntiCheat();
+        antiCheatInterval = setInterval(async () => {
+            const isValid = await verifyAntiCheat();
+            if (!isValid) {
+                toast('⚠️ Обнаружено вмешательство!', '#ff4444');
+                await loadFromSupabase();
+            }
+            checkGameIntegrity();
+        }, 30000);
+        setInterval(checkGameIntegrity, 5000);
+    }
+}
+
 // ========== АККАУНТЫ ==========
 let currentUser=JSON.parse(localStorage.getItem('snakeCurrentUser'))||null;
 function getAllUsers(){return JSON.parse(localStorage.getItem('snakeUsers'))||{};}
@@ -946,6 +1072,7 @@ async function register() {
     saveClickerData();
     closeModal();
     updateProfileUI();
+    initAntiCheat();
     toast('✅ Готово!');
 }
 
@@ -961,7 +1088,6 @@ async function login() {
     const hashed = await hashPassword(p);
     if (hashed !== user.password_hash) return alert('Неверный пароль');
     
-    // Загружаем данные кликера
     try {
         const { data: clickerData } = await sb.from('clicker_data').select('*').eq('username', u).single();
         const users = getAllUsers();
@@ -984,7 +1110,6 @@ async function login() {
         }
         saveUsers(users);
         
-        // Загружаем монеты и избранное
         const extraKey = 'clicker_extra_' + u;
         const { data: extraData } = await sb.from('clicker_data').select('coins,favorites,pinned').eq('username', u).single();
         if (extraData) {
@@ -1001,6 +1126,7 @@ async function login() {
     
     closeModal();
     updateProfileUI();
+    initAntiCheat();
     toast('✅ Вход!');
 }
 
@@ -1044,9 +1170,13 @@ async function loadFromSupabase(){
 }
 
 async function saveToSupabase(){
-    if(!currentUser)return;
+    if(!currentUser||!sb)return;
+    const isValid = await verifyAntiCheat();
+    if (!isValid) {
+        console.warn('⚠️ Сохранение заблокировано защитой');
+        return;
+    }
     try{
-        // Копируем limitedStickers с ограничением цены
         var safeStickers = {};
         for(var id in limitedStickers){
             if(!limitedStickers[id]) continue;
@@ -1054,7 +1184,7 @@ async function saveToSupabase(){
                 emoji: limitedStickers[id].emoji,
                 color: limitedStickers[id].color,
                 basePrice: limitedStickers[id].basePrice,
-                price: Math.min(limitedStickers[id].price, 9000000000000), // макс 9 трлн
+                price: Math.min(limitedStickers[id].price, 9000000000000),
                 created: limitedStickers[id].created
             };
         }
@@ -1075,6 +1205,7 @@ async function saveToSupabase(){
             coins:coins,
             favorites:JSON.stringify(favorites),
             pinned:JSON.stringify(pinned),
+            anti_cheat_token: antiCheatToken,
             updated_at:new Date().toISOString()
         });
         console.log('✅ Сохранено в Supabase');
@@ -1195,7 +1326,49 @@ function openCraftModal(){document.getElementById('modalLogin').style.display='n
 function activateBooster(){if(boostActive)return;boostActive=true;boostPct=Math.min(boostPct+50,500);document.getElementById('safe').classList.add('boosting');toast('💥 БУСТЕР +50%!','#ff6600');setTimeout(function(){boostActive=false;boostPct=Math.max(0,boostPct-50);updateUI()},10000)}
 function getClickBonus(){var r=Math.random()*100;if(r<0.1)return 100;if(r<1.1)return 10;if(r<11.1)return 2;return 1}
 function showBonusPopup(mult){var w=document.getElementById('safeWrap'),p=document.createElement('div');p.className='bonus-popup';p.textContent='🔥 ×'+mult+'!';w.appendChild(p);setTimeout(function(){p.remove()},1500)}
-document.getElementById('safeWrap').onclick=function(e){var now=Date.now();if(now-clickTime>1000)cps=0;clickTime=now;if(cps>=15)return;cps++;if(!boostActive&&Math.random()<0.02&&boostPct<500)activateBooster();var cb=getClickBonus();if(cb>1)showBonusPopup(cb);var earn=clickPower*Math.pow(2,Math.min(multiplier,50))*getRebMult()*cb*(1+boostPct/100);if(!isFinite(earn))earn=clickPower;balance+=earn;totalClicks++;if(Math.random()<0.05){var s=randomSticker();stickers[s]=(stickers[s]||0)+1}var safe=document.getElementById('safe'),rect=safe.getBoundingClientRect();var p=document.createElement('div');p.className='floating-text';p.textContent='+'+Math.floor(earn)+'💰';p.style.left=Math.max(0,e.clientX-rect.left-20)+'px';p.style.top=Math.max(0,e.clientY-rect.top-10)+'px';safe.appendChild(p);setTimeout(function(){p.remove()},700);safe.style.transform='scale(0.94)';setTimeout(function(){safe.style.transform='scale(1)'},150);updateUI();saveClickerData()}
+
+// ========== КЛИК С ЗАЩИТОЙ ==========
+document.getElementById('safeWrap').onclick = async function(e) {
+    if (!checkClickSpeed()) return;
+    
+    if (totalClicks % 10 === 0) {
+        const isValid = await verifyAntiCheat();
+        if (!isValid) {
+            toast('⚠️ Защита активирована!', '#ff4444');
+            return;
+        }
+    }
+    
+    var now = Date.now();
+    if (now - clickTime > 1000) cps = 0;
+    clickTime = now;
+    if (cps >= 15) return;
+    cps++;
+    if (!boostActive && Math.random() < 0.02 && boostPct < 500) activateBooster();
+    var cb = getClickBonus();
+    if (cb > 1) showBonusPopup(cb);
+    var earn = clickPower * Math.pow(2, Math.min(multiplier, 50)) * getRebMult() * cb * (1 + boostPct / 100);
+    if (!isFinite(earn)) earn = clickPower;
+    balance += earn;
+    totalClicks++;
+    if (Math.random() < 0.05) {
+        var s = randomSticker();
+        stickers[s] = (stickers[s] || 0) + 1;
+    }
+    var safe = document.getElementById('safe'), rect = safe.getBoundingClientRect();
+    var p = document.createElement('div');
+    p.className = 'floating-text';
+    p.textContent = '+' + Math.floor(earn) + '💰';
+    p.style.left = Math.max(0, e.clientX - rect.left - 20) + 'px';
+    p.style.top = Math.max(0, e.clientY - rect.top - 10) + 'px';
+    safe.appendChild(p);
+    setTimeout(function() { p.remove(); }, 700);
+    safe.style.transform = 'scale(0.94)';
+    setTimeout(function() { safe.style.transform = 'scale(1)'; }, 150);
+    updateUI();
+    saveClickerData();
+};
+
 function buyUpgrade(type){var ml;if(type==='clickPower')ml=getMaxLvl('click');else if(type==='autoClicker')ml=getMaxLvl('auto');else if(type==='multiplier')ml=getMaxLvl('multi');if(type==='clickPower'){if(clickPower>=ml){toast('Макс!','#f44');return}var p=price(10,1.5,clickPower-1);if(balance>=p){balance-=p;clickPower++}else{toast('Мало!','#f44');return}}else if(type==='autoClicker'){if(autoClicker>=ml){toast('Макс!','#f44');return}var p=price(50,1.8,autoClicker);if(balance>=p){balance-=p;autoClicker++}else{toast('Мало!','#f44');return}}else if(type==='multiplier'){if(multiplier>=ml||multiplier>=50){toast('Макс!','#f44');return}var p=price(500,3,multiplier);if(balance>=p){balance-=p;multiplier++}else{toast('Мало!','#f44');return}}updateUI();saveClickerData()}
 function rebirth(){if(rebirths>=4){toast('Макс!','#f44');return}if(balance<REBIRTH_COSTS[rebirths]){toast('Нужно '+REBIRTH_COSTS[rebirths].toLocaleString()+'💰','#f44');return}if(!confirm('Перерождение '+(rebirths+1)+'?'))return;balance=0;totalClicks=0;clickPower=1;autoClicker=0;multiplier=0;rebirths++;updateUI();saveClickerData();toast('🌟 Перерождение '+rebirths+'!','#ffd700')}
 function addToCraft(t){if(!stickers[t])return;if(favorites[t]){toast('⭐ В избранном!','#f44');return}stickers[t]--;if(stickers[t]<=0)delete stickers[t];craftSel[t]=(craftSel[t]||0)+1;updateUI()}
@@ -1209,6 +1382,7 @@ setInterval(function(){if(autoClicker>0){balance+=autoClicker*Math.pow(2,Math.mi
 setInterval(function(){cps=0},1000);
 setInterval(saveClickerData,5000);
 window.addEventListener('beforeunload',saveClickerData);
+initAntiCheat();
 updateProfileUI();updateUI();updatePinned();updateStickerLB();
 </script>
 </body>
