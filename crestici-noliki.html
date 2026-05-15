@@ -1,708 +1,1150 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Крестики-Нолики</title>
     <link rel="shortcut icon" href="img/crestici-noliki.png" type="image/x-icon">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-<style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: linear-gradient(135deg, #00b4d8, #0077b6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: 0.3s;
+        }
 
-    * {
-        box-sizing: border-box;
-    }
+        body.dark-theme {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+        }
 
-    body {
-        margin: 0;
-        font-family: Arial;
-        background: linear-gradient(135deg, #00b4d8, #0077b6);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-height: 100vh;
-        transition: 0.3s;
-    }
+        .top-panel {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
 
-    body.dark-theme {
-        background: linear-gradient(135deg, #1a1a2e, #16213e);
-    }
+        .menu-btn {
+            background: white;
+            padding: 12px 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: none;
+            font-weight: bold;
+        }
 
-    .top-panel {
-        display: flex;
-        gap: 15px;
-        margin-top: 20px;
-        margin-bottom: 10px;
-        align-items: center;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
+        body.dark-theme .menu-btn {
+            background: #2a2a4a;
+            color: #eee;
+        }
 
-    .menu-btn {
-        background: white;
-        padding: 12px 25px;
-        border-radius: 12px;
-        cursor: pointer;
-        font-size: 18px;
-        transition: 0.2s;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border: none;
-        font-weight: bold;
-    }
+        .menu-btn:hover {
+            transform: translateY(-2px);
+            background: #ececec;
+        }
 
-    body.dark-theme .menu-btn {
-        background: #2a2a4a;
-        color: #eee;
-    }
+        body.dark-theme .menu-btn:hover {
+            background: #3a3a5a;
+        }
 
-    .menu-btn:hover {
-        transform: translateY(-2px);
-        background: #ececec;
-    }
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
 
-    body.dark-theme .menu-btn:hover {
-        background: #3a3a5a;
-    }
+        body.dark-theme .profile-section {
+            background: #2a2a4a;
+            color: #eee;
+        }
 
-    .profile-section {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: white;
-        padding: 8px 15px;
-        border-radius: 25px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
+        .profile-avatar {
+            font-size: 30px;
+        }
 
-    body.dark-theme .profile-section {
-        background: #2a2a4a;
-        color: #eee;
-    }
+        .profile-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
 
-    .profile-avatar {
-        font-size: 30px;
-    }
+        body.dark-theme .profile-name {
+            color: #eee;
+        }
 
-    .profile-name {
-        font-weight: bold;
-        font-size: 18px;
-        color: #333;
-    }
+        .profile-btn {
+            background: #0077b6;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
 
-    body.dark-theme .profile-name {
-        color: #eee;
-    }
+        .profile-btn:hover {
+            background: #005f8a;
+        }
 
-    .profile-btn {
-        background: #0077b6;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 15px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: 0.2s;
-    }
+        .theme-toggle {
+            background: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
 
-    .profile-btn:hover {
-        background: #005f8a;
-    }
+        body.dark-theme .theme-toggle {
+            background: #2a2a4a;
+        }
 
-    .theme-toggle {
-        background: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 25px;
-        cursor: pointer;
-        font-size: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
+        .title {
+            font-size: 40px;
+            color: white;
+            margin: 15px 0;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
 
-    body.dark-theme .theme-toggle {
-        background: #2a2a4a;
-    }
+        .mode-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
 
-    .title {
-        font-size: 40px;
-        color: white;
-        margin: 15px 0;
-        font-weight: bold;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
+        .mode-btn {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            font-size: 16px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
 
-    /* Доска */
-    .board {
-        display: grid;
-        grid-template-columns: repeat(3, 130px);
-        grid-template-rows: repeat(3, 130px);
-        gap: 10px;
-        background: rgba(255,255,255,0.2);
-        padding: 15px;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        margin-bottom: 20px;
-    }
+        body.dark-theme .mode-btn {
+            background: #2a2a4a;
+            color: #eee;
+        }
 
-    .cell {
-        background: white;
-        border-radius: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: 0.2s;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
+        .mode-btn.active {
+            border-color: #ffd700;
+            background: #fff3e0;
+        }
 
-    body.dark-theme .cell {
-        background: #2a2a4a;
-    }
+        body.dark-theme .mode-btn.active {
+            background: #3a3a2a;
+        }
 
-    .cell:hover {
-        transform: scale(1.05);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
+        .board-3x3 {
+            display: grid;
+            grid-template-columns: repeat(3, 130px);
+            grid-template-rows: repeat(3, 130px);
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
 
-    .cell img {
-        width: 80px;
-        height: 80px;
-        object-fit: contain;
-        animation: popIn 0.3s ease;
-    }
+        .board-10x10 {
+            display: grid;
+            grid-template-columns: repeat(10, 50px);
+            grid-template-rows: repeat(10, 50px);
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
 
-    @keyframes popIn {
-        0% { transform: scale(0); }
-        70% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-    }
+        .cell {
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
 
-    /* Статус */
-    #status {
-        font-size: 30px;
-        color: white;
-        margin-bottom: 20px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        min-height: 50px;
-    }
+        body.dark-theme .cell {
+            background: #2a2a4a;
+        }
 
-    #status img {
-        width: 40px;
-        height: 40px;
-        object-fit: contain;
-    }
+        .cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
 
-    /* Кнопка рестарта */
-    .restart-btn {
-        background: white;
-        padding: 14px 30px;
-        border-radius: 15px;
-        cursor: pointer;
-        font-size: 20px;
-        transition: 0.2s;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border: none;
-        font-weight: bold;
-        margin-bottom: 30px;
-    }
+        .cell img {
+            width: 70%;
+            height: 70%;
+            object-fit: contain;
+            animation: popIn 0.3s ease;
+        }
 
-    body.dark-theme .restart-btn {
-        background: #2a2a4a;
-        color: #eee;
-    }
+        .board-10x10 .cell img {
+            width: 80%;
+            height: 80%;
+        }
 
-    .restart-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        background: #4CAF50;
-        color: white;
-    }
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+            }
 
-    /* Счёт */
-    .score-panel {
-        display: flex;
-        gap: 30px;
-        margin-bottom: 15px;
-    }
+            70% {
+                transform: scale(1.1);
+            }
 
-    .score-item {
-        background: white;
-        padding: 12px 20px;
-        border-radius: 15px;
-        font-weight: bold;
-        font-size: 18px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
+            100% {
+                transform: scale(1);
+            }
+        }
 
-    body.dark-theme .score-item {
-        background: #2a2a4a;
-        color: #eee;
-    }
+        #status {
+            font-size: 24px;
+            color: white;
+            margin-bottom: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            min-height: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
 
-    .score-item img {
-        width: 30px;
-        height: 30px;
-        object-fit: contain;
-    }
+        #status img {
+            width: 35px;
+            height: 35px;
+            object-fit: contain;
+        }
 
-    /* Модальное окно */
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 100;
-    }
+        .bot-level {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 6px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            color: white;
+        }
 
-    .modal {
-        background: white;
-        border-radius: 20px;
-        padding: 25px;
-        min-width: 350px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        text-align: center;
-        position: relative;
-    }
+        .restart-btn {
+            background: white;
+            padding: 14px 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: none;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
 
-    body.dark-theme .modal {
-        background: #2a2a4a;
-        color: #eee;
-    }
+        body.dark-theme .restart-btn {
+            background: #2a2a4a;
+            color: #eee;
+        }
 
-    .modal h2 {
-        margin: 0 0 15px 0;
-        font-size: 26px;
-    }
+        .restart-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            background: #4CAF50;
+            color: white;
+        }
 
-    .modal input {
-        width: 100%;
-        padding: 12px;
-        border: 2px solid #ddd;
-        border-radius: 10px;
-        font-size: 16px;
-        margin-bottom: 12px;
-        outline: none;
-    }
+        .score-panel {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
 
-    body.dark-theme .modal input {
-        background: #1a1a3a;
-        border-color: #444;
-        color: #eee;
-    }
+        .score-item {
+            background: white;
+            padding: 10px 18px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-    .modal input:focus {
-        border-color: #0077b6;
-    }
+        body.dark-theme .score-item {
+            background: #2a2a4a;
+            color: #eee;
+        }
 
-    .modal-btn {
-        width: 100%;
-        padding: 12px;
-        border: none;
-        border-radius: 10px;
-        font-size: 18px;
-        cursor: pointer;
-        margin-bottom: 8px;
-        transition: 0.2s;
-        font-weight: bold;
-    }
+        .score-item img {
+            width: 25px;
+            height: 25px;
+            object-fit: contain;
+        }
 
-    .btn-primary {
-        background: #0077b6;
-        color: white;
-    }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
 
-    .btn-primary:hover {
-        background: #005f8a;
-    }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            min-width: 350px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+        }
 
-    .modal-switch {
-        color: #0077b6;
-        cursor: pointer;
-        text-decoration: underline;
-        font-size: 14px;
-    }
+        body.dark-theme .modal {
+            background: #2a2a4a;
+            color: #eee;
+        }
 
-    .modal-error {
-        color: red;
-        font-size: 14px;
-        margin-bottom: 10px;
-        display: none;
-    }
+        .modal h2 {
+            margin: 0 0 15px 0;
+            font-size: 26px;
+        }
 
-    .modal-close {
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        font-size: 24px;
-        cursor: pointer;
-        color: #999;
-    }
+        .modal input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 12px;
+            outline: none;
+        }
 
-    .modal-close:hover {
-        color: #333;
-    }
+        body.dark-theme .modal input {
+            background: #1a1a3a;
+            border-color: #444;
+            color: #eee;
+        }
 
-</style>
+        .modal input:focus {
+            border-color: #0077b6;
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: #0077b6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #005f8a;
+        }
+
+        .modal-switch {
+            color: #0077b6;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+        }
+
+        .modal-error {
+            color: red;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .game-mode-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .game-mode-select button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            background: white;
+            font-weight: bold;
+        }
+
+        body.dark-theme .game-mode-select button {
+            background: #2a2a4a;
+            color: #eee;
+        }
+
+        .game-mode-select button.active {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        body.dark-theme .game-mode-select button.active {
+            background: #1a3a1a;
+        }
+
+        .lb-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin: 20px auto 25px;
+        }
+
+        body.dark-theme .lb-panel {
+            background: rgba(42, 42, 74, 0.95);
+        }
+
+        .shop-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        body.dark-theme .shop-title {
+            color: #eee;
+        }
+
+        .leaders-tabs {
+            display: flex;
+            gap: 8px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .leaders-tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            background: #f0f0f0;
+            border: 2px solid transparent;
+            font-weight: bold;
+            transition: 0.2s;
+            color: #555;
+        }
+
+        body.dark-theme .leaders-tab {
+            background: #1a1a3a;
+            color: #aaa;
+        }
+
+        .leaders-tab.active {
+            background: linear-gradient(135deg, #0077b6, #00b4d8);
+            color: white;
+            border-color: #005f8a;
+        }
+
+        .leader-category {
+            display: none;
+        }
+
+        .leader-category.active {
+            display: block;
+        }
+
+        .lb-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .lb-list li {
+            padding: 10px 12px;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        body.dark-theme .lb-list li {
+            border-bottom-color: rgba(255, 255, 255, 0.06);
+            color: #ddd;
+        }
+
+        .lb-rank {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 10px;
+            width: 25px;
+            text-align: center;
+        }
+    </style>
 </head>
+
 <body>
 
-<!-- Модальное окно входа/регистрации -->
-<div class="modal-overlay" id="modalOverlay">
-    <div class="modal" id="modalLogin">
-        <span class="modal-close" onclick="closeModal()">✕</span>
-        <h2>🔐 Вход</h2>
-        <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
-        <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
-        <div class="modal-error" id="loginError">Неверное имя или пароль</div>
-        <button class="modal-btn btn-primary" onclick="login()">Войти</button>
-        <span class="modal-switch" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modalLogin">
+            <span class="modal-close" onclick="closeModal()">✕</span>
+            <h2>🔐 Вход</h2>
+            <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
+            <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
+            <div class="modal-error" id="loginError">Неверное имя или пароль</div>
+            <button class="modal-btn btn-primary" onclick="login()">Войти</button>
+            <span class="modal-switch" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
+        </div>
+        <div class="modal" id="modalRegister">
+            <span class="modal-close" onclick="closeModal()">✕</span>
+            <h2>📝 Регистрация</h2>
+            <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
+            <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
+            <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
+            <div class="modal-error" id="registerError">Ошибка регистрации</div>
+            <button class="modal-btn btn-primary" onclick="register()">Зарегистрироваться</button>
+            <span class="modal-switch" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
+        </div>
     </div>
 
-    <div class="modal" id="modalRegister">
-        <span class="modal-close" onclick="closeModal()">✕</span>
-        <h2>📝 Регистрация</h2>
-        <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
-        <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
-        <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
-        <div class="modal-error" id="registerError">Ошибка регистрации</div>
-        <button class="modal-btn btn-primary" onclick="register()">Зарегистрироваться</button>
-        <span class="modal-switch" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
+    <div class="top-panel">
+        <button class="menu-btn" onclick="window.location.href='index.html'">🏠 Главное меню</button>
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+        <div class="profile-section" id="profileSection">
+            <span class="profile-avatar">👤</span>
+            <span class="profile-name" id="profileName">Гость</span>
+            <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
+        </div>
     </div>
-</div>
 
-<div class="top-panel">
-    <button class="menu-btn" onclick="window.location.href='index.html'">🏠 Главное меню</button>
-    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
-    
-    <div class="profile-section" id="profileSection">
-        <span class="profile-avatar">👤</span>
-        <span class="profile-name" id="profileName">Гость</span>
-        <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
+    <div class="title">❌ Крестики-Нолики ⭕</div>
+
+    <div class="mode-selector">
+        <button class="mode-btn active" onclick="setBoardMode('3x3')">🎯 3×3 (3 в ряд)</button>
+        <button class="mode-btn" onclick="setBoardMode('10x10')">🔟 10×10 (4 в ряд)</button>
     </div>
-</div>
 
-<div class="title">❌ Крестики-Нолики ⭕</div>
-
-<!-- Счёт -->
-<div class="score-panel">
-    <div class="score-item">
-        <img src="img/crestic.png" alt="X">
-        <span id="scoreX">0</span>
+    <div class="game-mode-select">
+        <button class="active" onclick="setGameMode('pvp')">👥 2 игрока</button>
+        <button onclick="setGameMode('bot')">🤖 Против бота</button>
     </div>
-    <div class="score-item">
-        Ничья: <span id="scoreDraw">0</span>
+
+    <div class="score-panel">
+        <div class="score-item"><img src="img/crestic.png" alt="X"> Побед: <span id="scoreX">0</span></div>
+        <div class="score-item">🤝 Ничьи: <span id="scoreDraw">0</span></div>
+        <div class="score-item"><img src="img/nolik.png" alt="O"> Поражений: <span id="scoreO">0</span></div>
     </div>
-    <div class="score-item">
-        <img src="img/nolik.png" alt="O">
-        <span id="scoreO">0</span>
+
+    <div id="boardContainer"></div>
+
+    <div id="status"></div>
+
+    <button class="restart-btn" onclick="restartGame()">Рестарт 🔄</button>
+
+    <div class="lb-panel">
+        <div class="shop-title">🏆 Победы над ботом</div>
+        <div class="leaders-tabs">
+            <button class="leaders-tab active" onclick="switchBotLB('3x3')">🎯 3×3</button>
+            <button class="leaders-tab" onclick="switchBotLB('10x10')">🔟 10×10</button>
+        </div>
+        <div class="leader-category active" id="lbBot3x3">
+            <ul class="lb-list" id="lbBot3x3List"></ul>
+        </div>
+        <div class="leader-category" id="lbBot10x10">
+            <ul class="lb-list" id="lbBot10x10List"></ul>
+        </div>
     </div>
-</div>
 
-<!-- Доска -->
-<div class="board">
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-    <div class="cell"></div>
-</div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ========== ЗАЩИТА КОДА ОТ ИЗМЕНЕНИЯ ==========
+        (function () {
+            const PROTECTED_CODE = 'ttt_protected_v2';
+            if (window.__TTT_INTEGRITY__ && window.__TTT_INTEGRITY__ !== PROTECTED_CODE) {
+                document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;color:red;">🚫 Код был изменён!</h1>';
+                throw new Error('Code integrity check failed');
+            }
+            window.__TTT_INTEGRITY__ = PROTECTED_CODE;
+        })();
 
-<div id="status"></div>
+        // ========== SUPABASE ==========
+        const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
+        let sb = null;
+        try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch (e) { }
 
-<button class="restart-btn" onclick="restartGame()">Рестарт 🔄</button>
-
-<script>
-
-// ========== ТЁМНАЯ ТЕМА ==========
-let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true';
-if (darkTheme) document.body.classList.add('dark-theme');
-updateThemeButton();
-
-function toggleTheme() {
-    darkTheme = !darkTheme;
-    localStorage.setItem('snakeDarkTheme', darkTheme);
-    if (darkTheme) document.body.classList.add('dark-theme');
-    else document.body.classList.remove('dark-theme');
-    updateThemeButton();
-}
-
-function updateThemeButton() {
-    document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙';
-}
-
-// ========== СИСТЕМА АККАУНТОВ ==========
-let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
-
-function updateProfileUI() {
-    if (currentUser) {
-        document.getElementById('profileName').textContent = currentUser.username;
-        document.getElementById('profileBtn').textContent = 'Выйти';
-        document.getElementById('profileBtn').onclick = logout;
-        document.getElementById('profileSection').querySelector('.profile-avatar').textContent = '🎮';
-    } else {
-        document.getElementById('profileName').textContent = 'Гость';
-        document.getElementById('profileBtn').textContent = 'Войти';
-        document.getElementById('profileBtn').onclick = openAuthModal;
-        document.getElementById('profileSection').querySelector('.profile-avatar').textContent = '👤';
-    }
-}
-
-function openAuthModal() {
-    if (currentUser) { logout(); return; }
-    document.getElementById('modalOverlay').style.display = 'flex';
-    document.getElementById('modalLogin').style.display = 'block';
-    document.getElementById('modalRegister').style.display = 'none';
-    document.getElementById('loginError').style.display = 'none';
-    document.getElementById('registerError').style.display = 'none';
-    document.getElementById('loginUsername').value = '';
-    document.getElementById('loginPassword').value = '';
-    document.getElementById('registerUsername').value = '';
-    document.getElementById('registerPassword').value = '';
-    document.getElementById('registerPasswordConfirm').value = '';
-}
-
-function closeModal() {
-    document.getElementById('modalOverlay').style.display = 'none';
-}
-
-function switchModal(type) {
-    document.getElementById('loginError').style.display = 'none';
-    document.getElementById('registerError').style.display = 'none';
-    if (type === 'register') {
-        document.getElementById('modalLogin').style.display = 'none';
-        document.getElementById('modalRegister').style.display = 'block';
-    } else {
-        document.getElementById('modalLogin').style.display = 'block';
-        document.getElementById('modalRegister').style.display = 'none';
-    }
-}
-
-function getAllUsers() {
-    return JSON.parse(localStorage.getItem('snakeUsers')) || {};
-}
-
-function saveUsers(users) {
-    // Сначала получаем ТЕКУЩИЕ данные из localStorage
-    const currentUsers = JSON.parse(localStorage.getItem('snakeUsers') || '{}');
-    // Объединяем с новыми данными (новые перезаписывают старые)
-    const merged = Object.assign({}, currentUsers, users);
-    localStorage.setItem('snakeUsers', JSON.stringify(merged));
-}
-
-function register() {
-    const username = document.getElementById('registerUsername').value.trim();
-    const password = document.getElementById('registerPassword').value;
-    const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
-    const errorEl = document.getElementById('registerError');
-    errorEl.style.display = 'none';
-    
-    if (!username || !password) {
-        errorEl.textContent = 'Заполните все поля'; errorEl.style.display = 'block'; return;
-    }
-    if (username.length < 3) {
-        errorEl.textContent = 'Имя должно быть не менее 3 символов'; errorEl.style.display = 'block'; return;
-    }
-    if (password.length < 4) {
-        errorEl.textContent = 'Пароль должен быть не менее 4 символов'; errorEl.style.display = 'block'; return;
-    }
-    if (password !== passwordConfirm) {
-        errorEl.textContent = 'Пароли не совпадают'; errorEl.style.display = 'block'; return;
-    }
-    
-    const users = getAllUsers();
-    if (users[username]) {
-        errorEl.textContent = 'Пользователь с таким именем уже существует'; errorEl.style.display = 'block'; return;
-    }
-    
-    users[username] = {
-        password: password,
-        stats: { deaths: 0, record: 0, eventsEncountered: 0, applesEaten: 0, goldApplesEaten: 0, totalScore: 0, totalGoldApples: 0, totalEvents: 0, bonusEvents: 0, rainbowEvents: 0, goldenEvents: 0, attackEvents: 0, selfDeaths: 0, wallDeaths: 0 },
-        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-        ownedSkins: ['green'],
-        selectedSkin: 'green',
-        settings: { up: 'w', down: 's', left: 'a', right: 'd', sparkGolden: '1', sparkRainbow: '2', sparkBonus: '3', sparkRandom: '4', buySpark: 'b' },
-        achievements: {},
-        tictactoe: { winsX: 0, winsO: 0, draws: 0 },
-        created: Date.now()
-    };
-    
-    saveUsers(users);
-    
-    currentUser = {
-        username: username,
-        stats: users[username].stats,
-        sparks: users[username].sparks,
-        ownedSkins: users[username].ownedSkins,
-        selectedSkin: users[username].selectedSkin,
-        settings: users[username].settings,
-        achievements: users[username].achievements
-    };
-    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-    
-    closeModal();
-    updateProfileUI();
-}
-
-function login() {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const errorEl = document.getElementById('loginError');
-    errorEl.style.display = 'none';
-    
-    if (!username || !password) {
-        errorEl.textContent = 'Заполните все поля'; errorEl.style.display = 'block'; return;
-    }
-    
-    const users = getAllUsers();
-    if (!users[username]) {
-        errorEl.textContent = 'Пользователь не найден'; errorEl.style.display = 'block'; return;
-    }
-    if (users[username].password !== password) {
-        errorEl.textContent = 'Неверный пароль'; errorEl.style.display = 'block'; return;
-    }
-    
-    if (!users[username].sparks) users[username].sparks = { golden: 0, rainbow: 0, bonus: 0, random: 0 };
-    if (!users[username].ownedSkins) users[username].ownedSkins = ['green'];
-    if (!users[username].selectedSkin) users[username].selectedSkin = 'green';
-    if (!users[username].settings) users[username].settings = { up: 'w', down: 's', left: 'a', right: 'd', sparkGolden: '1', sparkRainbow: '2', sparkBonus: '3', sparkRandom: '4', buySpark: 'b' };
-    if (!users[username].achievements) users[username].achievements = {};
-    if (!users[username].tictactoe) users[username].tictactoe = { winsX: 0, winsO: 0, draws: 0 };
-    
-    currentUser = {
-        username: username,
-        stats: users[username].stats,
-        sparks: users[username].sparks,
-        ownedSkins: users[username].ownedSkins,
-        selectedSkin: users[username].selectedSkin,
-        settings: users[username].settings,
-        achievements: users[username].achievements
-    };
-    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-    
-    closeModal();
-    updateProfileUI();
-}
-
-function logout() {
-    if (confirm('Выйти из аккаунта?')) {
-        currentUser = null;
-        localStorage.removeItem('snakeCurrentUser');
-        updateProfileUI();
-    }
-}
-
-document.getElementById('modalOverlay').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
-
-// ========== ИГРА КРЕСТИКИ-НОЛИКИ ==========
-const cells = document.querySelectorAll('.cell');
-const statusText = document.getElementById('status');
-
-let currentPlayer = 'X';
-let gameActive = true;
-
-const images = {
-    X: 'img/crestic.png',
-    O: 'img/nolik.png'
-};
-
-const board = ["", "", "", "", "", "", "", "", ""];
-
-const winPatterns = [
-    [0,1,2], [3,4,5], [6,7,8],
-    [0,3,6], [1,4,7], [2,5,8],
-    [0,4,8], [2,4,6]
-];
-
-updateTurnText();
-loadScores();
-
-cells.forEach((cell, index) => {
-    cell.addEventListener('click', () => {
-        if (board[index] !== "" || !gameActive) return;
-
-        board[index] = currentPlayer;
-        cell.innerHTML = `<img src="${images[currentPlayer]}">`;
-
-        checkWinner();
-
-        if (!gameActive) return;
-
-        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-        updateTurnText();
-    });
-});
-
-function updateTurnText() {
-    statusText.innerHTML = `Ход: <img src="${images[currentPlayer]}">`;
-}
-
-function checkWinner() {
-    for (let pattern of winPatterns) {
-        const [a, b, c] = pattern;
-        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-            statusText.innerHTML = `Победил <img src="${images[board[a]]}"> 🎉`;
-            gameActive = false;
-            updateScore(board[a]);
-            return;
+        // ========== ЗАЩИТА SUPABASE ==========
+        if (sb) {
+            const _origFrom = sb.from.bind(sb);
+            sb.from = function (table) {
+                const allowed = ['players', 'tictactoe_leaderboard'];
+                if (!allowed.includes(table)) {
+                    return { select: () => ({ single: () => Promise.resolve({ data: null }) }), upsert: () => Promise.resolve({}) };
+                }
+                return _origFrom(table);
+            };
         }
-    }
 
-    if (!board.includes("")) {
-        statusText.innerHTML = `Ничья 🤝`;
-        gameActive = false;
-        updateScore('draw');
-    }
-}
+        // ========== ТЁМНАЯ ТЕМА ==========
+        let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true';
+        if (darkTheme) document.body.classList.add('dark-theme');
+        function updateThemeButton() { document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙'; }
+        updateThemeButton();
+        function toggleTheme() { darkTheme = !darkTheme; localStorage.setItem('snakeDarkTheme', darkTheme); if (darkTheme) document.body.classList.add('dark-theme'); else document.body.classList.remove('dark-theme'); updateThemeButton(); }
 
-function updateScore(winner) {
-    const users = getAllUsers();
-    const username = currentUser ? currentUser.username : 'guest';
-    
-    if (!users[username]) users[username] = { tictactoe: { winsX: 0, winsO: 0, draws: 0 } };
-    if (!users[username].tictactoe) users[username].tictactoe = { winsX: 0, winsO: 0, draws: 0 };
-    
-    if (winner === 'X') users[username].tictactoe.winsX++;
-    else if (winner === 'O') users[username].tictactoe.winsO++;
-    else users[username].tictactoe.draws++;
-    
-    saveUsers(users);
-    loadScores();
-}
+        // ========== АНТИ-ЧИТ СИСТЕМА ==========
+        let antiCheatToken = null;
+        let gameStartTime = Date.now();
 
-function loadScores() {
-    const users = getAllUsers();
-    const username = currentUser ? currentUser.username : 'guest';
-    const scores = (users[username] && users[username].tictactoe) || { winsX: 0, winsO: 0, draws: 0 };
-    
-    document.getElementById('scoreX').textContent = scores.winsX;
-    document.getElementById('scoreO').textContent = scores.winsO;
-    document.getElementById('scoreDraw').textContent = scores.draws;
-}
+        async function generateAntiCheatToken() {
+            if (!currentUser || !sb) return null;
+            try {
+                const code = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+                const data = code + '|' + Date.now() + '|' + currentUser.username;
+                const key = 'ttt_anti_cheat';
+                let enc = '';
+                for (let i = 0; i < data.length; i++) enc += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+                antiCheatToken = btoa(enc);
+                return antiCheatToken;
+            } catch (e) { return null; }
+        }
 
-function restartGame() {
-    board.fill("");
-    cells.forEach(cell => cell.innerHTML = "");
-    currentPlayer = 'X';
-    gameActive = true;
-    updateTurnText();
-}
+        async function verifyGameIntegrity() {
+            const gameTime = (Date.now() - gameStartTime) / 1000;
 
-// ========== ЗАПУСК ==========
-updateProfileUI();
+            // Проверка счёта
+            if (typeof scores.X !== 'number' || scores.X < 0 || scores.X > 9999) { scores.X = 0; loadScores(); }
+            if (typeof scores.O !== 'number' || scores.O < 0 || scores.O > 9999) { scores.O = 0; loadScores(); }
+            if (typeof scores.draw !== 'number' || scores.draw < 0 || scores.draw > 9999) { scores.draw = 0; loadScores(); }
 
-</script>
+            // Проверка доски
+            if (typeof board !== 'object' || board.length !== boardSize * boardSize) {
+                restartGame(); return false;
+            }
+
+            // Проверка очерёдности ходов
+            let xCount = 0, oCount = 0;
+            for (let i = 0; i < board.length; i++) {
+                if (board[i] === 'X') xCount++;
+                if (board[i] === 'O') oCount++;
+            }
+
+            if (xCount > oCount + 1 || oCount > xCount) {
+                console.warn('⚠️ Нарушение очерёдности ходов!');
+                restartGame(); return false;
+            }
+
+            return true;
+        }
+
+        // ========== ЕДИНАЯ СИСТЕМА АККАУНТОВ (ЕСА) ==========
+        let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
+        function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
+        function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)); }
+
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password + 'gamelock_salt_2026');
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function updateProfileUI() {
+            if (currentUser) {
+                document.getElementById('profileName').textContent = currentUser.username;
+                document.getElementById('profileBtn').textContent = 'Выйти';
+                document.getElementById('profileBtn').onclick = logout;
+            } else {
+                document.getElementById('profileName').textContent = 'Гость';
+                document.getElementById('profileBtn').textContent = 'Войти';
+                document.getElementById('profileBtn').onclick = openAuthModal;
+            }
+            loadScores();
+        }
+        function openAuthModal() { if (currentUser) { logout(); return; } document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none'; }
+        function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+        function switchModal(type) {
+            if (type === 'register') { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'block'; }
+            else { document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none'; }
+        }
+
+        async function register() {
+            const u = document.getElementById('registerUsername').value.trim();
+            const p = document.getElementById('registerPassword').value;
+            const p2 = document.getElementById('registerPasswordConfirm').value;
+            if (!u || u.length < 3) return alert('Имя: мин 3');
+            if (!p || p.length < 4) return alert('Пароль: мин 4');
+            if (p !== p2) return alert('Не совпадают');
+
+            if (sb) {
+                const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
+                if (exists) return alert('Занято');
+                const hashed = await hashPassword(p);
+                await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() });
+            }
+
+            const users = getAllUsers();
+            if (users[u]) return alert('Занято');
+            users[u] = { password: p, tictactoe: { bot3x3: { winsX: 0, winsO: 0, draws: 0 }, bot10x10: { winsX: 0, winsO: 0, draws: 0 }, pvp3x3: { winsX: 0, winsO: 0, draws: 0 }, pvp10x10: { winsX: 0, winsO: 0, draws: 0 } }, created: Date.now() };
+            saveUsers(users);
+            currentUser = { username: u };
+            localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+            closeModal(); updateProfileUI();
+        }
+
+        async function login() {
+            const u = document.getElementById('loginUsername').value.trim();
+            const p = document.getElementById('loginPassword').value;
+            if (!u || !p) return alert('Заполните');
+
+            if (sb) {
+                const { data: user } = await sb.from('players').select('*').eq('username', u).single();
+                if (user) {
+                    const hashed = await hashPassword(p);
+                    if (hashed !== user.password_hash) return alert('Неверный пароль');
+                }
+            }
+
+            const users = getAllUsers();
+            if (!users[u]) return alert('Не найден');
+            if (users[u].password !== p) return alert('Неверный пароль');
+
+            if (users[u].tictactoe && typeof users[u].tictactoe.winsX === 'number' && !users[u].tictactoe.bot3x3) {
+                const old = users[u].tictactoe;
+                users[u].tictactoe = { bot3x3: { winsX: old.winsX || 0, winsO: old.winsO || 0, draws: old.draws || 0 }, bot10x10: { winsX: 0, winsO: 0, draws: 0 }, pvp3x3: { winsX: 0, winsO: 0, draws: 0 }, pvp10x10: { winsX: 0, winsO: 0, draws: 0 } };
+                saveUsers(users);
+            }
+
+            currentUser = { username: u };
+            localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+            closeModal(); updateProfileUI();
+            generateAntiCheatToken();
+        }
+
+        function logout() { if (confirm('Выйти?')) { currentUser = null; localStorage.removeItem('snakeCurrentUser'); updateProfileUI(); } }
+        document.getElementById('modalOverlay').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+
+        // ========== ИГРА ==========
+        let boardSize = 3, winLength = 3, vsBot = false;
+        let board = [], gameActive = false, currentPlayer = 'X';
+        let scores = { X: 0, O: 0, draw: 0 };
+
+        const images = { X: 'img/crestic.png', O: 'img/nolik.png' };
+
+        function getBotLevel() {
+            const wins = scores.X;
+            if (wins <= 10) return 1;
+            if (wins <= 20) return 2;
+            if (wins <= 30) return 3;
+            return 4;
+        }
+        function getBotLevelName(level) { const names = ['', '🌱 Начальный', '🌿 Средний', '🌳 Продвинутый', '👑 Эксперт']; return names[level] || '🌱 Начальный'; }
+
+        function setBoardMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            if (mode === '3x3') { boardSize = 3; winLength = 3; }
+            else { boardSize = 10; winLength = 4; }
+            restartGame(); loadScores();
+        }
+
+        function setGameMode(mode) {
+            document.querySelectorAll('.game-mode-select button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            vsBot = mode === 'bot';
+            restartGame(); loadScores();
+        }
+
+        function createBoard() {
+            const container = document.getElementById('boardContainer');
+            container.innerHTML = '';
+            container.className = boardSize === 3 ? 'board-3x3' : 'board-10x10';
+            board = Array(boardSize * boardSize).fill("");
+            for (let i = 0; i < boardSize * boardSize; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.addEventListener('click', () => handleCellClick(i));
+                container.appendChild(cell);
+            }
+            gameStartTime = Date.now();
+        }
+
+        function handleCellClick(index) {
+            if (board[index] !== "" || !gameActive) return;
+            if (vsBot && currentPlayer === 'O') return;
+            makeMove(index, currentPlayer);
+            if (gameActive && vsBot && currentPlayer === 'O') {
+                setTimeout(botMove, 200 + Math.random() * 300);
+            }
+        }
+
+        function makeMove(index, player) {
+            board[index] = player;
+            const cells = document.querySelectorAll('#boardContainer .cell');
+            cells[index].innerHTML = `<img src="${images[player]}">`;
+
+            if (checkWin(player)) {
+                document.getElementById('status').innerHTML = `Победил <img src="${images[player]}"> 🎉`;
+                gameActive = false;
+                updateScore(player);
+                return;
+            }
+            if (!board.includes("")) {
+                document.getElementById('status').innerHTML = `Ничья 🤝`;
+                gameActive = false;
+                updateScore('draw');
+                return;
+            }
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateTurnText();
+        }
+
+        function checkWin(player) {
+            const size = boardSize, len = winLength;
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col <= size - len; col++) {
+                    let win = true;
+                    for (let i = 0; i < len; i++) { if (board[row * size + col + i] !== player) { win = false; break; } }
+                    if (win) return true;
+                }
+            }
+            for (let col = 0; col < size; col++) {
+                for (let row = 0; row <= size - len; row++) {
+                    let win = true;
+                    for (let i = 0; i < len; i++) { if (board[(row + i) * size + col] !== player) { win = false; break; } }
+                    if (win) return true;
+                }
+            }
+            for (let row = 0; row <= size - len; row++) {
+                for (let col = 0; col <= size - len; col++) {
+                    let win = true;
+                    for (let i = 0; i < len; i++) { if (board[(row + i) * size + (col + i)] !== player) { win = false; break; } }
+                    if (win) return true;
+                }
+            }
+            for (let row = 0; row <= size - len; row++) {
+                for (let col = len - 1; col < size; col++) {
+                    let win = true;
+                    for (let i = 0; i < len; i++) { if (board[(row + i) * size + (col - i)] !== player) { win = false; break; } }
+                    if (win) return true;
+                }
+            }
+            return false;
+        }
+
+        // ========== БОТ ==========
+        function botMove() {
+            if (!gameActive || currentPlayer !== 'O') return;
+            const level = getBotLevel();
+            const size = boardSize;
+            let move = null;
+
+            move = findImmediateWin('O');
+            if (move !== null) { makeMove(move, 'O'); return; }
+
+            if (level >= 2) {
+                move = findImmediateWin('X');
+                if (move !== null) { makeMove(move, 'O'); return; }
+            }
+
+            if (size === 3) {
+                if (level >= 3) {
+                    move = findFork3('O'); if (move !== null) { makeMove(move, 'O'); return; }
+                    move = findFork3('X'); if (move !== null) { makeMove(move, 'O'); return; }
+                }
+                if (level >= 4) { move = expertMove3(); if (move !== null) { makeMove(move, 'O'); return; } }
+                move = findCenterMove(); if (move !== null) { makeMove(move, 'O'); return; }
+                move = findCornerMove(); if (move !== null) { makeMove(move, 'O'); return; }
+            } else {
+                if (level >= 3) {
+                    move = findBestStrategicMove('O'); if (move !== null) { makeMove(move, 'O'); return; }
+                    move = findBestStrategicMove('X'); if (move !== null) { makeMove(move, 'O'); return; }
+                }
+                move = findGreedyMove(level); if (move !== null) { makeMove(move, 'O'); return; }
+            }
+            makeRandomMove();
+        }
+
+        function findImmediateWin(player) {
+            for (let i = 0; i < board.length; i++) {
+                if (board[i] === "") { board[i] = player; if (checkWin(player)) { board[i] = ""; return i; } board[i] = ""; }
+            }
+            return null;
+        }
+
+        function findFork3(player) {
+            for (let i = 0; i < 9; i++) {
+                if (board[i] !== '') continue;
+                board[i] = player;
+                let threats = 0;
+                for (let j = 0; j < 9; j++) {
+                    if (i !== j && board[j] === '') { board[j] = player; if (checkWin(player)) threats++; board[j] = ''; }
+                }
+                board[i] = '';
+                if (threats >= 2) return i;
+            }
+            return null;
+        }
+
+        function expertMove3() {
+            const emptyCount = board.filter(c => c === "").length;
+            if (emptyCount === 9) return 4;
+
+            if (emptyCount === 8) {
+                if (board[6] === 'X') { if (board[2] === "") return 2; }
+                if (board[2] === 'X') { if (board[6] === "") return 6; }
+                if (board[0] === 'X') { if (board[8] === "") return 8; }
+                if (board[8] === 'X') { if (board[0] === "") return 0; }
+                if (board[4] !== "") return 0;
+                return 4;
+            }
+
+            if (emptyCount === 7) {
+                if (board[6] === 'X' && board[2] === 'X' && board[8] === "") return 8;
+                if (board[6] === 'X' && board[8] === 'X' && board[2] === "") return 2;
+                if (board[2] === 'X' && board[8] === 'X' && board[6] === "") return 6;
+                if (board[0] === 'X' && board[4] === 'X' && board[8] === "") return 8;
+                if (board[0] === 'X' && board[8] === 'X' && board[4] === "") return 4;
+                if (board[4] === 'X' && board[8] === 'X' && board[0] === "") return 0;
+                if (board[6] === 'X' && board[4] === 'X' && board[2] === "") return 2;
+                if (board[6] === 'X' && board[2] === 'X' && board[4] === "") return 4;
+                if (board[4] === 'X' && board[2] === 'X' && board[6] === "") return 6;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] !== "") continue;
+                    board[i] = 'X'; if (checkWin('X')) { board[i] = ""; return i; } board[i] = "";
+                }
+            }
+
+            let move = findImmediateWin('O'); if (move !== null) return move;
+            move = findImmediateWin('X'); if (move !== null) return move;
+            move = findFork3('X'); if (move !== null) return move;
+            move = findFork3('O'); if (move !== null) return move;
+
+            let bestScore = -Infinity, bestMove = null;
+            const order = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+            for (let i of order) {
+                if (board[i] === "") {
+                    board[i] = 'O';
+                    const score = minimax(board, 0, false, -Infinity, Infinity);
+                    board[i] = "";
+                    if (score > bestScore) { bestScore = score; bestMove = i; }
+                }
+            }
+            return bestMove;
+        }
+
+        function minimax(b, depth, isMax, alpha, beta) {
+            if (checkWin('O')) return 10 - depth;
+            if (checkWin('X')) return depth - 10;
+            if (!b.includes("")) return 0;
+            if (depth > 6) return 0;
+            const order = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+            if (isMax) {
+                let best = -Infinity;
+                for (let i of order) {
+                    if (b[i] === "") { b[i] = 'O'; best = Math.max(best, minimax(b, depth + 1, false, alpha, beta)); b[i] = ""; alpha = Math.max(alpha, best); if (beta <= alpha) break; }
+                }
+                return best;
+            } else {
+                let best = Infinity;
+                for (let i of order) {
+                    if (b[i] === "") { b[i] = 'X'; best = Math.min(best, minimax(b, depth + 1, true, alpha, beta)); b[i] = ""; beta = Math.min(beta, best); if (beta <= alpha) break; }
+                }
+                return best;
+            }
+        }
+
+        function findBestStrategicMove(player) {
+            let bestScore = -9999, bestMove = null;
+            for (let i = 0; i < board.length; i++) {
+                if (board[i] === "") { board[i] = player; const score = evaluatePosition(player); board[i] = ""; if (score > bestScore) { bestScore = score; bestMove = i; } }
+            }
+            if (bestScore > 10 || (player === 'X' && bestScore > 5)) return bestMove;
+            return null;
+        }
+
+        function evaluatePosition(player) {
+            const size = boardSize, len = winLength; let totalScore = 0;
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    if (board[row * size + col] === player) {
+                        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+                        for (let [dr, dc] of dirs) {
+                            let count = 1, openEnds = 0;
+                            for (let step = 1; step < len; step++) { const r = row + dr * step, c = col + dc * step; if (r >= 0 && r < size && c >= 0 && c < size) { if (board[r * size + c] === player) count++; else if (board[r * size + c] === "") { openEnds++; break; } else break; } }
+                            for (let step = 1; step < len; step++) { const r = row - dr * step, c = col - dc * step; if (r >= 0 && r < size && c >= 0 && c < size) { if (board[r * size + c] === player) count++; else if (board[r * size + c] === "") { openEnds++; break; } else break; } }
+                            if (count >= 2) totalScore += count * count * (openEnds + 1) * 10;
+                        }
+                    }
+                }
+            }
+            return totalScore;
+        }
+
+        function findGreedyMove(level) {
+            const size = boardSize, center = Math.floor(size / 2); let bestScore = -9999, bestMove = null;
+            for (let i = 0; i < board.length; i++) {
+                if (board[i] === "") {
+                    let score = 0; const row = Math.floor(i / size), col = i % size;
+                    score += Math.max(0, (size - Math.abs(row - center) - Math.abs(col - center))) * 2;
+                    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if ((dr || dc) && row + dr >= 0 && row + dr < size && col + dc >= 0 && col + dc < size) score += board[(row + dr) * size + (col + dc)] === 'O' ? 5 : board[(row + dr) * size + (col + dc)] === 'X' ? 3 : 0;
+                    board[i] = 'O'; score += evaluatePosition('O') * 0.5; board[i] = 'X'; score += evaluatePosition('X') * 0.3; board[i] = "";
+                    if (level <= 2) score += Math.random() * 20;
+                    if (score > bestScore) { bestScore = score; bestMove = i; }
+                }
+            }
+            return bestMove;
+        }
+
+        function findCenterMove() { const center = Math.floor(boardSize / 2); const idx = center * boardSize + center; return board[idx] === "" ? idx : null; }
+        function findCornerMove() { const corners = boardSize === 3 ? [0, 2, 6, 8] : [0, boardSize - 1, (boardSize - 1) * boardSize, boardSize * boardSize - 1]; const empty = corners.filter(i => board[i] === ""); return empty.length > 0 ? empty[Math.floor(Math.random() * empty.length)] : null; }
+        function makeRandomMove() { const empty = []; for (let i = 0; i < board.length; i++) if (board[i] === "") empty.push(i); if (empty.length > 0) makeMove(empty[Math.floor(Math.random() * empty.length)], 'O'); }
+
+        function updateTurnText() {
+            if (!gameActive) return;
+            const level = getBotLevel(), levelName = getBotLevelName(level);
+            document.getElementById('status').innerHTML = `Ход: <img src="${images[currentPlayer]}">${vsBot && currentPlayer === 'O' ? ' (Бот думает...)' : ''} <span class="bot-level">${vsBot ? 'Уровень: ' + levelName : ''}</span>`;
+        }
+
+        // ========== СТАТИСТИКА + SUPABASE ЛИДЕРБОРД ==========
+        function getStatKey() {
+            if (vsBot) return boardSize === 3 ? 'bot3x3' : 'bot10x10';
+            return boardSize === 3 ? 'pvp3x3' : 'pvp10x10';
+        }
+
+        async function updateScore(winner) {
+            if (!await verifyGameIntegrity()) return;
+
+            const users = getAllUsers();
+            const username = currentUser ? currentUser.username : 'guest';
+            if (!users[username]) users[username] = {};
+            if (!users[username].tictactoe) users[username].tictactoe = {};
+            const key = getStatKey();
+            if (!users[username].tictactoe[key]) users[username].tictactoe[key] = { winsX: 0, winsO: 0, draws: 0 };
+
+            if (winner === 'X') { scores.X++; users[username].tictactoe[key].winsX++; }
+            else if (winner === 'O') { scores.O++; users[username].tictactoe[key].winsO++; }
+            else { scores.draw++; users[username].tictactoe[key].draws++; }
+
+            saveUsers(users);
+            loadScores();
+
+            if (currentUser && sb) {
+                try {
+                    await sb.from('tictactoe_leaderboard').upsert({
+                        username: currentUser.username,
+                        mode: key,
+                        wins: users[username].tictactoe[key].winsX,
+                        losses: users[username].tictactoe[key].winsO,
+                        draws: users[username].tictactoe[key].draws,
+                        anti_cheat_token: antiCheatToken,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'username,mode' });
+                } catch (e) { }
+            }
+
+            updateBotLeaderboard();
+        }
+
+        function loadScores() {
+            if (currentUser) {
+                const users = getAllUsers();
+                const key = getStatKey();
+                const stats = users[currentUser.username]?.tictactoe?.[key];
+                if (stats) { scores.X = stats.winsX || 0; scores.O = stats.winsO || 0; scores.draw = stats.draws || 0; }
+                else { scores.X = 0; scores.O = 0; scores.draw = 0; }
+            } else { scores.X = 0; scores.O = 0; scores.draw = 0; }
+            document.getElementById('scoreX').textContent = scores.X;
+            document.getElementById('scoreO').textContent = scores.O;
+            document.getElementById('scoreDraw').textContent = scores.draw;
+        }
+
+        function switchBotLB(mode) {
+            document.querySelectorAll('.leaders-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.leader-category').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.leaders-tab[onclick*="${mode}"]`).classList.add('active');
+            document.getElementById(mode === '3x3' ? 'lbBot3x3' : 'lbBot10x10').classList.add('active');
+        }
+
+        async function updateBotLeaderboard() {
+            const medals = ['🥇', '🥈', '🥉'];
+            async function renderLB(mode, listId) {
+                const listEl = document.getElementById(listId);
+                if (!listEl) return;
+                let sorted = [];
+                if (sb) {
+                    try {
+                        const { data } = await sb.from('tictactoe_leaderboard').select('*').eq('mode', mode).order('wins', { ascending: false }).limit(10);
+                        if (data && data.length > 0) sorted = data.map(d => [d.username, d.wins]);
+                    } catch (e) { }
+                }
+                if (sorted.length === 0) {
+                    const users = getAllUsers(), stats = {};
+                    for (const u in users) { const ttt = users[u]?.tictactoe; if (ttt && ttt[mode]) stats[u] = ttt[mode].winsX || 0; }
+                    sorted = Object.entries(stats).sort((a, b) => b[1] - a[1]).slice(0, 10);
+                }
+                listEl.innerHTML = sorted.map(([name, wins], i) => `<li><span><span class="lb-rank">${medals[i] || (i + 1)}</span> ${name}</span><span>🏆 ${wins} побед</span></li>`).join('') || '<li>Нет побед</li>';
+            }
+            await renderLB('bot3x3', 'lbBot3x3List');
+            await renderLB('bot10x10', 'lbBot10x10List');
+        }
+
+        function restartGame() { createBoard(); currentPlayer = 'X'; gameActive = true; updateTurnText(); loadScores(); gameStartTime = Date.now(); }
+
+        // Периодическая проверка
+        setInterval(verifyGameIntegrity, 10000);
+
+        // ========== ЗАПУСК ==========
+        updateProfileUI(); loadScores(); restartGame(); updateBotLeaderboard(); generateAntiCheatToken();
+    </script>
 </body>
-</html>                                                     
+
+</html>
