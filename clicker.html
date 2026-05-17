@@ -1601,47 +1601,34 @@ async function saveToSupabase() {
         for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: collectibleStickers[id].basePrice, price: collectibleStickers[id].price || 0, created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
         if (!Array.isArray(pinned)) pinned = [];
         
-        var response = await fetch(SB_URL + '/rest/v1/clicker_data?on_conflict=username', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': SB_KEY,
-                'Authorization': 'Bearer ' + SB_KEY,
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-                username: currentUser.username,
-                balance: Math.floor(Math.min(balance, 9000000000000)),
-                total_clicks: Math.floor(totalClicks),
-                click_power: clickPower,
-                auto_clicker: autoClicker,
-                multiplier: multiplier,
-                rebirths: rebirths,
-                stickers: stickers,
-                craft_sel: craftSel,
-                craft_count: craftCnt,
-                craft_target: craftTarget || '',
-                limited_stickers: safeStickers,
-                collectible_stickers: safeCollectible,
-                collectible_tokens: collectibleTokens,
-                prestige_level: prestigeLevel,
-                coins: Math.floor(coins),
-                favorites: favorites,
-                pinned: pinned,
-                updated_at: new Date().toISOString()
-            })
+        var body = JSON.stringify({
+            username: currentUser.username,
+            balance: Math.floor(Math.min(balance, 9000000000000)),
+            total_clicks: Math.floor(totalClicks),
+            click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
+            stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: craftTarget || '',
+            limited_stickers: safeStickers, collectible_stickers: safeCollectible,
+            collectible_tokens: collectibleTokens, prestige_level: prestigeLevel,
+            coins: Math.floor(coins), favorites: favorites, pinned: pinned,
+            updated_at: new Date().toISOString()
         });
         
-        if (response.ok) {
-            // Данные реально сохранились!
-            console.log('✅ Supabase');
-        } else {
-            var errorText = await response.text();
-            console.error('❌ Supabase error:', response.status, errorText.substring(0, 200));
-        }
-    } catch (e) {
-        console.log('⚠️ Локально');
-    }
+        // Удаляем старую запись
+        await fetch(SB_URL + '/rest/v1/clicker_data?username=eq.' + encodeURIComponent(currentUser.username), {
+            method: 'DELETE',
+            headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+        });
+        
+        // Вставляем новую
+        var response = await fetch(SB_URL + '/rest/v1/clicker_data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'return=minimal' },
+            body: body
+        });
+        
+        if (response.ok) { console.log('✅ Supabase'); }
+        else { console.error('❌', response.status); }
+    } catch (e) { console.log('⚠️ Локально'); }
 }
 // ========== ЛИДЕРБОРД ==========
 async function updateStickerLB() { var listEl = document.getElementById('stickerLB'); if (!listEl) return; var bestStickers = {}, medals = ['🥇', '🥈', '🥉']; function addSticker(username, sticker) { if (!sticker || !sticker.price || !sticker.emoji) return; if (!bestStickers[username] || sticker.price > bestStickers[username].price) { bestStickers[username] = { username: username, emoji: sticker.emoji, colorName: sticker.color?.name || '?', colorBg: sticker.color?.bg || '#ccc', price: sticker.price } } } var un = currentUser ? currentUser.username : 'Гость'; for (var id in limitedStickers) { if (limitedStickers[id]) addSticker(un, limitedStickers[id]) } for (var id in collectibleStickers) { if (collectibleStickers[id]) addSticker(un, collectibleStickers[id]) } if (sb) { try { var { data } = await sb.from('clicker_data').select('username,limited_stickers,collectible_stickers'); if (data) { for (var row of data) { var stickers = row.limited_stickers; if (typeof stickers === 'string') { try { stickers = JSON.parse(stickers) } catch (e) { continue } } if (stickers) for (var id in stickers) { if (stickers[id]) addSticker(row.username, stickers[id]) } var cstickers = row.collectible_stickers; if (typeof cstickers === 'string') { try { cstickers = JSON.parse(cstickers) } catch (e) { continue } } if (cstickers) for (var id in cstickers) { if (cstickers[id]) addSticker(row.username, cstickers[id]) } } } } catch (e) { } } var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price); listEl.innerHTML = sorted.slice(0, 10).map(function (s, i) { return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span> ' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> ' + formatMoney(s.price || 0) + '</span></li>' }).join('') || '<li>Нет стикеров</li>' }
