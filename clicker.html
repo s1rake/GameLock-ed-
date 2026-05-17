@@ -1596,68 +1596,37 @@ async function saveToSupabase() {
     if (!currentUser || !sb) return;
     try {
         var safeStickers = {};
-        for (var id in limitedStickers) { 
-            if (!limitedStickers[id]) continue; 
-            safeStickers[id] = { 
-                emoji: limitedStickers[id].emoji, 
-                color: limitedStickers[id].color, 
-                basePrice: limitedStickers[id].basePrice, 
-                price: Math.min(limitedStickers[id].price || 0, 9000000000000), 
-                created: limitedStickers[id].created || Date.now() 
-            }; 
-        }
+        for (var id in limitedStickers) { if (!limitedStickers[id]) continue; safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: limitedStickers[id].basePrice, price: Math.min(limitedStickers[id].price || 0, 9000000000000), created: limitedStickers[id].created || Date.now() }; }
         var safeCollectible = {};
-        for (var id in collectibleStickers) { 
-            if (!collectibleStickers[id]) continue; 
-            safeCollectible[id] = { 
-                emoji: collectibleStickers[id].emoji, 
-                color: collectibleStickers[id].color, 
-                basePrice: collectibleStickers[id].basePrice, 
-                price: collectibleStickers[id].price || 0, 
-                created: collectibleStickers[id].created || Date.now(), 
-                isCollectible: true 
-            }; 
-        }
-        
-        // Убеждаемся что pinned — массив
+        for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: collectibleStickers[id].basePrice, price: collectibleStickers[id].price || 0, created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
         if (!Array.isArray(pinned)) pinned = [];
         
         var updateData = {
-            username: currentUser.username,
             balance: Math.floor(Math.min(balance, 9000000000000)),
-            total_clicks: Math.floor(Math.min(totalClicks, 9000000000000)),
-            click_power: clickPower,
-            auto_clicker: autoClicker,
-            multiplier: multiplier,
-            rebirths: rebirths,
-            stickers: stickers || {},
-            craft_sel: craftSel || {},
-            craft_count: craftCnt,
-            craft_target: craftTarget || '',
-            limited_stickers: safeStickers,
-            collectible_stickers: safeCollectible,
-            collectible_tokens: collectibleTokens,
-            prestige_level: prestigeLevel,
-            coins: Math.floor(Math.min(coins, 9000000000000)),
-            favorites: favorites || {},
-            pinned: pinned,
+            total_clicks: Math.floor(totalClicks),
+            click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
+            stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: craftTarget || '',
+            limited_stickers: safeStickers, collectible_stickers: safeCollectible,
+            collectible_tokens: collectibleTokens, prestige_level: prestigeLevel,
+            coins: Math.floor(coins), favorites: favorites, pinned: pinned,
             updated_at: new Date().toISOString()
         };
         
-        // Пробуем update
-        var { data, error } = await sb.from('clicker_data').update(updateData).eq('username', currentUser.username).select();
+        // Сначала пробуем update БЕЗ username в данных
+        var { error } = await sb.from('clicker_data').update(updateData).eq('username', currentUser.username);
         
         if (error) {
-            // Если записи нет — insert
-            var { data: insertData, error: insertError } = await sb.from('clicker_data').insert(updateData).select();
+            // Если не найдено — создаём
+            updateData.username = currentUser.username;
+            var { error: insertError } = await sb.from('clicker_data').insert(updateData);
             if (insertError) {
-                console.error('❌ Ошибка сохранения:', insertError.message);
+                console.error('❌ Ошибка:', insertError.message);
             } else {
-                console.log('✅ Создано в Supabase');
+                console.log('✅ Создано');
             }
         }
     } catch (e) {
-        console.log('⚠️ Сохранено локально:', e.message);
+        console.log('⚠️ Локально');
     }
 }
 // ========== ЛИДЕРБОРД ==========
