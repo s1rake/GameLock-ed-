@@ -1401,109 +1401,21 @@ function resetSessionCounters() { sessionClicks = 0; sessionEarned = 0; sessionC
 
 var consecutiveRollbacks = 0;
 
-async function endSession() {
-    var sessionData = {
-        startTime: sessionSnapshot.time, endTime: Date.now(), snapshot: sessionSnapshot,
-        actions: { clicks: sessionClicks, earned: sessionEarned, crafts: sessionCrafts, fuses: sessionFuses, packsOpened: sessionPacksOpened, upgrades: sessionUpgrades, rebirths: sessionRebirths, sells: sessionSells, collectibleSells: sessionCollectibleSells, limitedCreated: sessionLimitedCreated, collectibleCreated: sessionCollectibleCreated, stickersCreated: sessionStickersCreated },
-        result: { balance: balance, coins: coins, tokens: collectibleTokens, prestige: prestigeLevel, stickers: JSON.parse(JSON.stringify(stickers)), limited: JSON.parse(JSON.stringify(limitedStickers)), collectible: JSON.parse(JSON.stringify(collectibleStickers)) }
-    };
-    
-    var isValid = validateSession(sessionData);
-    
-    // Проверка с прошлой сессией
-    if (isValid && sessionHistory.length > 0) {
-        var prevSession = sessionHistory[0];
-        var prevResult = prevSession.result;
-        var autoIncome = autoClicker * Math.pow(2, Math.min(multiplier, 50)) * getRebMult() * 10;
-        var maxAllowed = Math.max(Math.abs(prevResult.balance), 1e12) * 0.5 + autoIncome + 1000000;
-        
-        if (Math.abs(balance - prevResult.balance) > maxAllowed) {
-            console.warn('⚠️ Баланс не совпадает с прошлой сессией!');
-            isValid = false;
+// Замени endSession на простую проверку
+setInterval(async function () {
+    if (!sb || !currentUser) return;
+    try {
+        var { data } = await sb.from('clicker_data').select('balance, coins, collectible_tokens, prestige_level').eq('username', currentUser.username).single();
+        if (data) {
+            var changed = false;
+            if (Math.abs(balance - data.balance) > 1e13) { balance = data.balance; changed = true; }
+            if (Math.abs(coins - data.coins) > 10000) { coins = data.coins; changed = true; }
+            if (Math.abs(collectibleTokens - data.collectible_tokens) > 1000) { collectibleTokens = data.collectible_tokens; changed = true; }
+            if (Math.abs(prestigeLevel - data.prestige_level) > 100) { prestigeLevel = data.prestige_level; changed = true; }
+            if (changed) { updateUI(); saveClickerData(); updateCoins(); updateTokenBal(); checkPrestigeDisplay(); }
         }
-    }
-    
-    // Если невалидна — откат из Supabase
-    if (!isValid && sb && currentUser) {
-        try {
-            var { data, error } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
-            
-            if (!error && data) {
-                console.warn('🛡️ Откат из Supabase');
-                
-                // Восстанавливаем ВСЁ из Supabase
-                balance = data.balance || 0;
-                coins = data.coins || 0;
-                collectibleTokens = data.collectible_tokens || 0;
-                prestigeLevel = data.prestige_level || 0;
-                clickPower = data.click_power || 1;
-                autoClicker = data.auto_clicker || 0;
-                multiplier = data.multiplier || 0;
-                rebirths = data.rebirths || 0;
-                totalClicks = data.total_clicks || 0;
-                
-                var supabaseStickers = typeof data.stickers === 'string' ? JSON.parse(data.stickers) : (data.stickers || {});
-                var supabaseLimited = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
-                var supabaseCollectible = typeof data.collectible_stickers === 'string' ? JSON.parse(data.collectible_stickers) : (data.collectible_stickers || {});
-                
-                stickers = supabaseStickers;
-                limitedStickers = supabaseLimited;
-                collectibleStickers = supabaseCollectible;
-                
-                updateUI();
-                saveClickerData();
-                updateCoins();
-                updateTokenBal();
-                checkPrestigeDisplay();
-                toast('🛡️ Откат из облака', '#ff4444');
-                
-                // ПЕРЕЗАПИСЫВАЕМ прошлую сессию данными из Supabase
-                var cleanSession = {
-                    startTime: Date.now() - 10000,
-                    endTime: Date.now(),
-                    snapshot: {
-                        time: Date.now() - 10000,
-                        balance: balance, coins: coins, tokens: collectibleTokens, prestige: prestigeLevel,
-                        stickers: JSON.parse(JSON.stringify(stickers)),
-                        limited: JSON.parse(JSON.stringify(limitedStickers)),
-                        collectible: JSON.parse(JSON.stringify(collectibleStickers)),
-                        clickPower: clickPower, autoClicker: autoClicker, multiplier: multiplier, rebirths: rebirths
-                    },
-                    actions: { clicks: 0, earned: 0, crafts: 0, fuses: 0, packsOpened: 0, upgrades: 0, rebirths: 0, sells: 0, collectibleSells: 0, limitedCreated: 0, collectibleCreated: 0, stickersCreated: 0 },
-                    result: {
-                        balance: balance, coins: coins, tokens: collectibleTokens, prestige: prestigeLevel,
-                        stickers: JSON.parse(JSON.stringify(stickers)),
-                        limited: JSON.parse(JSON.stringify(limitedStickers)),
-                        collectible: JSON.parse(JSON.stringify(collectibleStickers))
-                    }
-                };
-                
-                // Очищаем историю и сохраняем чистую сессию
-                sessionHistory = [cleanSession];
-                localStorage.setItem('clicker_sessions', JSON.stringify(sessionHistory));
-                
-                // Начинаем новую сессию с правильными данными
-                takeSessionSnapshot();
-                resetSessionCounters();
-                consecutiveRollbacks = 0;
-                return;
-            }
-        } catch (e) {
-            console.warn('⚠️ Supabase недоступен');
-        }
-    }
-    
-    // Если всё валидно — сохраняем сессию
-    if (isValid) {
-        sessionHistory.unshift(sessionData);
-        if (sessionHistory.length > 3) sessionHistory = sessionHistory.slice(0, 3);
-        localStorage.setItem('clicker_sessions', JSON.stringify(sessionHistory));
-        consecutiveRollbacks = 0;
-    }
-    
-    resetSessionCounters();
-    takeSessionSnapshot();
-}
+    } catch (e) {}
+}, 30000);
 function validateSession(session) {
     var a = session.actions, start = session.snapshot, end = session.result, duration = (session.endTime - session.startTime) / 1000;
     var avgClickPower = (start.clickPower + clickPower) / 2, avgMultiplier = (start.multiplier + multiplier) / 2, avgRebirth = (start.rebirths + rebirths) / 2;
@@ -1595,25 +1507,60 @@ function sellStickers() { var total = 0, ts = []; for (var t in stickers) { if (
 async function saveToSupabase() {
     if (!currentUser || !sb) return;
     try {
+        // Ограничиваем ВСЕ значения перед сохранением
+        var safeBalance = Math.min(Math.floor(balance), 9000000000000);
+        var safeCoins = Math.min(Math.floor(coins), 9000000000);
+        var safeTokens = Math.min(collectibleTokens, 9000000);
+        var safePrestige = Math.min(prestigeLevel, 9000000);
+        
         var safeStickers = {};
-        for (var id in limitedStickers) { if (!limitedStickers[id]) continue; safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: limitedStickers[id].basePrice, price: Math.min(limitedStickers[id].price || 0, 9000000000000), created: limitedStickers[id].created || Date.now() }; }
+        for (var id in limitedStickers) { 
+            if (!limitedStickers[id]) continue; 
+            safeStickers[id] = { 
+                emoji: limitedStickers[id].emoji, 
+                color: limitedStickers[id].color, 
+                basePrice: Math.min(limitedStickers[id].basePrice || 0, 9000000000000), 
+                price: Math.min(limitedStickers[id].price || 0, 9000000000000), 
+                created: limitedStickers[id].created || Date.now() 
+            }; 
+        }
         var safeCollectible = {};
-        for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: collectibleStickers[id].basePrice, price: collectibleStickers[id].price || 0, created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
+        for (var id in collectibleStickers) { 
+            if (!collectibleStickers[id]) continue; 
+            safeCollectible[id] = { 
+                emoji: collectibleStickers[id].emoji, 
+                color: collectibleStickers[id].color, 
+                basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), 
+                price: Math.min(collectibleStickers[id].price || 0, 9000000), 
+                created: collectibleStickers[id].created || Date.now(), 
+                isCollectible: true 
+            }; 
+        }
         if (!Array.isArray(pinned)) pinned = [];
         
         var body = JSON.stringify({
             username: currentUser.username,
-            balance: Math.floor(Math.min(balance, 9000000000000)),
-            total_clicks: Math.floor(totalClicks),
-            click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
-            stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: craftTarget || '',
-            limited_stickers: safeStickers, collectible_stickers: safeCollectible,
-            collectible_tokens: collectibleTokens, prestige_level: prestigeLevel,
-            coins: Math.floor(coins), favorites: favorites, pinned: pinned,
+            balance: safeBalance,
+            total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
+            click_power: Math.min(clickPower, 9999),
+            auto_clicker: Math.min(autoClicker, 999),
+            multiplier: Math.min(multiplier, 999),
+            rebirths: Math.min(rebirths, 4),
+            stickers: stickers,
+            craft_sel: craftSel,
+            craft_count: craftCnt,
+            craft_target: (craftTarget || '').toString().substring(0, 100),
+            limited_stickers: safeStickers,
+            collectible_stickers: safeCollectible,
+            collectible_tokens: safeTokens,
+            prestige_level: safePrestige,
+            coins: safeCoins,
+            favorites: favorites,
+            pinned: pinned.slice(0, 10),
             updated_at: new Date().toISOString()
         });
         
-        // Удаляем старую запись
+        // Удаляем старую
         await fetch(SB_URL + '/rest/v1/clicker_data?username=eq.' + encodeURIComponent(currentUser.username), {
             method: 'DELETE',
             headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
@@ -1626,9 +1573,10 @@ async function saveToSupabase() {
             body: body
         });
         
-        if (response.ok) { console.log('✅ Supabase'); }
-        else { console.error('❌', response.status); }
-    } catch (e) { console.log('⚠️ Локально'); }
+        if (!response.ok) {
+            console.error('❌ Supabase:', response.status, await response.text().then(t => t.substring(0, 100)));
+        }
+    } catch (e) { }
 }
 // ========== ЛИДЕРБОРД ==========
 async function updateStickerLB() { var listEl = document.getElementById('stickerLB'); if (!listEl) return; var bestStickers = {}, medals = ['🥇', '🥈', '🥉']; function addSticker(username, sticker) { if (!sticker || !sticker.price || !sticker.emoji) return; if (!bestStickers[username] || sticker.price > bestStickers[username].price) { bestStickers[username] = { username: username, emoji: sticker.emoji, colorName: sticker.color?.name || '?', colorBg: sticker.color?.bg || '#ccc', price: sticker.price } } } var un = currentUser ? currentUser.username : 'Гость'; for (var id in limitedStickers) { if (limitedStickers[id]) addSticker(un, limitedStickers[id]) } for (var id in collectibleStickers) { if (collectibleStickers[id]) addSticker(un, collectibleStickers[id]) } if (sb) { try { var { data } = await sb.from('clicker_data').select('username,limited_stickers,collectible_stickers'); if (data) { for (var row of data) { var stickers = row.limited_stickers; if (typeof stickers === 'string') { try { stickers = JSON.parse(stickers) } catch (e) { continue } } if (stickers) for (var id in stickers) { if (stickers[id]) addSticker(row.username, stickers[id]) } var cstickers = row.collectible_stickers; if (typeof cstickers === 'string') { try { cstickers = JSON.parse(cstickers) } catch (e) { continue } } if (cstickers) for (var id in cstickers) { if (cstickers[id]) addSticker(row.username, cstickers[id]) } } } } catch (e) { } } var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price); listEl.innerHTML = sorted.slice(0, 10).map(function (s, i) { return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span> ' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> ' + formatMoney(s.price || 0) + '</span></li>' }).join('') || '<li>Нет стикеров</li>' }
