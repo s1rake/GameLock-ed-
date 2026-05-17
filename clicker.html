@@ -1356,6 +1356,15 @@ let coins = 0, favorites = {}, pinned = [];
 let collectibleTokens = 0, prestigeLevel = 0, collectibleStickers = {};
 let dailyDealsData = [], lastDealRefresh = parseInt(localStorage.getItem('clicker_last_deal_refresh') || '0');
 let fuseSlots = [];
+    // ========== ТОКЕН ЦЕЛОСТНОСТИ ==========
+var INTEGRITY_TOKEN = btoa(Date.now() + '|' + Math.random() + '|' + (currentUser?.username || 'guest'));
+sessionStorage.setItem('clicker_integrity_token', INTEGRITY_TOKEN);
+
+function updateIntegrityToken() {
+    INTEGRITY_TOKEN = btoa(Date.now() + '|' + Math.random() + '|' + (currentUser?.username || 'guest') + '|' + balance.toString().substring(0, 5));
+    sessionStorage.setItem('clicker_integrity_token', INTEGRITY_TOKEN);
+    return INTEGRITY_TOKEN;
+}
 const REBIRTH_COSTS = [5000, 1e6, 3e7, 4.5e8]; const REBIRTH_MULTS = [2, 4, 8, 16, 32, 64];
 const MAX_LVLS = [{ click: 10, auto: 10, multi: 5 }, { click: 15, auto: 15, multi: 10 }, { click: 25, auto: 25, multi: 15 }, { click: 40, auto: 40, multi: 20 }, { click: 50, auto: 50, multi: 25 }];
 const LIMITED_COLORS = [{ name: 'Красный', bg: '#ff4444', border: '#cc0000', chance: 12, coeff: 1.2 }, { name: 'Синий', bg: '#4488ff', border: '#2266cc', chance: 10, coeff: 1.5 }, { name: 'Зелёный', bg: '#44cc44', border: '#228822', chance: 10, coeff: 1.5 }, { name: 'Жёлтый', bg: '#ffdd00', border: '#ccaa00', chance: 10, coeff: 1.5 }, { name: 'Фиолетовый', bg: '#cc44ff', border: '#8822cc', chance: 10, coeff: 1.5 }, { name: 'Оранжевый', bg: '#ff8800', border: '#cc6600', chance: 10, coeff: 1.5 }, { name: 'Розовый', bg: '#ff69b4', border: '#cc4488', chance: 10, coeff: 1.5 }, { name: 'Голубой', bg: '#00ccff', border: '#0099cc', chance: 10, coeff: 1.5 }, { name: 'Белый', bg: '#ffffff', border: '#cccccc', chance: 10, coeff: 1.5 }, { name: 'Лаймовый', bg: '#ccff00', border: '#99cc00', chance: 4, coeff: 2.5 }, { name: 'Бирюзовый', bg: '#00ffcc', border: '#00cc99', chance: 10, coeff: 1.5 }, { name: 'Коралловый', bg: '#ff7f50', border: '#cc5533', chance: 10, coeff: 1.5 }, { name: 'Золотой', bg: '#ffd700', border: '#ccaa00', chance: 10, coeff: 1.5 }, { name: 'Мятный', bg: '#98ff98', border: '#66cc66', chance: 10, coeff: 1.5 }, { name: 'Лавандовый', bg: '#e6e6fa', border: '#b8b8d0', chance: 10, coeff: 1.5 }, { name: 'Чёрный', bg: '#333333', border: '#111111', chance: 6, coeff: 2.0 }, { name: 'Серебряный', bg: '#c0c0c0', border: '#999999', chance: 10, coeff: 1.5 }, { name: 'Бронзовый', bg: '#cd7f32', border: '#996622', chance: 10, coeff: 1.5 }, { name: 'Изумрудный', bg: '#50c878', border: '#339955', chance: 10, coeff: 1.5 }, { name: 'Сапфировый', bg: '#0f52ba', border: '#0a3d88', chance: 10, coeff: 1.5 }, { name: 'Рубиновый', bg: '#e0115f', border: '#b00d4a', chance: 10, coeff: 1.5 }, { name: 'Аметистовый', bg: '#9966cc', border: '#664499', chance: 10, coeff: 1.5 }, { name: 'Янтарный', bg: '#ffbf00', border: '#cc9900', chance: 10, coeff: 1.5 }, { name: 'Перламутровый', bg: '#f5f5dc', border: '#ccccaa', chance: 10, coeff: 1.5 }];
@@ -1385,61 +1394,52 @@ function checkPrestige() { if (balance >= 1e12) { var newPrestige = Math.floor(b
 function checkPrestigeDisplay() { var badge = document.getElementById('prestigeBadge'); var count = document.getElementById('prestigeCount'); if (prestigeLevel > 0) { if (badge) badge.style.display = 'inline-block'; if (count) count.textContent = prestigeLevel } else { if (badge) badge.style.display = 'none' } }
 function updateTokenBal() { document.getElementById('tokenBal').textContent = collectibleTokens.toFixed(1); var shopEl = document.getElementById('shopTokenBal'); if (shopEl) shopEl.textContent = collectibleTokens.toFixed(1) }
 
-// ========== ЗАЩИТА ==========
+// ========== ЗАЩИТА С ТОКЕНОМ ==========
 
-// Сохранение в Supabase каждые 10 секунд
 setInterval(function () { 
     saveClickerData(); 
     saveToSupabase(); 
 }, 10000);
 
-// Сверка с Supabase каждые 30 секунд (только при больших расхождениях)
 setInterval(async function () {
     if (!sb || !currentUser) return;
     try {
         var { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
         if (data) {
-            var changed = false;
+            var currentToken = sessionStorage.getItem('clicker_integrity_token');
             
-            // Проверяем только ЯВНЫЕ читы (огромные скачки)
-            if (Math.abs(balance - (data.balance || 0)) > 1e14) { 
-                balance = data.balance; 
-                changed = true; 
-            }
-            if (Math.abs(coins - (data.coins || 0)) > 50000) { 
-                coins = data.coins; 
-                updateCoins(); 
-                changed = true; 
-            }
-            if (Math.abs(collectibleTokens - (data.collectible_tokens || 0)) > 5000) { 
-                collectibleTokens = data.collectible_tokens; 
-                updateTokenBal(); 
-                changed = true; 
-            }
-            if (Math.abs(prestigeLevel - (data.prestige_level || 0)) > 500) { 
-                prestigeLevel = data.prestige_level; 
-                checkPrestigeDisplay(); 
-                changed = true; 
-            }
-            
-            // Проверка стикеров (только если добавлено >20 новых за раз)
-            var serverLimited = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
-            if (Object.keys(limitedStickers).length > Object.keys(serverLimited).length + 20) {
+            // Если токен не совпадает — кто-то сохранил через консоль!
+            if (data._integrity_token && data._integrity_token !== currentToken) {
+                console.warn('🛡️ Обнаружено поддельное сохранение! Откат.');
+                
+                balance = data.balance || 0;
+                coins = data.coins || 0;
+                collectibleTokens = data.collectible_tokens || 0;
+                prestigeLevel = data.prestige_level || 0;
+                clickPower = data.click_power || 1;
+                autoClicker = data.auto_clicker || 0;
+                multiplier = data.multiplier || 0;
+                rebirths = data.rebirths || 0;
+                
+                var serverStickers = typeof data.stickers === 'string' ? JSON.parse(data.stickers) : (data.stickers || {});
+                var serverLimited = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
+                var serverCollectible = typeof data.collectible_stickers === 'string' ? JSON.parse(data.collectible_stickers) : (data.collectible_stickers || {});
+                
+                stickers = serverStickers;
                 limitedStickers = serverLimited;
-                changed = true;
-            }
-            
-            if (changed) {
+                collectibleStickers = serverCollectible;
+                
                 updateUI();
                 saveClickerData();
-                console.warn('🛡️ Обнаружен читинг! Данные восстановлены.');
-                toast('🛡️ Данные восстановлены', '#ff4444');
+                updateCoins();
+                updateTokenBal();
+                checkPrestigeDisplay();
+                toast('🛡️ Обнаружен взлом! Откат.', '#ff4444');
             }
         }
     } catch (e) {}
 }, 15000);
 
-// Сохранение при выходе
 window.addEventListener('beforeunload', function () { 
     saveClickerData(); 
     saveToSupabase(); 
@@ -1509,81 +1509,120 @@ function clearCraft() { for (var t in craftSel) { stickers[t] = (stickers[t] || 
 function doCraft() { if (!craftTarget) { toast('Выберите цель!', '#f44'); return } if (TYPES[craftTarget] && TYPES[craftTarget].secret) { toast('❌ Секретные нельзя!', '#f44'); return } var pts = 0; for (var t in craftSel) { var tp = TYPES[t]; if (!tp) continue; pts += tp.p * craftSel[t] } if (pts <= 0) { toast('Выберите стикеры!', '#f44'); return } var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3), chance = Math.min(100, (pts / need) * 100); craftSel = {}; if (Math.random() * 100 < chance) { stickers[craftTarget] = (stickers[craftTarget] || 0) + 1; craftCnt++; toast('✅ ' + ct.emoji + ' ' + ct.n + '!', '#4caf50') } else toast('❌ Неудача', '#f44'); updateUI(); saveClickerData() }
 function sellStickers() { var total = 0, ts = []; for (var t in stickers) { if (favorites[t]) continue; var tp = TYPES[t]; if (tp) total += tp.v * stickers[t]; ts.push(t) } if (total === 0) { toast('Нет стикеров!', '#f44'); return } if (!confirm('Продать за ' + formatMoney(total) + '?')) return; balance += total; ts.forEach(function (t) { delete stickers[t] }); updateUI(); saveClickerData(); toast('💸 +' + formatMoney(total), '#ffd700') }
 
-// ========== SUPABASE СИНХРОНИЗАЦИЯ ==========
+// ========== ЗАЩИТА ОТ ПОДДЕЛЬНОГО СОХРАНЕНИЯ ==========
+// Генерируем секретный токен при загрузке страницы
+var INTEGRITY_TOKEN = btoa(Date.now() + '|' + Math.random() + '|' + (currentUser?.username || 'guest'));
+
+// Сохраняем токен в sessionStorage (недоступен из консоли на других вкладках)
+sessionStorage.setItem('clicker_integrity_token', INTEGRITY_TOKEN);
+
+// При КАЖДОМ сохранении обновляем токен
+function updateIntegrityToken() {
+    INTEGRITY_TOKEN = btoa(Date.now() + '|' + Math.random() + '|' + (currentUser?.username || 'guest') + '|' + balance.toString().substring(0, 5));
+    sessionStorage.setItem('clicker_integrity_token', INTEGRITY_TOKEN);
+    return INTEGRITY_TOKEN;
+}
+
+// Сохраняем токен в Supabase вместе с данными
 async function saveToSupabase() {
     if (!currentUser || !sb) return;
     try {
-        // Ограничиваем ВСЕ значения перед сохранением
+        var token = updateIntegrityToken();
         var safeBalance = Math.min(Math.floor(balance), 9000000000000);
-        var safeCoins = Math.min(Math.floor(coins), 9000000000);
-        var safeTokens = Math.min(collectibleTokens, 9000000);
-        var safePrestige = Math.min(prestigeLevel, 9000000);
-        
         var safeStickers = {};
-        for (var id in limitedStickers) { 
-            if (!limitedStickers[id]) continue; 
-            safeStickers[id] = { 
-                emoji: limitedStickers[id].emoji, 
-                color: limitedStickers[id].color, 
-                basePrice: Math.min(limitedStickers[id].basePrice || 0, 9000000000000), 
-                price: Math.min(limitedStickers[id].price || 0, 9000000000000), 
-                created: limitedStickers[id].created || Date.now() 
-            }; 
-        }
+        for (var id in limitedStickers) { if (!limitedStickers[id]) continue; safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: Math.min(limitedStickers[id].basePrice || 0, 9000000000000), price: Math.min(limitedStickers[id].price || 0, 9000000000000), created: limitedStickers[id].created || Date.now() }; }
         var safeCollectible = {};
-        for (var id in collectibleStickers) { 
-            if (!collectibleStickers[id]) continue; 
-            safeCollectible[id] = { 
-                emoji: collectibleStickers[id].emoji, 
-                color: collectibleStickers[id].color, 
-                basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), 
-                price: Math.min(collectibleStickers[id].price || 0, 9000000), 
-                created: collectibleStickers[id].created || Date.now(), 
-                isCollectible: true 
-            }; 
-        }
+        for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), price: Math.min(collectibleStickers[id].price || 0, 9000000), created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
         if (!Array.isArray(pinned)) pinned = [];
         
-        var body = JSON.stringify({
-            username: currentUser.username,
-            balance: safeBalance,
-            total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
-            click_power: Math.min(clickPower, 9999),
-            auto_clicker: Math.min(autoClicker, 999),
-            multiplier: Math.min(multiplier, 999),
-            rebirths: Math.min(rebirths, 4),
-            stickers: stickers,
-            craft_sel: craftSel,
-            craft_count: craftCnt,
-            craft_target: (craftTarget || '').toString().substring(0, 100),
-            limited_stickers: safeStickers,
-            collectible_stickers: safeCollectible,
-            collectible_tokens: safeTokens,
-            prestige_level: safePrestige,
-            coins: safeCoins,
-            favorites: favorites,
-            pinned: pinned.slice(0, 10),
-            updated_at: new Date().toISOString()
-        });
-        
-        // Удаляем старую
-        await fetch(SB_URL + '/rest/v1/clicker_data?username=eq.' + encodeURIComponent(currentUser.username), {
-            method: 'DELETE',
-            headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-        });
-        
-        // Вставляем новую
-        var response = await fetch(SB_URL + '/rest/v1/clicker_data', {
-            method: 'POST',
+        var response = await fetch(SB_URL + '/rest/v1/clicker_data?username=eq.' + encodeURIComponent(currentUser.username), {
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'return=minimal' },
-            body: body
+            body: JSON.stringify({
+                balance: safeBalance,
+                total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
+                click_power: Math.min(clickPower, 9999),
+                auto_clicker: Math.min(autoClicker, 999),
+                multiplier: Math.min(multiplier, 999),
+                rebirths: Math.min(rebirths, 4),
+                stickers: stickers,
+                craft_sel: craftSel,
+                craft_count: craftCnt,
+                craft_target: (craftTarget || '').toString().substring(0, 100),
+                limited_stickers: safeStickers,
+                collectible_stickers: safeCollectible,
+                collectible_tokens: Math.min(collectibleTokens, 9000000),
+                prestige_level: Math.min(prestigeLevel, 9000000),
+                coins: Math.min(Math.floor(coins), 9000000000),
+                favorites: favorites,
+                pinned: pinned.slice(0, 10),
+                _integrity_token: token,
+                updated_at: new Date().toISOString()
+            })
         });
         
         if (!response.ok) {
-            console.error('❌ Supabase:', response.status, await response.text().then(t => t.substring(0, 100)));
+            var insertResponse = await fetch(SB_URL + '/rest/v1/clicker_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'return=minimal' },
+                body: JSON.stringify({
+                    username: currentUser.username,
+                    balance: safeBalance, total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
+                    click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
+                    stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: craftTarget || '',
+                    limited_stickers: safeStickers, collectible_stickers: safeCollectible,
+                    collectible_tokens: Math.min(collectibleTokens, 9000000),
+                    prestige_level: Math.min(prestigeLevel, 9000000),
+                    coins: Math.min(Math.floor(coins), 9000000000),
+                    favorites: favorites, pinned: pinned.slice(0, 10),
+                    _integrity_token: token,
+                    updated_at: new Date().toISOString()
+                })
+            });
         }
-    } catch (e) { }
+    } catch (e) {}
 }
+
+// Проверка токена при защите
+setInterval(async function () {
+    if (!sb || !currentUser) return;
+    try {
+        var { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
+        if (data) {
+            var currentToken = sessionStorage.getItem('clicker_integrity_token');
+            
+            // Если токен не совпадает — кто-то сохранил через консоль!
+            if (data._integrity_token && data._integrity_token !== currentToken) {
+                console.warn('🛡️ Обнаружено поддельное сохранение! Откат.');
+                
+                // Восстанавливаем ВСЁ из Supabase
+                balance = data.balance || 0;
+                coins = data.coins || 0;
+                collectibleTokens = data.collectible_tokens || 0;
+                prestigeLevel = data.prestige_level || 0;
+                clickPower = data.click_power || 1;
+                autoClicker = data.auto_clicker || 0;
+                multiplier = data.multiplier || 0;
+                rebirths = data.rebirths || 0;
+                
+                var serverStickers = typeof data.stickers === 'string' ? JSON.parse(data.stickers) : (data.stickers || {});
+                var serverLimited = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
+                var serverCollectible = typeof data.collectible_stickers === 'string' ? JSON.parse(data.collectible_stickers) : (data.collectible_stickers || {});
+                
+                stickers = serverStickers;
+                limitedStickers = serverLimited;
+                collectibleStickers = serverCollectible;
+                
+                updateUI();
+                saveClickerData();
+                updateCoins();
+                updateTokenBal();
+                checkPrestigeDisplay();
+                toast('🛡️ Обнаружен взлом! Откат.', '#ff4444');
+            }
+        }
+    } catch (e) {}
+}, 15000);
 // ========== ЛИДЕРБОРД ==========
 async function updateStickerLB() { var listEl = document.getElementById('stickerLB'); if (!listEl) return; var bestStickers = {}, medals = ['🥇', '🥈', '🥉']; function addSticker(username, sticker) { if (!sticker || !sticker.price || !sticker.emoji) return; if (!bestStickers[username] || sticker.price > bestStickers[username].price) { bestStickers[username] = { username: username, emoji: sticker.emoji, colorName: sticker.color?.name || '?', colorBg: sticker.color?.bg || '#ccc', price: sticker.price } } } var un = currentUser ? currentUser.username : 'Гость'; for (var id in limitedStickers) { if (limitedStickers[id]) addSticker(un, limitedStickers[id]) } for (var id in collectibleStickers) { if (collectibleStickers[id]) addSticker(un, collectibleStickers[id]) } if (sb) { try { var { data } = await sb.from('clicker_data').select('username,limited_stickers,collectible_stickers'); if (data) { for (var row of data) { var stickers = row.limited_stickers; if (typeof stickers === 'string') { try { stickers = JSON.parse(stickers) } catch (e) { continue } } if (stickers) for (var id in stickers) { if (stickers[id]) addSticker(row.username, stickers[id]) } var cstickers = row.collectible_stickers; if (typeof cstickers === 'string') { try { cstickers = JSON.parse(cstickers) } catch (e) { continue } } if (cstickers) for (var id in cstickers) { if (cstickers[id]) addSticker(row.username, cstickers[id]) } } } } catch (e) { } } var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price); listEl.innerHTML = sorted.slice(0, 10).map(function (s, i) { return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span> ' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> ' + formatMoney(s.price || 0) + '</span></li>' }).join('') || '<li>Нет стикеров</li>' }
 
