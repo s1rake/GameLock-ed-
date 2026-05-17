@@ -1601,14 +1601,13 @@ async function saveToSupabase() {
         for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: collectibleStickers[id].basePrice, price: collectibleStickers[id].price || 0, created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
         if (!Array.isArray(pinned)) pinned = [];
         
-        // Используем fetch напрямую с upsert
-        await fetch(SB_URL + '/rest/v1/clicker_data?on_conflict=username', {
+        var response = await fetch(SB_URL + '/rest/v1/clicker_data?on_conflict=username', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': SB_KEY,
                 'Authorization': 'Bearer ' + SB_KEY,
-                'Prefer': 'resolution=merge-duplicates'
+                'Prefer': 'return=minimal'
             },
             body: JSON.stringify({
                 username: currentUser.username,
@@ -1632,7 +1631,14 @@ async function saveToSupabase() {
                 updated_at: new Date().toISOString()
             })
         });
-        console.log('✅ Сохранено в Supabase');
+        
+        if (response.ok) {
+            // Данные реально сохранились!
+            console.log('✅ Supabase');
+        } else {
+            var errorText = await response.text();
+            console.error('❌ Supabase error:', response.status, errorText.substring(0, 200));
+        }
     } catch (e) {
         console.log('⚠️ Локально');
     }
