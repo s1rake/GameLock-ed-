@@ -1406,62 +1406,82 @@ async function endSession() {
         result: { balance: balance, coins: coins, tokens: collectibleTokens, prestige: prestigeLevel, stickers: JSON.parse(JSON.stringify(stickers)), limited: JSON.parse(JSON.stringify(limitedStickers)), collectible: JSON.parse(JSON.stringify(collectibleStickers)) }
     };
     
-    // СВЕРКА С SUPABASE
+    // 1. Проверяем валидность сессии по формулам
     var isValid = validateSession(sessionData);
     
+    // 2. Сверяем с ПРОШЛОЙ сессией
+    if (isValid && sessionHistory.length > 0) {
+        var prevSession = sessionHistory[0];
+        var prevResult = prevSession.result;
+        
+        // Сравниваем с прошлой сессией
+        if (Math.abs(balance - prevResult.balance) > prevResult.balance * 0.5 + 1e12) {
+            console.warn('⚠️ Баланс не совпадает с прошлой сессией!');
+            isValid = false;
+        }
+    }
+    
+    // 3. Сверяем с SUPABASE (главный источник правды)
     if (sb && currentUser) {
         try {
-            var { data } = await sb.from('clicker_data').select('balance, coins, collectible_tokens, prestige_level, limited_stickers, collectible_stickers, stickers').eq('username', currentUser.username).single();
+            var { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
             if (data) {
-                // Если данные в Supabase СИЛЬНО отличаются от наших — откат
-                var supabaseBalance = data.balance || 0;
-                var supabaseCoins = data.coins || 0;
-                
-                if (Math.abs(balance - supabaseBalance) > supabaseBalance * 0.5 + 1e12) {
-                    console.warn('⚠️ Баланс расходится с Supabase! Откат.');
-                    isValid = false;
-                }
-                if (Math.abs(coins - supabaseCoins) > supabaseCoins * 0.5 + 1000) {
-                    console.warn('⚠️ Кристаллы расходятся с Supabase! Откат.');
-                    isValid = false;
-                }
-                
-                // Проверка количества стикеров
                 var supabaseLimited = data.limited_stickers;
                 if (typeof supabaseLimited === 'string') supabaseLimited = JSON.parse(supabaseLimited);
-                if (Object.keys(limitedStickers).length > Object.keys(supabaseLimited || {}).length + 5) {
-                    console.warn('⚠️ Слишком много новых лимиток! Откат.');
+                var supabaseCollectible = data.collectible_stickers;
+                if (typeof supabaseCollectible === 'string') supabaseCollectible = JSON.parse(supabaseCollectible);
+                var supabaseStickers = data.stickers;
+                if (typeof supabaseStickers === 'string') supabaseStickers = JSON.parse(supabaseStickers);
+                
+                // Проверяем расхождения с Supabase
+                if (Math.abs(balance - (data.balance || 0)) > Math.max(data.balance || 0, 1e12) * 0.3) {
+                    console.warn('⚠️ Баланс расходится с Supabase!');
                     isValid = false;
+                }
+                if (Math.abs(coins - (data.coins || 0)) > 1000) {
+                    console.warn('⚠️ Кристаллы расходятся с Supabase!');
+                    isValid = false;
+                }
+                if (Math.abs(collectibleTokens - (data.collectible_tokens || 0)) > 50) {
+                    console.warn('⚠️ Токены расходятся с Supabase!');
+                    isValid = false;
+                }
+                
+                // Если НЕ валидна — ОТКАТ НА ДАННЫЕ С SUPABASE
+                if (!isValid) {
+                    console.warn('🛡️ ОТКАТ НА ДАННЫЕ SUPABASE!');
+                    balance = data.balance || 0;
+                    coins = data.coins || 0;
+                    collectibleTokens = data.collectible_tokens || 0;
+                    prestigeLevel = data.prestige_level || 0;
+                    stickers = supabaseStickers || {};
+                    limitedStickers = supabaseLimited || {};
+                    collectibleStickers = supabaseCollectible || {};
+                    clickPower = data.click_power || 1;
+                    autoClicker = data.auto_clicker || 0;
+                    multiplier = data.multiplier || 0;
+                    rebirths = data.rebirths || 0;
+                    totalClicks = data.total_clicks || 0;
+                    
+                    updateUI();
+                    saveClickerData();
+                    updateCoins();
+                    updateTokenBal();
+                    checkPrestigeDisplay();
+                    toast('🛡️ Данные восстановлены из облака', '#ff4444');
                 }
             }
         } catch (e) {}
     }
     
+    // 4. Если всё валидно — сохраняем сессию
     if (isValid) {
         sessionHistory.unshift(sessionData);
         if (sessionHistory.length > 3) sessionHistory = sessionHistory.slice(0, 3);
         localStorage.setItem('clicker_sessions', JSON.stringify(sessionHistory));
-    } else {
-        console.warn('⚠️ Сессия невалидна! Откат...');
-        balance = sessionSnapshot.balance;
-        coins = sessionSnapshot.coins;
-        collectibleTokens = sessionSnapshot.tokens;
-        prestigeLevel = sessionSnapshot.prestige;
-        stickers = sessionSnapshot.stickers;
-        limitedStickers = sessionSnapshot.limited;
-        collectibleStickers = sessionSnapshot.collectible;
-        clickPower = sessionSnapshot.clickPower;
-        autoClicker = sessionSnapshot.autoClicker;
-        multiplier = sessionSnapshot.multiplier;
-        rebirths = sessionSnapshot.rebirths;
-        updateUI();
-        saveClickerData();
-        updateCoins();
-        updateTokenBal();
-        checkPrestigeDisplay();
-        toast('🛡️ Откат сессии', '#ff4444');
     }
     
+    // 5. Начинаем новую сессию
     resetSessionCounters();
     takeSessionSnapshot();
 }
