@@ -1301,6 +1301,171 @@ const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
 let sb = null; try { sb = window.supabase.createClient(SB_URL, SB_KEY) } catch (e) { }
 
+// ========== ЗАЩИТА LOCALSTORAGE ==========
+(function() {
+    var _origSetItem = localStorage.setItem.bind(localStorage);
+    var _origGetItem = localStorage.getItem.bind(localStorage);
+    var _origRemoveItem = localStorage.removeItem.bind(localStorage);
+    
+    // Секретный ключ для проверки
+    var _storageKey = btoa('clicker_storage_' + Date.now());
+    sessionStorage.setItem('_storage_auth', _storageKey);
+    
+    // Счётчик вызовов из консоли
+    var _callCount = 0;
+    var _lastCall = Date.now();
+    
+    localStorage.setItem = function(key, value) {
+        var allowedKeys = [
+            'clicker_extra_', 'clicker_collectible_stickers', 'clicker_collectible_tokens',
+            'clicker_prestige', 'clicker_daily_deals', 'clicker_last_deal_refresh',
+            'clicker_fuse_slots', 'clicker_sessions', 'clicker_prestige_upgrades',
+            'snakeUsers', 'snakeCurrentUser', 'snakeDarkTheme'
+        ];
+        
+        var isAllowed = allowedKeys.some(function(k) { return key.startsWith(k); });
+        
+        if (!isAllowed) {
+            console.warn('🛡️ Блокировано:', key);
+            return undefined;
+        }
+        
+        // Проверяем частоту вызовов (нельзя вызывать чаще 1 раза в 100мс из консоли)
+        var now = Date.now();
+        if (now - _lastCall < 100) {
+            _callCount++;
+            if (_callCount > 5) {
+                console.warn('🛡️ Слишком частые вызовы localStorage!');
+                return undefined;
+            }
+        } else {
+            _callCount = 0;
+        }
+        _lastCall = now;
+        
+        // Добавляем подпись к данным
+        if (typeof value === 'string') {
+            try {
+                var parsed = JSON.parse(value);
+                parsed._signed = btoa(key + '|' + _storageKey);
+                value = JSON.stringify(parsed);
+            } catch(e) {}
+        }
+        
+        return _origSetItem(key, value);
+    };
+    
+    localStorage.getItem = function(key) {
+        var value = _origGetItem(key);
+        
+        // Проверяем подпись
+        if (typeof value === 'string' && key.startsWith('clicker_')) {
+            try {
+                var parsed = JSON.parse(value);
+                if (parsed._signed) {
+                    delete parsed._signed;
+                    // Подпись не проверяем строго, но чистим
+                }
+            } catch(e) {}
+        }
+        
+        return value;
+    };
+    
+    localStorage.removeItem = function(key) {
+        if (!key.startsWith('clicker_') && key !== 'snakeUsers' && key !== 'snakeCurrentUser') {
+            console.warn('🛡️ Удаление блокировано:', key);
+            return undefined;
+        }
+        return _origRemoveItem(key);
+    };
+    
+    localStorage.clear = function() {
+        console.warn('🛡️ Очистка заблокирована!');
+        return undefined;
+    };
+})();
+
+// ========== ЗАЩИТА ОТ ПЕРЕОПРЕДЕЛЕНИЯ ФУНКЦИЙ ==========
+var _protectedFunctions = {
+    saveClickerData: saveClickerData,
+    saveToSupabase: saveToSupabase,
+    updateUI: updateUI,
+    checkPrestige: checkPrestige,
+    buyUpgrade: buyUpgrade,
+    rebirth: rebirth,
+    openPack: openPack,
+    doCraft: doCraft,
+    doFuse: doFuse,
+    mergeStickers: mergeStickers,
+    sellLimitedForCoins: sellLimitedForCoins,
+    sellCollectible: sellCollectible,
+    buyDeal: buyDeal,
+    addToFuse: addToFuse,
+    clearFuse: clearFuse
+};
+
+for (var fnName in _protectedFunctions) {
+    (function(name, originalFn) {
+        Object.defineProperty(window, name, {
+            get: function() { return originalFn; },
+            set: function() { 
+                console.warn('🛡️ Нельзя переопределить ' + name + '!');
+                throw new Error('Protected function: ' + name);
+            },
+            configurable: false
+        });
+    })(fnName, _protectedFunctions[fnName]);
+}
+
+// ========== ЗАЩИТА ОСНОВНЫХ ПЕРЕМЕННЫХ ==========
+var _gameState = {
+    balance: 0,
+    coins: 0,
+    collectibleTokens: 0,
+    prestigeLevel: 0,
+    clickPower: 1,
+    autoClicker: 0,
+    multiplier: 0,
+    rebirths: 0
+};
+
+// Проверка целостности переменных каждые 5 секунд
+setInterval(function() {
+    if (typeof balance !== 'number' || isNaN(balance) || balance < 0 || balance > 9e15) {
+        console.warn('🛡️ Баланс повреждён!');
+        balance = 0;
+    }
+    if (typeof coins !== 'number' || isNaN(coins) || coins < 0 || coins > 1e9) {
+        console.warn('🛡️ Кристаллы повреждены!');
+        coins = 0;
+    }
+    if (typeof collectibleTokens !== 'number' || isNaN(collectibleTokens) || collectibleTokens < 0) {
+        console.warn('🛡️ Токены повреждены!');
+        collectibleTokens = 0;
+    }
+    if (typeof prestigeLevel !== 'number' || isNaN(prestigeLevel) || prestigeLevel < 0) {
+        console.warn('🛡️ Престиж повреждён!');
+        prestigeLevel = 0;
+    }
+    if (typeof clickPower !== 'number' || clickPower < 1 || clickPower > 9999) {
+        console.warn('🛡️ Сила клика повреждена!');
+        clickPower = 1;
+    }
+    if (typeof autoClicker !== 'number' || autoClicker < 0 || autoClicker > 999) {
+        console.warn('🛡️ Автокликер повреждён!');
+        autoClicker = 0;
+    }
+    if (typeof multiplier !== 'number' || multiplier < 0 || multiplier > 999) {
+        console.warn('🛡️ Множитель повреждён!');
+        multiplier = 0;
+    }
+    if (typeof rebirths !== 'number' || rebirths < 0 || rebirths > 4) {
+        console.warn('🛡️ Перерождения повреждены!');
+        rebirths = 0;
+    }
+}, 5000);
+    
 // ========== ТЕМА ==========
 let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true'; if (darkTheme) document.body.classList.add('dark-theme');
 function toggleTheme() { darkTheme = !darkTheme; localStorage.setItem('snakeDarkTheme', darkTheme); document.body.classList.toggle('dark-theme'); document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙' }
