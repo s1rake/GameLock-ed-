@@ -1601,30 +1601,38 @@ async function saveToSupabase() {
         for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: collectibleStickers[id].basePrice, price: collectibleStickers[id].price || 0, created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
         if (!Array.isArray(pinned)) pinned = [];
         
-        var updateData = {
-            balance: Math.floor(Math.min(balance, 9000000000000)),
-            total_clicks: Math.floor(totalClicks),
-            click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
-            stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: craftTarget || '',
-            limited_stickers: safeStickers, collectible_stickers: safeCollectible,
-            collectible_tokens: collectibleTokens, prestige_level: prestigeLevel,
-            coins: Math.floor(coins), favorites: favorites, pinned: pinned,
-            updated_at: new Date().toISOString()
-        };
-        
-        // Сначала пробуем update БЕЗ username в данных
-        var { error } = await sb.from('clicker_data').update(updateData).eq('username', currentUser.username);
-        
-        if (error) {
-            // Если не найдено — создаём
-            updateData.username = currentUser.username;
-            var { error: insertError } = await sb.from('clicker_data').insert(updateData);
-            if (insertError) {
-                console.error('❌ Ошибка:', insertError.message);
-            } else {
-                console.log('✅ Создано');
-            }
-        }
+        // Используем fetch напрямую с upsert
+        await fetch(SB_URL + '/rest/v1/clicker_data?on_conflict=username', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SB_KEY,
+                'Authorization': 'Bearer ' + SB_KEY,
+                'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify({
+                username: currentUser.username,
+                balance: Math.floor(Math.min(balance, 9000000000000)),
+                total_clicks: Math.floor(totalClicks),
+                click_power: clickPower,
+                auto_clicker: autoClicker,
+                multiplier: multiplier,
+                rebirths: rebirths,
+                stickers: stickers,
+                craft_sel: craftSel,
+                craft_count: craftCnt,
+                craft_target: craftTarget || '',
+                limited_stickers: safeStickers,
+                collectible_stickers: safeCollectible,
+                collectible_tokens: collectibleTokens,
+                prestige_level: prestigeLevel,
+                coins: Math.floor(coins),
+                favorites: favorites,
+                pinned: pinned,
+                updated_at: new Date().toISOString()
+            })
+        });
+        console.log('✅ Сохранено в Supabase');
     } catch (e) {
         console.log('⚠️ Локально');
     }
