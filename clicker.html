@@ -1596,9 +1596,31 @@ async function saveToSupabase() {
     if (!currentUser || !sb) return;
     try {
         var safeStickers = {};
-        for (var id in limitedStickers) { if (!limitedStickers[id]) continue; safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: limitedStickers[id].basePrice, price: Math.min(limitedStickers[id].price || 0, 9000000000000), created: limitedStickers[id].created || Date.now() } }
+        for (var id in limitedStickers) { 
+            if (!limitedStickers[id]) continue; 
+            safeStickers[id] = { 
+                emoji: limitedStickers[id].emoji, 
+                color: limitedStickers[id].color, 
+                basePrice: limitedStickers[id].basePrice, 
+                price: Math.min(limitedStickers[id].price || 0, 9000000000000), 
+                created: limitedStickers[id].created || Date.now() 
+            }; 
+        }
         var safeCollectible = {};
-        for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: collectibleStickers[id].basePrice, price: collectibleStickers[id].price || 0, created: collectibleStickers[id].created || Date.now(), isCollectible: true } }
+        for (var id in collectibleStickers) { 
+            if (!collectibleStickers[id]) continue; 
+            safeCollectible[id] = { 
+                emoji: collectibleStickers[id].emoji, 
+                color: collectibleStickers[id].color, 
+                basePrice: collectibleStickers[id].basePrice, 
+                price: collectibleStickers[id].price || 0, 
+                created: collectibleStickers[id].created || Date.now(), 
+                isCollectible: true 
+            }; 
+        }
+        
+        // Убеждаемся что pinned — массив
+        if (!Array.isArray(pinned)) pinned = [];
         
         var updateData = {
             username: currentUser.username,
@@ -1608,33 +1630,34 @@ async function saveToSupabase() {
             auto_clicker: autoClicker,
             multiplier: multiplier,
             rebirths: rebirths,
-            stickers: JSON.stringify(stickers || {}),
-            craft_sel: JSON.stringify(craftSel || {}),
+            stickers: stickers || {},
+            craft_sel: craftSel || {},
             craft_count: craftCnt,
             craft_target: craftTarget || '',
-            limited_stickers: JSON.stringify(safeStickers),
-            collectible_stickers: JSON.stringify(safeCollectible),
+            limited_stickers: safeStickers,
+            collectible_stickers: safeCollectible,
             collectible_tokens: collectibleTokens,
             prestige_level: prestigeLevel,
             coins: Math.floor(Math.min(coins, 9000000000000)),
-            favorites: JSON.stringify(favorites || {}),
-            pinned: JSON.stringify(pinned || []),
+            favorites: favorites || {},
+            pinned: pinned,
             updated_at: new Date().toISOString()
         };
         
-        // Пробуем update, если не существует — insert
-        var { error } = await sb.from('clicker_data').update(updateData).eq('username', currentUser.username);
+        // Пробуем update
+        var { data, error } = await sb.from('clicker_data').update(updateData).eq('username', currentUser.username).select();
         
-        if (error && error.code === 'PGRST116') {
-            // Запись не найдена — создаём
-            var { error: insertError } = await sb.from('clicker_data').insert(updateData);
-            if (insertError) console.error('❌ Ошибка сохранения:', insertError.message);
-            else console.log('✅ Создано в Supabase');
-        } else if (error) {
-            console.error('❌ Ошибка сохранения:', error.message);
+        if (error) {
+            // Если записи нет — insert
+            var { data: insertData, error: insertError } = await sb.from('clicker_data').insert(updateData).select();
+            if (insertError) {
+                console.error('❌ Ошибка сохранения:', insertError.message);
+            } else {
+                console.log('✅ Создано в Supabase');
+            }
         }
     } catch (e) {
-        console.log('⚠️ Сохранено локально');
+        console.log('⚠️ Сохранено локально:', e.message);
     }
 }
 // ========== ЛИДЕРБОРД ==========
