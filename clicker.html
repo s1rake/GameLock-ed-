@@ -1377,54 +1377,77 @@ function isValidEmoji(emoji) {
     return false;
 }
 
-// ========== ЗАЩИТА ОТ КОНСОЛИ ==========
-setInterval(function () {
-    if (sb && currentUser) {
-        sb.from('clicker_data').select('collectible_tokens, prestige_level, limited_stickers, collectible_stickers').eq('username', currentUser.username).single().then(function (res) {
-            if (res.data) {
-                var changed = false;
-                if (res.data.collectible_tokens !== collectibleTokens) { collectibleTokens = res.data.collectible_tokens || 0; updateTokenBal(); changed = true; }
-                if (res.data.prestige_level !== prestigeLevel) { prestigeLevel = res.data.prestige_level || 0; checkPrestigeDisplay(); changed = true; }
-                
-                var serverLimited = res.data.limited_stickers;
-                if (typeof serverLimited === 'string') serverLimited = JSON.parse(serverLimited);
-                var cleanedLimited = {};
-                for (var id in limitedStickers) {
-                    var ls = limitedStickers[id];
-                    if (!ls || !ls.emoji || !ls.color || !ls.created) continue;
-                    if (!isValidEmoji(ls.emoji)) continue;
-                    var validColor = LIMITED_COLORS.some(function (c) { return c.bg === ls.color.bg; });
-                    if (!validColor) continue;
-                    cleanedLimited[id] = ls;
-                }
-                if (JSON.stringify(cleanedLimited) !== JSON.stringify(limitedStickers)) {
-                    console.warn('⚠️ Лимит-стикеры очищены!');
-                    limitedStickers = cleanedLimited;
-                    updateUI(); changed = true;
-                }
-                
-                var serverCollectible = res.data.collectible_stickers;
-                if (typeof serverCollectible === 'string') serverCollectible = JSON.parse(serverCollectible);
-                var cleanedCollectible = {};
-                for (var id in collectibleStickers) {
-                    var cs = collectibleStickers[id];
-                    if (!cs || !cs.emoji || !cs.color || !cs.created) continue;
-                    if (!isValidEmoji(cs.emoji)) continue;
-                    var validColor = LIMITED_COLORS.some(function (c) { return c.bg === cs.color.bg; });
-                    if (!validColor) continue;
-                    cleanedCollectible[id] = cs;
-                }
-                if (JSON.stringify(cleanedCollectible) !== JSON.stringify(collectibleStickers)) {
-                    console.warn('⚠️ Коллекционные стикеры очищены!');
-                    collectibleStickers = cleanedCollectible;
-                    updateUI(); changed = true;
-                }
-                
-                if (changed) saveClickerData();
-            }
-        }).catch(function () { });
+// ========== ЖЁСТКАЯ ЗАЩИТА ОТ КОНСОЛИ ==========
+setInterval(async function () {
+    if (!sb || !currentUser) return;
+    
+    try {
+        var { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
+        if (!data) return;
+        
+        var changed = false;
+        
+        // Проверка ВСЕХ валют
+        if (Math.abs(data.balance - balance) > 1000000) { // Допуск 1 млн на авто-доход
+            console.warn('⚠️ Баланс изменён! Восстановлено.');
+            balance = data.balance || 0;
+            changed = true;
+        }
+        if (data.coins !== coins) {
+            console.warn('⚠️ Кристаллы изменены! Восстановлено.');
+            coins = data.coins || 0;
+            updateCoins();
+            changed = true;
+        }
+        if (data.collectible_tokens !== collectibleTokens) {
+            console.warn('⚠️ Токены изменены! Восстановлено.');
+            collectibleTokens = data.collectible_tokens || 0;
+            updateTokenBal();
+            changed = true;
+        }
+        if (data.prestige_level !== prestigeLevel) {
+            console.warn('⚠️ Престиж изменён! Восстановлено.');
+            prestigeLevel = data.prestige_level || 0;
+            checkPrestigeDisplay();
+            changed = true;
+        }
+        
+        // Проверка обычных стикеров
+        var serverStickers = data.stickers;
+        if (typeof serverStickers === 'string') serverStickers = JSON.parse(serverStickers);
+        if (JSON.stringify(serverStickers) !== JSON.stringify(stickers)) {
+            console.warn('⚠️ Обычные стикеры изменены! Восстановлено.');
+            stickers = serverStickers || {};
+            changed = true;
+        }
+        
+        // Проверка лимит-стикеров
+        var serverLimited = data.limited_stickers;
+        if (typeof serverLimited === 'string') serverLimited = JSON.parse(serverLimited);
+        if (JSON.stringify(serverLimited) !== JSON.stringify(limitedStickers)) {
+            console.warn('⚠️ Лимит-стикеры изменены! Восстановлено.');
+            limitedStickers = serverLimited || {};
+            changed = true;
+        }
+        
+        // Проверка коллекционных стикеров
+        var serverCollectible = data.collectible_stickers;
+        if (typeof serverCollectible === 'string') serverCollectible = JSON.parse(serverCollectible);
+        if (JSON.stringify(serverCollectible) !== JSON.stringify(collectibleStickers)) {
+            console.warn('⚠️ Коллекционные стикеры изменены! Восстановлено.');
+            collectibleStickers = serverCollectible || {};
+            changed = true;
+        }
+        
+        if (changed) {
+            updateUI();
+            saveClickerData();
+            toast('🛡️ Данные восстановлены из облака', '#ff4444');
+        }
+    } catch (e) {
+        // Оффлайн — пропускаем
     }
-}, 15000);
+}, 5000); // Каждые 5 секунд!
 
 // ========== ДАННЫЕ ==========
 function getClickerData() { const users = getAllUsers(); const u = currentUser ? currentUser.username : 'guest'; if (!users[u]) users[u] = { clicker: { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {}, collectibleStickers: {}, collectibleTokens: 0, prestigeLevel: 0 } }; return users[u].clicker }
