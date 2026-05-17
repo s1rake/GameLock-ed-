@@ -1454,44 +1454,41 @@ async function saveToSupabase() {
         for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), price: Math.min(collectibleStickers[id].price || 0, 9000000), created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
         if (!Array.isArray(pinned)) pinned = [];
         
-        var response = await fetch(SB_URL + '/rest/v1/clicker_data?username=eq.' + encodeURIComponent(currentUser.username), {
+        var body = {
+            username: currentUser.username,
+            balance: Math.min(Math.floor(balance), 9000000000000),
+            total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
+            click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
+            stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: (craftTarget || '').toString(),
+            limited_stickers: safeStickers, collectible_stickers: safeCollectible,
+            collectible_tokens: Math.min(collectibleTokens, 9000000),
+            prestige_level: Math.min(prestigeLevel, 9000000),
+            coins: Math.min(Math.floor(coins), 9000000000),
+            favorites: favorites, pinned: pinned.slice(0, 10),
+            _integrity_token: token,
+            updated_at: new Date().toISOString()
+        };
+        
+        // Пробуем PATCH
+        var patchResponse = await fetch(SB_URL + '/rest/v1/clicker_data?username=eq.' + encodeURIComponent(currentUser.username), {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'return=representation' },
-            body: JSON.stringify({
-                balance: Math.min(Math.floor(balance), 9000000000000),
-                total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
-                click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
-                stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: (craftTarget || '').toString(),
-                limited_stickers: safeStickers, collectible_stickers: safeCollectible,
-                collectible_tokens: Math.min(collectibleTokens, 9000000),
-                prestige_level: Math.min(prestigeLevel, 9000000),
-                coins: Math.min(Math.floor(coins), 9000000000),
-                favorites: favorites, pinned: pinned.slice(0, 10),
-                _integrity_token: token,
-                updated_at: new Date().toISOString()
-            })
+            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+            body: JSON.stringify(body)
         });
-        if (!response.ok) {
-            var insertResponse = await fetch(SB_URL + '/rest/v1/clicker_data', {
+        
+        // Если PATCH не сработал (нет записи) — делаем POST
+        if (!patchResponse.ok) {
+            var postResponse = await fetch(SB_URL + '/rest/v1/clicker_data', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'return=minimal' },
-                body: JSON.stringify({
-                    username: currentUser.username,
-                    balance: Math.min(Math.floor(balance), 9000000000000),
-                    total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
-                    click_power: clickPower, auto_clicker: autoClicker, multiplier: multiplier, rebirths: rebirths,
-                    stickers: stickers, craft_sel: craftSel, craft_count: craftCnt, craft_target: (craftTarget || '').toString(),
-                    limited_stickers: safeStickers, collectible_stickers: safeCollectible,
-                    collectible_tokens: Math.min(collectibleTokens, 9000000),
-                    prestige_level: Math.min(prestigeLevel, 9000000),
-                    coins: Math.min(Math.floor(coins), 9000000000),
-                    favorites: favorites, pinned: pinned.slice(0, 10),
-                    _integrity_token: token,
-                    updated_at: new Date().toISOString()
-                })
+                headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+                body: JSON.stringify(body)
             });
+            if (postResponse.ok) console.log('✅ Создано');
+            else console.error('❌ Ошибка создания');
         }
-    } catch (e) {}
+    } catch (e) {
+        console.log('⚠️ Оффлайн');
+    }
 }
 
 // ========== ЗАЩИТА С ТОКЕНОМ ==========
