@@ -1338,6 +1338,63 @@
         const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
         let sb = null; try { sb = window.supabase.createClient(SB_URL, SB_KEY) } catch (e) { }
 
+                // ========== SUPABASE СИНХРОНИЗАЦИЯ ==========
+        async function saveToSupabase(){
+            if(!currentUser || !sb) return;
+            try {
+                var safeStickers = {};
+                for(var id in limitedStickers){
+                    if(!limitedStickers[id]) continue;
+                    safeStickers[id] = {
+                        emoji: limitedStickers[id].emoji,
+                        color: limitedStickers[id].color,
+                        basePrice: limitedStickers[id].basePrice,
+                        price: Math.min(limitedStickers[id].price || 0, 9000000000000),
+                        created: limitedStickers[id].created || Date.now()
+                    };
+                }
+                
+                var safeCollectible = {};
+                for(var id in collectibleStickers){
+                    if(!collectibleStickers[id]) continue;
+                    safeCollectible[id] = {
+                        emoji: collectibleStickers[id].emoji,
+                        color: collectibleStickers[id].color,
+                        basePrice: collectibleStickers[id].basePrice,
+                        price: collectibleStickers[id].price || 0,
+                        created: collectibleStickers[id].created || Date.now(),
+                        isCollectible: true
+                    };
+                }
+                
+                await sb.from('clicker_data').upsert({
+                    username: currentUser.username,
+                    balance: Math.floor(Math.min(balance, 9000000000000)),
+                    total_clicks: Math.floor(Math.min(totalClicks, 9000000000000)),
+                    click_power: clickPower,
+                    auto_clicker: autoClicker,
+                    multiplier: multiplier,
+                    rebirths: rebirths,
+                    stickers: JSON.stringify(stickers || {}),
+                    craft_sel: JSON.stringify(craftSel || {}),
+                    craft_count: craftCnt,
+                    craft_target: craftTarget || '',
+                    limited_stickers: JSON.stringify(safeStickers),
+                    collectible_stickers: JSON.stringify(safeCollectible),
+                    collectible_tokens: collectibleTokens,
+                    prestige_level: prestigeLevel,
+                    coins: Math.floor(Math.min(coins, 9000000000000)),
+                    favorites: JSON.stringify(favorites || {}),
+                    pinned: JSON.stringify(pinned || []),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'username' });
+                
+                console.log('✅ Сохранено в Supabase');
+            } catch(e) {
+                console.log('⚠️ Сохранено локально');
+            }
+        }
+        
         // ========== ТЕМА ==========
         let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true'; if (darkTheme) document.body.classList.add('dark-theme');
         function toggleTheme() { darkTheme = !darkTheme; localStorage.setItem('snakeDarkTheme', darkTheme); document.body.classList.toggle('dark-theme'); document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙' }
@@ -2261,8 +2318,8 @@
 
         // ========== АВТО-ДОХОД ==========
         setInterval(function () { if (autoClicker > 0) { balance += autoClicker * Math.pow(2, Math.min(multiplier, 50)) * getRebMult() * (1 + boostPct / 100); totalClicks += autoClicker; updateUI(); saveClickerData() } }, 1000);
-        setInterval(function () { cps = 0 }, 1000); setInterval(saveClickerData, 5000);
-        window.addEventListener('beforeunload', saveClickerData);
+setInterval(function() { saveClickerData(); saveToSupabase(); }, 5000);
+window.addEventListener('beforeunload', function() { saveClickerData(); saveToSupabase(); });
 
         // ========== ЗАПУСК ==========
         updateProfileUI(); updateUI(); updatePinned(); updateStickerLB(); updateTokenBal(); checkPrestigeDisplay();
