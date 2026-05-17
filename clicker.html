@@ -1399,25 +1399,72 @@ function takeSessionSnapshot() {
 }
 function resetSessionCounters() { sessionClicks = 0; sessionEarned = 0; sessionCrafts = 0; sessionFuses = 0; sessionPacksOpened = 0; sessionUpgrades = 0; sessionRebirths = 0; sessionSells = 0; sessionCollectibleSells = 0; sessionLimitedCreated = 0; sessionCollectibleCreated = 0; sessionStickersCreated = 0; }
 
-function endSession() {
+async function endSession() {
     var sessionData = {
         startTime: sessionSnapshot.time, endTime: Date.now(), snapshot: sessionSnapshot,
         actions: { clicks: sessionClicks, earned: sessionEarned, crafts: sessionCrafts, fuses: sessionFuses, packsOpened: sessionPacksOpened, upgrades: sessionUpgrades, rebirths: sessionRebirths, sells: sessionSells, collectibleSells: sessionCollectibleSells, limitedCreated: sessionLimitedCreated, collectibleCreated: sessionCollectibleCreated, stickersCreated: sessionStickersCreated },
         result: { balance: balance, coins: coins, tokens: collectibleTokens, prestige: prestigeLevel, stickers: JSON.parse(JSON.stringify(stickers)), limited: JSON.parse(JSON.stringify(limitedStickers)), collectible: JSON.parse(JSON.stringify(collectibleStickers)) }
     };
+    
+    // СВЕРКА С SUPABASE
     var isValid = validateSession(sessionData);
-    if (isValid) { sessionHistory.unshift(sessionData); if (sessionHistory.length > 3) sessionHistory = sessionHistory.slice(0, 3); localStorage.setItem('clicker_sessions', JSON.stringify(sessionHistory)); }
-    else {
+    
+    if (sb && currentUser) {
+        try {
+            var { data } = await sb.from('clicker_data').select('balance, coins, collectible_tokens, prestige_level, limited_stickers, collectible_stickers, stickers').eq('username', currentUser.username).single();
+            if (data) {
+                // Если данные в Supabase СИЛЬНО отличаются от наших — откат
+                var supabaseBalance = data.balance || 0;
+                var supabaseCoins = data.coins || 0;
+                
+                if (Math.abs(balance - supabaseBalance) > supabaseBalance * 0.5 + 1e12) {
+                    console.warn('⚠️ Баланс расходится с Supabase! Откат.');
+                    isValid = false;
+                }
+                if (Math.abs(coins - supabaseCoins) > supabaseCoins * 0.5 + 1000) {
+                    console.warn('⚠️ Кристаллы расходятся с Supabase! Откат.');
+                    isValid = false;
+                }
+                
+                // Проверка количества стикеров
+                var supabaseLimited = data.limited_stickers;
+                if (typeof supabaseLimited === 'string') supabaseLimited = JSON.parse(supabaseLimited);
+                if (Object.keys(limitedStickers).length > Object.keys(supabaseLimited || {}).length + 5) {
+                    console.warn('⚠️ Слишком много новых лимиток! Откат.');
+                    isValid = false;
+                }
+            }
+        } catch (e) {}
+    }
+    
+    if (isValid) {
+        sessionHistory.unshift(sessionData);
+        if (sessionHistory.length > 3) sessionHistory = sessionHistory.slice(0, 3);
+        localStorage.setItem('clicker_sessions', JSON.stringify(sessionHistory));
+    } else {
         console.warn('⚠️ Сессия невалидна! Откат...');
-        balance = sessionSnapshot.balance; coins = sessionSnapshot.coins; collectibleTokens = sessionSnapshot.tokens; prestigeLevel = sessionSnapshot.prestige;
-        stickers = sessionSnapshot.stickers; limitedStickers = sessionSnapshot.limited; collectibleStickers = sessionSnapshot.collectible;
-        clickPower = sessionSnapshot.clickPower; autoClicker = sessionSnapshot.autoClicker; multiplier = sessionSnapshot.multiplier; rebirths = sessionSnapshot.rebirths;
-        updateUI(); saveClickerData(); updateCoins(); updateTokenBal(); checkPrestigeDisplay();
+        balance = sessionSnapshot.balance;
+        coins = sessionSnapshot.coins;
+        collectibleTokens = sessionSnapshot.tokens;
+        prestigeLevel = sessionSnapshot.prestige;
+        stickers = sessionSnapshot.stickers;
+        limitedStickers = sessionSnapshot.limited;
+        collectibleStickers = sessionSnapshot.collectible;
+        clickPower = sessionSnapshot.clickPower;
+        autoClicker = sessionSnapshot.autoClicker;
+        multiplier = sessionSnapshot.multiplier;
+        rebirths = sessionSnapshot.rebirths;
+        updateUI();
+        saveClickerData();
+        updateCoins();
+        updateTokenBal();
+        checkPrestigeDisplay();
         toast('🛡️ Откат сессии', '#ff4444');
     }
-    resetSessionCounters(); takeSessionSnapshot();
+    
+    resetSessionCounters();
+    takeSessionSnapshot();
 }
-
 function validateSession(session) {
     var a = session.actions, start = session.snapshot, end = session.result, duration = (session.endTime - session.startTime) / 1000;
     var avgClickPower = (start.clickPower + clickPower) / 2, avgMultiplier = (start.multiplier + multiplier) / 2, avgRebirth = (start.rebirths + rebirths) / 2;
