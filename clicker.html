@@ -1385,59 +1385,65 @@ function checkPrestige() { if (balance >= 1e12) { var newPrestige = Math.floor(b
 function checkPrestigeDisplay() { var badge = document.getElementById('prestigeBadge'); var count = document.getElementById('prestigeCount'); if (prestigeLevel > 0) { if (badge) badge.style.display = 'inline-block'; if (count) count.textContent = prestigeLevel } else { if (badge) badge.style.display = 'none' } }
 function updateTokenBal() { document.getElementById('tokenBal').textContent = collectibleTokens.toFixed(1); var shopEl = document.getElementById('shopTokenBal'); if (shopEl) shopEl.textContent = collectibleTokens.toFixed(1) }
 
-// ========== СИСТЕМА СЕССИЙ ==========
-var sessionHistory = JSON.parse(localStorage.getItem('clicker_sessions') || '[]');
-var sessionClicks = 0, sessionEarned = 0, sessionCrafts = 0, sessionFuses = 0, sessionPacksOpened = 0, sessionUpgrades = 0, sessionRebirths = 0, sessionSells = 0, sessionCollectibleSells = 0, sessionLimitedCreated = 0, sessionCollectibleCreated = 0, sessionStickersCreated = 0;
-var sessionSnapshot = {};
+// ========== ЗАЩИТА ==========
 
-function takeSessionSnapshot() {
-    sessionSnapshot = {
-        time: Date.now(), balance: balance, coins: coins, tokens: collectibleTokens, prestige: prestigeLevel,
-        stickers: JSON.parse(JSON.stringify(stickers)), limited: JSON.parse(JSON.stringify(limitedStickers)), collectible: JSON.parse(JSON.stringify(collectibleStickers)),
-        clickPower: clickPower, autoClicker: autoClicker, multiplier: multiplier, rebirths: rebirths
-    };
-}
-function resetSessionCounters() { sessionClicks = 0; sessionEarned = 0; sessionCrafts = 0; sessionFuses = 0; sessionPacksOpened = 0; sessionUpgrades = 0; sessionRebirths = 0; sessionSells = 0; sessionCollectibleSells = 0; sessionLimitedCreated = 0; sessionCollectibleCreated = 0; sessionStickersCreated = 0; }
+// Сохранение в Supabase каждые 10 секунд
+setInterval(function () { 
+    saveClickerData(); 
+    saveToSupabase(); 
+}, 10000);
 
-var consecutiveRollbacks = 0;
-
-// Замени endSession на простую проверку
+// Сверка с Supabase каждые 30 секунд (только при больших расхождениях)
 setInterval(async function () {
     if (!sb || !currentUser) return;
     try {
-        var { data } = await sb.from('clicker_data').select('balance, coins, collectible_tokens, prestige_level').eq('username', currentUser.username).single();
+        var { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
         if (data) {
             var changed = false;
-            if (Math.abs(balance - data.balance) > 1e13) { balance = data.balance; changed = true; }
-            if (Math.abs(coins - data.coins) > 10000) { coins = data.coins; changed = true; }
-            if (Math.abs(collectibleTokens - data.collectible_tokens) > 1000) { collectibleTokens = data.collectible_tokens; changed = true; }
-            if (Math.abs(prestigeLevel - data.prestige_level) > 100) { prestigeLevel = data.prestige_level; changed = true; }
-            if (changed) { updateUI(); saveClickerData(); updateCoins(); updateTokenBal(); checkPrestigeDisplay(); }
+            
+            // Проверяем только ЯВНЫЕ читы (огромные скачки)
+            if (Math.abs(balance - (data.balance || 0)) > 1e14) { 
+                balance = data.balance; 
+                changed = true; 
+            }
+            if (Math.abs(coins - (data.coins || 0)) > 50000) { 
+                coins = data.coins; 
+                updateCoins(); 
+                changed = true; 
+            }
+            if (Math.abs(collectibleTokens - (data.collectible_tokens || 0)) > 5000) { 
+                collectibleTokens = data.collectible_tokens; 
+                updateTokenBal(); 
+                changed = true; 
+            }
+            if (Math.abs(prestigeLevel - (data.prestige_level || 0)) > 500) { 
+                prestigeLevel = data.prestige_level; 
+                checkPrestigeDisplay(); 
+                changed = true; 
+            }
+            
+            // Проверка стикеров (только если добавлено >20 новых за раз)
+            var serverLimited = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
+            if (Object.keys(limitedStickers).length > Object.keys(serverLimited).length + 20) {
+                limitedStickers = serverLimited;
+                changed = true;
+            }
+            
+            if (changed) {
+                updateUI();
+                saveClickerData();
+                console.warn('🛡️ Обнаружен читинг! Данные восстановлены.');
+                toast('🛡️ Данные восстановлены', '#ff4444');
+            }
         }
     } catch (e) {}
-}, 30000);
-function validateSession(session) {
-    var a = session.actions, start = session.snapshot, end = session.result, duration = (session.endTime - session.startTime) / 1000;
-    var avgClickPower = (start.clickPower + clickPower) / 2, avgMultiplier = (start.multiplier + multiplier) / 2, avgRebirth = (start.rebirths + rebirths) / 2;
-    var rebMult = REBIRTH_MULTS[Math.min(Math.floor(avgRebirth), 5)] || 1;
-    var expectedEarn = a.clicks * avgClickPower * Math.pow(2, Math.min(avgMultiplier, 50)) * rebMult + autoClicker * avgClickPower * Math.pow(2, Math.min(avgMultiplier, 50)) * rebMult * duration;
-    var maxEarn = expectedEarn * 1.5 + (a.sells * 1000000000000);
-    var actualEarn = end.balance - start.balance;
-    if (actualEarn > maxEarn && a.clicks < 1000 && a.sells === 0) { console.warn('⚠️ Баланс: макс ' + Math.floor(maxEarn) + ' факт ' + Math.floor(actualEarn)); return false; }
-    var expectedCoins = a.sells * 2250, actualCoins = end.coins - start.coins + (a.packsOpened * 60);
-    if (actualCoins > expectedCoins + 100 && a.sells === 0) { console.warn('⚠️ Кристаллы'); return false; }
-    var expectedTokens = a.collectibleSells * 100, actualTokens = end.tokens - start.tokens;
-    if (actualTokens > expectedTokens + 50 && a.collectibleSells === 0) { console.warn('⚠️ Токены'); return false; }
-    var expectedPrestige = Math.floor(actualEarn / 1e12), actualPrestige = end.prestige - start.prestige;
-    if (actualPrestige > expectedPrestige + 2) { console.warn('⚠️ Престиж'); return false; }
-    if (a.limitedCreated > a.packsOpened * 2 + 5) { console.warn('⚠️ Лимитки'); return false; }
-    if (a.collectibleCreated > a.crafts + a.fuses + 1) { console.warn('⚠️ Коллекционки'); return false; }
-    if (a.stickersCreated > a.clicks * 0.1 + 10) { console.warn('⚠️ Стикеры'); return false; }
-    return true;
-}
+}, 15000);
 
-takeSessionSnapshot();
-setInterval(function () { endSession(); }, 10000);
+// Сохранение при выходе
+window.addEventListener('beforeunload', function () { 
+    saveClickerData(); 
+    saveToSupabase(); 
+});
 
 // ========== ЗАКРЕПЛЕНИЕ ==========
 function applyPinnedBackground() { if (pinned.length > 0) { document.body.style.background = pinned[0].gradient || getGradient(pinned[0].bg); document.body.style.backgroundAttachment = 'fixed' } }
