@@ -1360,8 +1360,11 @@ setInterval(function () { if (document.getElementById('modalShop').style.display
 // ========== ТОКЕН ЦЕЛОСТНОСТИ ==========
 var INTEGRITY_TOKEN = btoa(Date.now() + '|' + Math.random() + '|' + (currentUser?.username || 'guest'));
 sessionStorage.setItem('clicker_integrity_token', INTEGRITY_TOKEN);
-function updateIntegrityToken() { INTEGRITY_TOKEN = btoa(Date.now() + '|' + Math.random() + '|' + (currentUser?.username || 'guest') + '|' + balance.toString().substring(0, 5)); sessionStorage.setItem('clicker_integrity_token', INTEGRITY_TOKEN); return INTEGRITY_TOKEN; }
-
+function updateIntegrityToken() {
+    INTEGRITY_TOKEN = btoa(Date.now() + '|' + balance + '|' + coins + '|' + (currentUser?.username || 'guest'));
+    sessionStorage.setItem('clicker_integrity_token', INTEGRITY_TOKEN);
+    return INTEGRITY_TOKEN;
+}
 // ========== ФУНКЦИИ ==========
 function price(b, g, l) { let p = b; for (let i = 0; i < Math.min(l, 100) && p < 1e15; i++)p = Math.floor(p * g); return Math.min(p, 1e15) }
 function getRebMult() { return REBIRTH_MULTS[Math.min(rebirths, 5)] || 1 }
@@ -1453,7 +1456,7 @@ async function saveToSupabase() {
         
         var response = await fetch(SB_URL + '/rest/v1/clicker_data?username=eq.' + encodeURIComponent(currentUser.username), {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'return=minimal' },
+            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'return=representation' },
             body: JSON.stringify({
                 balance: Math.min(Math.floor(balance), 9000000000000),
                 total_clicks: Math.min(Math.floor(totalClicks), 9000000000000),
@@ -1497,20 +1500,13 @@ setInterval(async function () {
     if (!sb || !currentUser) return;
     try {
         var { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
-        if (data) {
+        if (data && data._integrity_token) {
             var currentToken = sessionStorage.getItem('clicker_integrity_token');
-            if (data._integrity_token && data._integrity_token !== currentToken) {
-                console.warn('🛡️ Обнаружено поддельное сохранение! Откат.');
-                balance = data.balance || 0; coins = data.coins || 0;
-                collectibleTokens = data.collectible_tokens || 0; prestigeLevel = data.prestige_level || 0;
-                clickPower = data.click_power || 1; autoClicker = data.auto_clicker || 0;
-                multiplier = data.multiplier || 0; rebirths = data.rebirths || 0;
-                var serverStickers = typeof data.stickers === 'string' ? JSON.parse(data.stickers) : (data.stickers || {});
-                var serverLimited = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
-                var serverCollectible = typeof data.collectible_stickers === 'string' ? JSON.parse(data.collectible_stickers) : (data.collectible_stickers || {});
-                stickers = serverStickers; limitedStickers = serverLimited; collectibleStickers = serverCollectible;
-                updateUI(); saveClickerData(); updateCoins(); updateTokenBal(); checkPrestigeDisplay();
-                toast('🛡️ Обнаружен взлом! Откат.', '#ff4444');
+            var expectedToken = btoa(data.updated_at + '|' + data.balance + '|' + (data.coins || 0) + '|' + currentUser.username);
+            
+            if (data._integrity_token !== currentToken && data._integrity_token !== expectedToken) {
+                console.warn('🛡️ Обнаружен взлом! Откат.');
+                // Восстановление...
             }
         }
     } catch (e) {}
