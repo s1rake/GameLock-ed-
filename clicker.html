@@ -1386,38 +1386,6 @@ let sb = null; try { sb = window.supabase.createClient(SB_URL, SB_KEY) } catch (
     };
 })();
 
-// ========== ЗАЩИТА ОТ ПЕРЕОПРЕДЕЛЕНИЯ ФУНКЦИЙ ==========
-var _protectedFunctions = {
-    saveClickerData: saveClickerData,
-    saveToSupabase: saveToSupabase,
-    updateUI: updateUI,
-    checkPrestige: checkPrestige,
-    buyUpgrade: buyUpgrade,
-    rebirth: rebirth,
-    openPack: openPack,
-    doCraft: doCraft,
-    doFuse: doFuse,
-    mergeStickers: mergeStickers,
-    sellLimitedForCoins: sellLimitedForCoins,
-    sellCollectible: sellCollectible,
-    buyDeal: buyDeal,
-    addToFuse: addToFuse,
-    clearFuse: clearFuse
-};
-
-for (var fnName in _protectedFunctions) {
-    (function(name, originalFn) {
-        Object.defineProperty(window, name, {
-            get: function() { return originalFn; },
-            set: function() { 
-                console.warn('🛡️ Нельзя переопределить ' + name + '!');
-                throw new Error('Protected function: ' + name);
-            },
-            configurable: false
-        });
-    })(fnName, _protectedFunctions[fnName]);
-}
-
 // ========== ЗАЩИТА ОСНОВНЫХ ПЕРЕМЕННЫХ ==========
 var _gameState = {
     balance: 0,
