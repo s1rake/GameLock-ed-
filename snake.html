@@ -658,6 +658,14 @@ function switchModal(type) {
     document.getElementById('modalRegister').style.display = type === 'register' ? 'block' : 'none';
 }
 
+function toast(msg, c) {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:15px;font-weight:bold;font-size:15px;z-index:200;color:#fff;background:' + (c || '#4caf50') + ';box-shadow:0 5px 20px rgba(0,0,0,0.3);';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 2500);
+}
+    
 async function register() {
     const u = document.getElementById('registerUsername').value.trim();
     const p = document.getElementById('registerPassword').value;
