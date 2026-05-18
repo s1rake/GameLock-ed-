@@ -630,11 +630,51 @@ async function loadUserDataFromSupabase() {
                 console.log('⚠️ Ошибка загрузки из Supabase:', error.message);
             } else {
                 console.log('ℹ️ Пользователь не найден в Supabase, создаём новую запись');
-                // Создаём запись для пользователя, если её нет
-                await sb.from('players').insert({
-                    username: currentUser.username,
-                    created_at: new Date().toISOString()
-                });
+                // ✅ ИСПРАВЛЕНО: создаём запись с ВСЕМИ нужными полями
+                const defaultStats = {
+                    deaths: 0, record: 0, eventsEncountered: 0,
+                    applesEaten: 0, goldApplesEaten: 0,
+                    totalScore: 0, totalGoldApples: 0, totalEvents: 0,
+                    selfDeaths: 0, wallDeaths: 0,
+                    bonusEvents: 0, rainbowEvents: 0,
+                    goldenEvents: 0, attackEvents: 0
+                };
+                
+                const { error: createError } = await sb
+                    .from('players')
+                    .insert({
+                        username: currentUser.username,
+                        created_at: new Date().toISOString(),
+                        stats: defaultStats,
+                        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
+                        owned_skins: ['green'],
+                        selected_skin: 'green',
+                        achievements: {}
+                    });
+                
+                if (createError) {
+                    console.log('❌ Ошибка создания пользователя в Supabase:', createError.message);
+                    console.log('📋 Полная ошибка:', JSON.stringify(createError));
+                } else {
+                    console.log('✅ Пользователь создан в Supabase');
+                    
+                    // Сохраняем локально
+                    const users = getAllUsers();
+                    users[currentUser.username] = {
+                        stats: defaultStats,
+                        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
+                        ownedSkins: ['green'],
+                        selectedSkin: 'green',
+                        achievements: {}
+                    };
+                    saveUsers(users);
+                    currentUser.stats = defaultStats;
+                    currentUser.sparks = { golden: 0, rainbow: 0, bonus: 0, random: 0 };
+                    currentUser.ownedSkins = ['green'];
+                    currentUser.selectedSkin = 'green';
+                    currentUser.achievements = {};
+                    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+                }
             }
         } catch(e) {
             console.log('⚠️ Оффлайн-режим, используем локальные данные:', e.message);
