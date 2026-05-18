@@ -1060,15 +1060,27 @@ function updateSkinShop() {
 // ================================================================
 const ACHIEVEMENTS = [
     { id: 'register', name: 'Добро пожаловать!', desc: 'Зарегистрируйтесь', icon: '👋', reward: { type: 'apples', amount: 10 }, condition: () => currentUser !== null },
+    { id: 'event_bonus', name: 'Бонус!', desc: 'Встретьте бонусную еду', icon: '🎁', reward: { type: 'spark', sparkType: 'bonus', amount: 1 }, condition: s => (s.bonusEvents || 0) >= 1 },
+    { id: 'event_rainbow', name: 'Дождь из еды', desc: 'Встретьте радужный дождь', icon: '🌈', reward: { type: 'spark', sparkType: 'rainbow', amount: 1 }, condition: s => (s.rainbowEvents || 0) >= 1 },
+    { id: 'event_golden', name: 'Всё из золота!', desc: 'Встретьте золотую еду', icon: '⭐', reward: { type: 'spark', sparkType: 'golden', amount: 1 }, condition: s => (s.goldenEvents || 0) >= 1 },
+    { id: 'event_attack', name: 'Кто на меня с мечом...', desc: 'Встретьте атаку', icon: '💀', reward: { type: 'spark', sparkType: 'random', amount: 3 }, condition: s => (s.attackEvents || 0) >= 1 },
+    { id: 'skins_4', name: 'Коллекционер-любитель', desc: 'Откройте 4 скина', icon: '🎨', reward: { type: 'apples', amount: 100 }, condition: () => getOwnedSkins().length >= 4 },
+    { id: 'skins_10', name: 'Бывалый коллекционер', desc: 'Соберите 10 скинов', icon: '🖼️', reward: { type: 'apples', amount: 250 }, condition: () => getOwnedSkins().length >= 10 },
+    { id: 'skins_all', name: 'Лучший коллекционер!', desc: 'Соберите все скины', icon: '🏅', reward: { type: 'spark', sparkType: 'random', amount: 10 }, condition: () => getOwnedSkins().length >= SKIN_COLORS.length },
+    { id: 'events_5', name: 'Ивенты', desc: 'Встретьте 5 ивентов', icon: '🎪', reward: { type: 'spark', sparkType: 'random', amount: 1 }, condition: s => (s.totalEvents || 0) >= 5 },
+    { id: 'events_15', name: 'Ивентор', desc: 'Встретьте 15 ивентов', icon: '🎉', reward: { type: 'spark', sparkType: 'random', amount: 2 }, condition: s => (s.totalEvents || 0) >= 15 },
+    { id: 'events_50', name: 'Любитель ивентов', desc: 'Встретьте 50 ивентов', icon: '🎊', reward: { type: 'spark', sparkType: 'random', amount: 3 }, condition: s => (s.totalEvents || 0) >= 50 },
+    { id: 'events_250', name: 'Ивенторий!', desc: 'Встретьте 250 ивентов', icon: '🔥', reward: { type: 'spark', sparkType: 'random', amount: 10 }, condition: s => (s.totalEvents || 0) >= 250 },
     { id: 'death_1', name: 'Конец Игры!', desc: 'Умрите 1 раз', icon: '💀', reward: { type: 'goldApples', amount: 1 }, condition: s => s.deaths >= 1 },
     { id: 'death_10', name: 'Смертоносец!', desc: 'Умрите 10 раз', icon: '☠️', reward: { type: 'goldApples', amount: 3 }, condition: s => s.deaths >= 10 },
+    { id: 'death_50', name: 'Смертельно!', desc: 'Умрите 50 раз', icon: '⚰️', reward: { type: 'goldApples', amount: 10 }, condition: s => s.deaths >= 50 },
+    { id: 'death_250', name: 'Как корабль назовёшь...', desc: 'Умрите 250 раз', icon: '🪦', reward: { type: 'goldApples', amount: 35 }, condition: s => s.deaths >= 250 },
     { id: 'record_5', name: 'Первые повороты', desc: 'Рекорд: 5', icon: '🔄', reward: { type: 'spark', sparkType: 'bonus', amount: 1 }, condition: s => s.record >= 5 },
     { id: 'record_15', name: 'Наповорачивался', desc: 'Рекорд: 15', icon: '🔀', reward: { type: 'spark', sparkType: 'rainbow', amount: 1 }, condition: s => s.record >= 15 },
     { id: 'record_35', name: 'Поворот за поворотом', desc: 'Рекорд: 35', icon: '🔁', reward: { type: 'spark', sparkType: 'golden', amount: 1 }, condition: s => s.record >= 35 },
     { id: 'record_50', name: 'Абсолютный рекордсмен', desc: 'Рекорд: 50', icon: '👑', reward: { type: 'spark', sparkType: 'golden', amount: 2 }, condition: s => s.record >= 50 },
     { id: 'self_death', name: 'Об себя стукнись!', desc: 'Умрите об себя', icon: '🤕', reward: { type: 'apples', amount: 20 }, condition: s => (s.selfDeaths || 0) >= 1 },
-    { id: 'wall_death', name: 'Головой об стенку', desc: 'Умрите об стенку', icon: '🧱', reward: { type: 'apples', amount: 20 }, condition: s => (s.wallDeaths || 0) >= 1 },
-    { id: 'skins_4', name: 'Коллекционер-любитель', desc: 'Откройте 4 скина', icon: '🎨', reward: { type: 'apples', amount: 100 }, condition: () => getOwnedSkins().length >= 4 }
+    { id: 'wall_death', name: 'Головой об стенку', desc: 'Умрите об стенку', icon: '🧱', reward: { type: 'apples', amount: 20 }, condition: s => (s.wallDeaths || 0) >= 1 }
 ];
 
 function getAchData() {
