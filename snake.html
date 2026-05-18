@@ -1491,7 +1491,7 @@ function startAttackEvent() {
 // ================================================================
 // ЗОНА 11: КОНЕЦ ИГРЫ
 // ================================================================
-function endGame() {
+async function endGame() {
     if (isGameOver) return;
     isGameOver = true;
     const s = getStats();
