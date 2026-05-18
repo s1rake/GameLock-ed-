@@ -397,8 +397,15 @@
     </div>
 
 </div>
-
+    
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+    // ========== SUPABASE ==========
+const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
+let sb = null;
+try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e) {}
+    
 // ========== ТЁМНАЯ ТЕМА ==========
 let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true';
 if (darkTheme) document.body.classList.add('dark-theme');
@@ -475,7 +482,6 @@ function saveUsers(users) {
     localStorage.setItem('snakeUsers', JSON.stringify(merged));
 }
 
-// Вставь в <script> после SUPABASE
 
 async function register() {
     const u = document.getElementById('registerUsername').value.trim();
