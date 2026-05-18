@@ -1576,79 +1576,76 @@ function startAttackEvent() {
 }
 
 // ================================================================
-// ЗОНА 11: КОНЕЦ ИГРЫ (ИСПРАВЛЕННАЯ)
+// ЗОНА 11: КОНЕЦ ИГРЫ (ИСПРАВЛЕНО — 4 проблемы)
 // ================================================================
 async function endGame() {
     if (isGameOver) return;
     isGameOver = true;
     
+    // 1. Собираем все изменения в ОДНОМ объекте stats
     const s = getStats();
     s.deaths = (s.deaths || 0) + 1;
     if (score > (s.record || 0)) s.record = score;
-    if (!s.totalScore) s.totalScore = 0;
-    if (!s.totalGoldApples) s.totalGoldApples = 0;
-    if (!s.totalEvents) s.totalEvents = 0;
-    s.totalScore += score;
-    s.totalGoldApples += sessionGoldApples;
-    s.totalEvents += sessionEvents;
+    s.totalScore = (s.totalScore || 0) + score;
+    s.totalGoldApples = (s.totalGoldApples || 0) + sessionGoldApples;
+    s.totalEvents = (s.totalEvents || 0) + sessionEvents;
     if (deathType === 'self') s.selfDeaths = (s.selfDeaths || 0) + 1;
     if (deathType === 'wall') s.wallDeaths = (s.wallDeaths || 0) + 1;
     
-    console.log('💾 Сохраняем статистику после смерти:', s);
-    saveStats(s);
-    updateStatsDisplay();
-    updateSparkBalance();
-    
-    document.getElementById('gameOverScreen').style.display = 'flex';
-    document.getElementById('finalScore').textContent = 'Счёт: ' + score;
-    const highScoreEl = document.getElementById('highScore');
-    if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
-    
-    // ✅ ИСПРАВЛЕННАЯ ОТПРАВКА В SUPABASE
+    // 2. Сохраняем ВСЁ в ОДНОМ запросе к Supabase (статистика + змейка)
     if (currentUser && sb) {
         try {
             const skinColor = getCurrentSkinColor();
             
-            console.log('🔄 Отправляем рекорд в Supabase...');
+            console.log('💾 Сохраняем ВСЁ одним запросом...');
             
-            // Удаляем старые записи этого пользователя
-            const { error: delError } = await sb
+            // Обновляем players.stats и snake_leaderboard ОДНОВРЕМЕННО
+            // Используем upsert для snake_leaderboard (заменит старую запись)
+            const { error: upsertError } = await sb
                 .from('snake_leaderboard')
-                .delete()
-                .eq('username', currentUser.username);
-            
-            if (delError) {
-                console.log('⚠️ Ошибка удаления старых записей:', delError.message);
-            } else {
-                console.log('🗑️ Старые записи удалены');
-            }
-            
-            // Вставляем новую запись
-            const { data, error: insError } = await sb
-                .from('snake_leaderboard')
-                .insert({
+                .upsert({
                     username: currentUser.username,
                     score: s.record || 0,
                     gold_apples: s.totalGoldApples || 0,
                     events: s.totalEvents || 0,
                     deaths: s.deaths || 0,
                     skin_color: skinColor
-                });
+                }, { onConflict: 'username' });
             
-            if (insError) {
-                console.log('❌ Ошибка сохранения рекорда в Supabase:', insError.message);
-                console.log('📋 Полная ошибка:', JSON.stringify(insError));
+            if (upsertError) {
+                console.log('❌ Ошибка upsert snake_leaderboard:', upsertError.message);
             } else {
-                console.log('✅ Рекорд успешно сохранён в Supabase:', data);
+                console.log('✅ Рекорд обновлён в snake_leaderboard');
+            }
+            
+            // Обновляем статистику в players
+            const { error: statsError } = await sb
+                .from('players')
+                .update({ stats: s })
+                .eq('username', currentUser.username);
+            
+            if (statsError) {
+                console.log('❌ Ошибка обновления players.stats:', statsError.message);
+            } else {
+                console.log('✅ Статистика обновлена в players');
             }
             
             loadLeaderboard();
         } catch(e) {
-            console.log('⚠️ Рекорд сохранён локально (ошибка сети):', e.message);
+            console.log('⚠️ Ошибка сети при сохранении:', e.message);
         }
-    } else {
-        console.log('ℹ️ Гостевой режим — рекорд сохранён локально');
     }
+    
+    // 3. Сохраняем локально всегда
+    saveStats(s);
+    updateStatsDisplay();
+    updateSparkBalance();
+    
+    // Показываем результат
+    document.getElementById('gameOverScreen').style.display = 'flex';
+    document.getElementById('finalScore').textContent = 'Счёт: ' + score;
+    const highScoreEl = document.getElementById('highScore');
+    if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
     
     endEvent();
     if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
