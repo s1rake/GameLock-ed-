@@ -568,9 +568,9 @@ let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null')
 function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
 function saveUsers(u) { localStorage.setItem('snakeUsers', JSON.stringify(u)); }
 
-async function hashPassword(password, salt) {
+async function hashPassword(password) {
     const encoder = new TextEncoder();
-    const data = encoder.encode(password + salt);
+    const data = encoder.encode(password + 'gamelock_salt_2026');
     const hash = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -662,111 +662,50 @@ async function register() {
     const u = document.getElementById('registerUsername').value.trim();
     const p = document.getElementById('registerPassword').value;
     const p2 = document.getElementById('registerPasswordConfirm').value;
+    if (!u || u.length < 3) return alert('Имя: мин 3');
+    if (!p || p.length < 4) return alert('Пароль: мин 4');
+    if (p !== p2) return alert('Не совпадают');
+    if (!sb) return alert('Нет соединения');
     
-    if (!u || u.length < 3) return alert('Имя: мин 3 символа');
-    if (!p || p.length < 4) return alert('Пароль: мин 4 символа');
-    if (p !== p2) return alert('Пароли не совпадают');
+    const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
+    if (exists) return alert('Занято');
     
-    const users = getAllUsers();
-    if (users[u]) return alert('Имя занято');
+    const hashed = await hashPassword(p);
+    await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() });
     
-    const salt = generateSalt();
-    const hashedPassword = await hashPassword(p, salt);
-    
-    users[u] = {
-        password: p,
-        salt: salt,
-        passwordHash: hashedPassword,
-        stats: { deaths: 0, record: 0, eventsEncountered: 0, applesEaten: 0, goldApplesEaten: 0, totalScore: 0, totalGoldApples: 0, totalEvents: 0, bonusEvents: 0, rainbowEvents: 0, goldenEvents: 0, attackEvents: 0, selfDeaths: 0, wallDeaths: 0 },
-        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-        ownedSkins: ['green'],
-        selectedSkin: 'green',
-        settings: { up: 'w', down: 's', left: 'a', right: 'd' },
-        achievements: {},
-        created: Date.now()
-    };
-    
-    saveUsers(users);
     currentUser = { username: u };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
     
-    if (sb) {
-        try {
-            await sb.from('players').upsert({
-                username: u,
-                password_hash: hashedPassword,
-                salt: salt,
-                achievements: {},
-                sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-                owned_skins: ['green'],
-                selected_skin: 'green',
-                created_at: new Date().toISOString()
-            }, { onConflict: 'username' });
-            console.log('✅ Пользователь создан в Supabase');
-        } catch(e) { console.log('⚠️ Supabase недоступен'); }
-    }
-    
     closeModal();
     updateProfileUI();
-    checkAchievements();
-    alert('✅ Аккаунт создан!');
+    toast('✅ Аккаунт создан!');
 }
-
 async function login() {
     const u = document.getElementById('loginUsername').value.trim();
     const p = document.getElementById('loginPassword').value;
+    if (!u || !p) return alert('Заполните');
+    if (!sb) return alert('Нет соединения');
     
-    if (!u || !p) return alert('Заполните все поля');
+    const hashed = await hashPassword(p);
+    const { data, error } = await sb.rpc('check_password', { username: u, password_hash: hashed });
     
-    const users = getAllUsers();
-    const user = users[u];
+    if (error || !data) return alert('Неверный логин или пароль');
     
-    if (!user) return alert('Пользователь не найден');
-    
-    let passwordValid = false;
-    if (user.password === p) {
-        passwordValid = true;
-    } else if (user.salt && user.passwordHash) {
-        const hashedInput = await hashPassword(p, user.salt);
-        passwordValid = (hashedInput === user.passwordHash);
-    }
-    
-    if (!passwordValid) return alert('Неверный пароль');
-    
-    currentUser = {
-        username: u,
-        achievements: user.achievements || {},
-        sparks: user.sparks || { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-        ownedSkins: user.ownedSkins || ['green'],
-        selectedSkin: user.selectedSkin || 'green',
-        stats: user.stats || {}
-    };
-    
-    if (sb) {
-        try {
-            const { data } = await sb
-                .from('players')
-                .select('achievements, sparks, owned_skins, selected_skin, stats')
-                .eq('username', u)
-                .single();
-            
-            if (data) {
-                if (data.achievements) { currentUser.achievements = data.achievements; user.achievements = data.achievements; }
-                if (data.sparks) { currentUser.sparks = data.sparks; user.sparks = data.sparks; }
-                if (data.owned_skins) { currentUser.ownedSkins = data.owned_skins; user.ownedSkins = data.owned_skins; }
-                if (data.selected_skin) { currentUser.selectedSkin = data.selected_skin; user.selectedSkin = data.selected_skin; }
-                if (data.stats) { currentUser.stats = data.stats; user.stats = data.stats; }
-                saveUsers(users);
-            }
-        } catch(e) { console.log('⚠️ Используем локальные данные'); }
-    }
-    
+    currentUser = { username: u };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
+    await loadUserDataFromSupabase();
+    
     closeModal();
     updateProfileUI();
-    checkAchievements();
-    loadLeaderboard();
-    alert('✅ С возвращением!');
+    updateUI();
+    updatePinned();
+    updateStickerLB();
+    updateTokenBal();
+    checkPrestigeDisplay();
+    updateFuseUI();
+    renderFuseInventory();
+    toast('✅ Вход!');
 }
 
 function logout() {
@@ -1576,22 +1515,23 @@ function endGame() {
     const highScoreEl = document.getElementById('highScore');
     if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
     
-// Отправка в Supabase (упрощённо, без fetch)
+// Отправка в Supabase
 if (currentUser && sb) {
     try {
         const skinColor = getCurrentSkinColor();
-        sb.from('snake_leaderboard').upsert({
+        await sb.from('snake_leaderboard').upsert({
             username: currentUser.username,
             score: s.record,
             gold_apples: s.totalGoldApples || 0,
             events: s.totalEvents || 0,
             deaths: s.deaths,
-            skin_color: skinColor, 
-            created_at: new Date().toISOString()
-        }, { onConflict: 'username' }).then(() => {
-            loadLeaderboard();
-        }).catch(() => {});
-    } catch(e) {}
+            skin_color: skinColor,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'username' });
+        loadLeaderboard();
+    } catch(e) {
+        console.log('Рекорд сохранён локально');
+    }
 }
     
     endEvent();
