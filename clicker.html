@@ -1452,9 +1452,103 @@ function closeCraftModal() { document.getElementById('modalCraft').style.display
 function closeShopModal() { document.getElementById('modalOverlay').style.display = 'none' }
 function switchModal(type) { if (type === 'register') { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'block' } else { document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none' } }
 
-async function register() { const u = document.getElementById('registerUsername').value.trim(); const p = document.getElementById('registerPassword').value; const p2 = document.getElementById('registerPasswordConfirm').value; if (!u || u.length < 3) return alert('Имя: мин 3'); if (!p || p.length < 4) return alert('Пароль: мин 4'); if (p !== p2) return alert('Не совпадают'); if (sb) { const { data: exists } = await sb.from('players').select('username').eq('username', u).single(); if (exists) return alert('Занято'); const hashed = await hashPassword(p); await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() }) } const users = getAllUsers(); if (users[u]) return alert('Занято'); users[u] = { password: p, clicker: { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {}, collectibleStickers: {}, collectibleTokens: 0, prestigeLevel: 0 }, created: Date.now() }; saveUsers(users); currentUser = { username: u }; localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser)); saveClickerData(); closeModal(); updateProfileUI(); toast('✅ Готово!') }
-async function login() { const u = document.getElementById('loginUsername').value.trim(); const p = document.getElementById('loginPassword').value; if (!u || !p) return alert('Заполните'); const users = getAllUsers(); if (!users[u]) return alert('Не найден'); if (users[u].password !== p) return alert('Неверный пароль'); try { if (sb) { const { data: clickerData } = await sb.from('clicker_data').select('*').eq('username', u).single(); if (clickerData) { users[u].clicker = { balance: clickerData.balance || 0, totalClicks: clickerData.total_clicks || 0, clickPower: clickerData.click_power || 1, autoClicker: clickerData.auto_clicker || 0, multiplier: clickerData.multiplier || 0, rebirths: clickerData.rebirths || 0, stickers: typeof clickerData.stickers === 'string' ? JSON.parse(clickerData.stickers) : (clickerData.stickers || {}), craftCnt: clickerData.craft_count || 0, craftTarget: clickerData.craft_target || null, limitedStickers: typeof clickerData.limited_stickers === 'string' ? JSON.parse(clickerData.limited_stickers) : (clickerData.limited_stickers || {}), collectibleStickers: typeof clickerData.collectible_stickers === 'string' ? JSON.parse(clickerData.collectible_stickers) : (clickerData.collectible_stickers || {}), collectibleTokens: clickerData.collectible_tokens || 0, prestigeLevel: clickerData.prestige_level || 0 }; saveUsers(users) } const extraKey = 'clicker_extra_' + u; const { data: extraData } = await sb.from('clicker_data').select('coins,favorites,pinned').eq('username', u).single(); if (extraData) { localStorage.setItem(extraKey, JSON.stringify({ coins: extraData.coins || 0, favorites: typeof extraData.favorites === 'string' ? JSON.parse(extraData.favorites) : (extraData.favorites || {}), pinned: typeof extraData.pinned === 'string' ? JSON.parse(extraData.pinned) : (extraData.pinned || []) })) } } } catch (e) { } currentUser = { username: u }; localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser)); fuseSlots = []; localStorage.removeItem('clicker_fuse_slots'); loadClickerData(); loadExtra(); closeModal(); updateProfileUI(); updateUI(); updatePinned(); updateStickerLB(); updateTokenBal(); checkPrestigeDisplay(); updateFuseUI(); renderFuseInventory(); toast('✅ Вход!') }
-function logout() { if (confirm('Выйти?')) { clearFuse(); saveClickerData(); currentUser = null; localStorage.removeItem('snakeCurrentUser'); localStorage.removeItem('clicker_fuse_slots'); updateProfileUI(); } }
+async function register() {
+    const u = document.getElementById('registerUsername').value.trim();
+    const p = document.getElementById('registerPassword').value;
+    const p2 = document.getElementById('registerPasswordConfirm').value;
+    if (!u || u.length < 3) return alert('Имя: мин 3');
+    if (!p || p.length < 4) return alert('Пароль: мин 4');
+    if (p !== p2) return alert('Не совпадают');
+    
+    if (!sb) return alert('Нет соединения с сервером');
+    
+    // Проверяем в Supabase
+    const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
+    if (exists) return alert('Занято');
+    
+    // Хешируем пароль
+    const hashed = await hashPassword(p);
+    
+    // Сохраняем в Supabase
+    await sb.from('players').insert({ 
+        username: u, 
+        password_hash: hashed, 
+        created_at: new Date().toISOString() 
+    });
+    
+    // Создаём запись в clicker_data
+    await sb.from('clicker_data').insert({
+        username: u,
+        balance: 0, total_clicks: 0, click_power: 1,
+        auto_clicker: 0, multiplier: 0, rebirths: 0,
+        stickers: {}, limited_stickers: {}, collectible_stickers: {},
+        collectible_tokens: 0, prestige_level: 0,
+        coins: 0, favorites: {}, pinned: [],
+        updated_at: new Date().toISOString()
+    });
+    
+    currentUser = { username: u };
+    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
+    closeModal();
+    updateProfileUI();
+    loadClickerData();
+    toast('✅ Аккаунт создан!');
+}
+
+async function login() {
+    const u = document.getElementById('loginUsername').value.trim();
+    const p = document.getElementById('loginPassword').value;
+    if (!u || !p) return alert('Заполните');
+    if (!sb) return alert('Нет соединения');
+    
+    // Хешируем пароль
+    const hashed = await hashPassword(p);
+    
+    // Проверяем через СЕРВЕРНУЮ функцию
+    const { data, error } = await sb.rpc('check_password', {
+        username: u,
+        password_hash: hashed
+    });
+    
+    if (error || !data) return alert('Неверный логин или пароль');
+    
+    currentUser = { username: u };
+    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
+    await loadFromSupabase();
+    
+    closeModal();
+    updateProfileUI();
+    updateUI();
+    toast('✅ Вход!');
+}
+
+// Загрузка из Supabase
+async function loadFromSupabase() {
+    if (!currentUser || !sb) return;
+    const { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
+    if (data) {
+        balance = data.balance || 0;
+        totalClicks = data.total_clicks || 0;
+        clickPower = data.click_power || 1;
+        autoClicker = data.auto_clicker || 0;
+        multiplier = data.multiplier || 0;
+        rebirths = data.rebirths || 0;
+        coins = data.coins || 0;
+        collectibleTokens = data.collectible_tokens || 0;
+        prestigeLevel = data.prestige_level || 0;
+        stickers = typeof data.stickers === 'string' ? JSON.parse(data.stickers) : (data.stickers || {});
+        limitedStickers = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
+        collectibleStickers = typeof data.collectible_stickers === 'string' ? JSON.parse(data.collectible_stickers) : (data.collectible_stickers || {});
+        favorites = typeof data.favorites === 'string' ? JSON.parse(data.favorites) : (data.favorites || {});
+        pinned = typeof data.pinned === 'string' ? JSON.parse(data.pinned) : (data.pinned || []);
+        updateCoins();
+        updateTokenBal();
+        checkPrestigeDisplay();
+    }
+}
+    function logout() { if (confirm('Выйти?')) { clearFuse(); saveClickerData(); currentUser = null; localStorage.removeItem('snakeCurrentUser'); localStorage.removeItem('clicker_fuse_slots'); updateProfileUI(); } }
 document.getElementById('modalOverlay').addEventListener('click', function (e) { if (e.target === this) closeModal() });
 function toast(msg, c) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.style.background = c || '#4caf50'; document.body.appendChild(t); setTimeout(function () { t.style.opacity = '0'; t.style.transition = '0.5s'; setTimeout(function () { t.remove() }, 500) }, 2500) }
 
