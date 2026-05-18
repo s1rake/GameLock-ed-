@@ -1515,24 +1515,42 @@ async function endGame() {
     const highScoreEl = document.getElementById('highScore');
     if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
     
-// Отправка в Supabase
-if (currentUser && sb) {
-    try {
-        const skinColor = getCurrentSkinColor();
-        await sb.from('snake_leaderboard').upsert({
-            username: currentUser.username,
-            score: s.record,
-            gold_apples: s.totalGoldApples || 0,
-            events: s.totalEvents || 0,
-            deaths: s.deaths,
-            skin_color: skinColor,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'username' });
-        loadLeaderboard();
-    } catch(e) {
-        console.log('Рекорд сохранён локально');
+    // Отправка в Supabase (DELETE + INSERT)
+    if (currentUser && sb) {
+        try {
+            const skinColor = getCurrentSkinColor();
+            const username = encodeURIComponent(currentUser.username);
+            
+            // Удаляем старую запись
+            await fetch(SB_URL + '/rest/v1/snake_leaderboard?username=eq.' + username, {
+                method: 'DELETE',
+                headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+            });
+            
+            // Вставляем новую
+            await fetch(SB_URL + '/rest/v1/snake_leaderboard', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SB_KEY,
+                    'Authorization': 'Bearer ' + SB_KEY
+                },
+                body: JSON.stringify({
+                    username: currentUser.username,
+                    score: s.record,
+                    gold_apples: s.totalGoldApples || 0,
+                    events: s.totalEvents || 0,
+                    deaths: s.deaths,
+                    skin_color: skinColor,
+                    updated_at: new Date().toISOString()
+                })
+            });
+            
+            loadLeaderboard();
+        } catch(e) {
+            console.log('Рекорд сохранён локально');
+        }
     }
-}
     
     endEvent();
     if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
