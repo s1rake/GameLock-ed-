@@ -386,7 +386,7 @@ body.dark-theme .achievement-desc { color: #aaa; }
 </head>
 <body>
 
-<!-- ========== HTML СТРУКТУРА (восстановлена) ========== -->
+<!-- ========== HTML СТРУКТУРА ========== -->
 <div class="top-panel">
     <a href="index.html" class="menu-btn">🏠 Меню</a>
     <button class="menu-btn" onclick="openSkinShop()">🎨 Скины</button>
@@ -541,7 +541,13 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let sb = null;
 
 try {
-    sb = window.supabase.createClient(SB_URL, SB_KEY);
+    sb = window.supabase.createClient(SB_URL, SB_KEY, {
+        global: {
+            headers: {
+                'Accept': 'application/json'
+            }
+        }
+    });
     console.log('✅ Supabase подключен');
 } catch(e) {
     console.warn('⚠️ Supabase не загрузился, работаем оффлайн');
@@ -588,38 +594,50 @@ async function loadUserDataFromSupabase() {
                 .from('players')
                 .select('achievements, sparks, owned_skins, selected_skin, stats')
                 .eq('username', currentUser.username)
-                .single();
+                .maybeSingle();
+            
+            console.log('📥 Результат загрузки:', { data, error });
             
             if (data && !error) {
                 const users = getAllUsers();
-                if (users[currentUser.username]) {
-                    if (data.achievements) {
-                        users[currentUser.username].achievements = data.achievements;
-                        currentUser.achievements = data.achievements;
-                    }
-                    if (data.sparks) {
-                        users[currentUser.username].sparks = data.sparks;
-                        currentUser.sparks = data.sparks;
-                    }
-                    if (data.owned_skins) {
-                        users[currentUser.username].ownedSkins = data.owned_skins;
-                        currentUser.ownedSkins = data.owned_skins;
-                    }
-                    if (data.selected_skin) {
-                        users[currentUser.username].selectedSkin = data.selected_skin;
-                        currentUser.selectedSkin = data.selected_skin;
-                    }
-                    if (data.stats) {
-                        users[currentUser.username].stats = data.stats;
-                        currentUser.stats = data.stats;
-                    }
-                    saveUsers(users);
-                    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-                    console.log('✅ Данные загружены из Supabase');
+                if (!users[currentUser.username]) {
+                    users[currentUser.username] = {};
                 }
+                if (data.achievements) {
+                    users[currentUser.username].achievements = data.achievements;
+                    currentUser.achievements = data.achievements;
+                }
+                if (data.sparks) {
+                    users[currentUser.username].sparks = data.sparks;
+                    currentUser.sparks = data.sparks;
+                }
+                if (data.owned_skins) {
+                    users[currentUser.username].ownedSkins = data.owned_skins;
+                    currentUser.ownedSkins = data.owned_skins;
+                }
+                if (data.selected_skin) {
+                    users[currentUser.username].selectedSkin = data.selected_skin;
+                    currentUser.selectedSkin = data.selected_skin;
+                }
+                if (data.stats) {
+                    users[currentUser.username].stats = data.stats;
+                    currentUser.stats = data.stats;
+                }
+                saveUsers(users);
+                localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+                console.log('✅ Данные загружены из Supabase');
+            } else if (error) {
+                console.log('⚠️ Ошибка загрузки из Supabase:', error.message);
+            } else {
+                console.log('ℹ️ Пользователь не найден в Supabase, создаём новую запись');
+                // Создаём запись для пользователя, если её нет
+                await sb.from('players').insert({
+                    username: currentUser.username,
+                    created_at: new Date().toISOString()
+                });
             }
         } catch(e) {
-            console.log('⚠️ Оффлайн-режим, используем локальные данные');
+            console.log('⚠️ Оффлайн-режим, используем локальные данные:', e.message);
         }
     }
 }
@@ -675,7 +693,7 @@ async function register() {
     if (p !== p2) return alert('Не совпадают');
     if (!sb) return alert('Нет соединения');
     
-    const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
+    const { data: exists } = await sb.from('players').select('username').eq('username', u).maybeSingle();
     if (exists) return alert('Занято');
     
     const hashed = await hashPassword(p);
@@ -688,6 +706,7 @@ async function register() {
     updateProfileUI();
     toast('✅ Аккаунт создан!');
 }
+
 async function login() {
     const u = document.getElementById('loginUsername').value.trim();
     const p = document.getElementById('loginPassword').value;
@@ -745,10 +764,18 @@ async function loadLeaderboard() {
     }
     
     try {
-        const { data } = await sb.from('snake_leaderboard').select('*').order('score', { ascending: false }).limit(10);
+        const { data, error } = await sb.from('snake_leaderboard').select('*').order('score', { ascending: false }).limit(10);
+        
+        console.log('🏆 Лидерборд загружен:', { data, error });
+        
+        if (error) {
+            console.log('⚠️ Ошибка загрузки лидерборда:', error.message);
+            document.getElementById('leaderScore').innerHTML = '<li>Ошибка загрузки</li>';
+            return;
+        }
+        
         const medals = ['🥇', '🥈', '🥉'];
         
-        // Форматирование ника с цветом скина (БЕЗ глоу)
         const formatName = (d) => {
             const color = d.skin_color || '#ffffff';
             return `<span style="color:${color};font-weight:bold">${d.username}</span>`;
@@ -773,7 +800,7 @@ async function loadLeaderboard() {
             `<li><span class="leader-rank">${medals[i] || i + 1}</span> ${formatName(d)} <span class="leader-value">${d.deaths || 0} см</span></li>`
         ).join('') || '<li>Нет записей</li>';
     } catch (e) {
-        console.log('Supabase недоступен');
+        console.log('Supabase недоступен:', e.message);
     }
 }
 
@@ -783,19 +810,36 @@ async function loadLeaderboard() {
 function getStats() {
     if (currentUser) {
         const users = getAllUsers();
-        if (users[currentUser.username]) return users[currentUser.username].stats;
+        if (users[currentUser.username] && users[currentUser.username].stats) {
+            return users[currentUser.username].stats;
+        }
     }
-    return JSON.parse(localStorage.getItem('snakeGuestStats') || '{"deaths":0,"record":0,"eventsEncountered":0,"applesEaten":0,"goldApplesEaten":0}');
+    return JSON.parse(localStorage.getItem('snakeGuestStats') || '{"deaths":0,"record":0,"eventsEncountered":0,"applesEaten":0,"goldApplesEaten":0,"totalScore":0,"totalGoldApples":0,"totalEvents":0,"selfDeaths":0,"wallDeaths":0,"bonusEvents":0,"rainbowEvents":0,"goldenEvents":0,"attackEvents":0}');
 }
 
 async function saveStats(s) {
     if (currentUser) {
         const users = getAllUsers();
-        if (users[currentUser.username]) { users[currentUser.username].stats = s; saveUsers(users); }
+        if (!users[currentUser.username]) {
+            users[currentUser.username] = {};
+        }
+        users[currentUser.username].stats = s;
+        saveUsers(users);
+        
         if (sb) {
             try {
-                await sb.from('players').update({ stats: s }).eq('username', currentUser.username);
-            } catch(e) {}
+                const { data, error } = await sb.from('players')
+                    .update({ stats: s })
+                    .eq('username', currentUser.username);
+                
+                console.log('💾 Статистика сохранена в Supabase:', { data, error });
+                
+                if (error) {
+                    console.log('⚠️ Ошибка сохранения статистики:', error.message);
+                }
+            } catch(e) {
+                console.log('⚠️ Ошибка сети при сохранении статистики:', e.message);
+            }
         }
     } else {
         localStorage.setItem('snakeGuestStats', JSON.stringify(s));
@@ -834,7 +878,13 @@ function updateStat(f, v) {
 const SPARK_PRICES = { golden: 100, rainbow: 95, bonus: 10, random: 65 };
 
 function getSparks() {
-    if (currentUser) return currentUser.sparks || {};
+    if (currentUser) {
+        const users = getAllUsers();
+        if (users[currentUser.username] && users[currentUser.username].sparks) {
+            return users[currentUser.username].sparks;
+        }
+        return currentUser.sparks || {};
+    }
     return JSON.parse(localStorage.getItem('snakeGuestSparks') || '{"golden":0,"rainbow":0,"bonus":0,"random":0}');
 }
 
@@ -842,15 +892,26 @@ async function saveSparks(sp) {
     if (currentUser) {
         currentUser.sparks = sp;
         const users = getAllUsers();
-        if (users[currentUser.username]) {
-            users[currentUser.username].sparks = sp;
-            saveUsers(users);
+        if (!users[currentUser.username]) {
+            users[currentUser.username] = {};
         }
+        users[currentUser.username].sparks = sp;
+        saveUsers(users);
+        
         if (sb) {
             try {
-                await sb.from('players').update({ sparks: sp }).eq('username', currentUser.username);
-                console.log('🕯️ Огоньки сохранены в Supabase');
-            } catch(e) {}
+                const { data, error } = await sb.from('players')
+                    .update({ sparks: sp })
+                    .eq('username', currentUser.username);
+                
+                console.log('🕯️ Огоньки сохранены в Supabase:', { data, error });
+                
+                if (error) {
+                    console.log('⚠️ Ошибка сохранения огоньков:', error.message);
+                }
+            } catch(e) {
+                console.log('⚠️ Ошибка сети при сохранении огоньков:', e.message);
+            }
         }
     } else {
         localStorage.setItem('snakeGuestSparks', JSON.stringify(sp));
@@ -858,7 +919,8 @@ async function saveSparks(sp) {
 }
 
 function updateSparkBalance() {
-    document.getElementById('sparkBalance').textContent = (getStats().applesEaten || 0);
+    var stats = getStats() || {};
+    document.getElementById('sparkBalance').textContent = (stats.applesEaten || 0);
     updateSparkButtons();
 }
 
@@ -951,9 +1013,20 @@ async function saveOwnedSkins(sk) {
     if (currentUser) {
         currentUser.ownedSkins = sk;
         const users = getAllUsers();
-        if (users[currentUser.username]) { users[currentUser.username].ownedSkins = sk; saveUsers(users); }
+        if (!users[currentUser.username]) {
+            users[currentUser.username] = {};
+        }
+        users[currentUser.username].ownedSkins = sk;
+        saveUsers(users);
+        
         if (sb) {
-            try { await sb.from('players').update({ owned_skins: sk }).eq('username', currentUser.username); } catch(e) {}
+            try { 
+                const { data, error } = await sb.from('players').update({ owned_skins: sk }).eq('username', currentUser.username);
+                console.log('🎨 Скины сохранены в Supabase:', { data, error });
+                if (error) console.log('⚠️ Ошибка сохранения скинов:', error.message);
+            } catch(e) {
+                console.log('⚠️ Ошибка сети при сохранении скинов:', e.message);
+            }
         }
     } else {
         localStorage.setItem('snakeGuestOwnedSkins', JSON.stringify(sk));
@@ -966,9 +1039,20 @@ async function saveSelectedSkin(id) {
     if (currentUser) {
         currentUser.selectedSkin = id;
         const users = getAllUsers();
-        if (users[currentUser.username]) { users[currentUser.username].selectedSkin = id; saveUsers(users); }
+        if (!users[currentUser.username]) {
+            users[currentUser.username] = {};
+        }
+        users[currentUser.username].selectedSkin = id;
+        saveUsers(users);
+        
         if (sb) {
-            try { await sb.from('players').update({ selected_skin: id }).eq('username', currentUser.username); } catch(e) {}
+            try { 
+                const { data, error } = await sb.from('players').update({ selected_skin: id }).eq('username', currentUser.username);
+                console.log('👕 Выбранный скин сохранён в Supabase:', { data, error });
+                if (error) console.log('⚠️ Ошибка сохранения выбранного скина:', error.message);
+            } catch(e) {
+                console.log('⚠️ Ошибка сети при сохранении выбранного скина:', e.message);
+            }
         }
     } else {
         localStorage.setItem('snakeGuestSelectedSkin', id);
@@ -1044,11 +1128,9 @@ const ACHIEVEMENTS = [
 
 function getAchData() {
     if (currentUser) {
-        // Сначала пробуем взять из currentUser
         if (currentUser.achievements && Object.keys(currentUser.achievements).length > 0) {
             return currentUser.achievements;
         }
-        // Если нет - из users
         const users = getAllUsers();
         if (users[currentUser.username] && users[currentUser.username].achievements) {
             currentUser.achievements = users[currentUser.username].achievements;
@@ -1063,9 +1145,20 @@ async function saveAchData(d) {
     if (currentUser) {
         currentUser.achievements = d;
         const users = getAllUsers();
-        if (users[currentUser.username]) { users[currentUser.username].achievements = d; saveUsers(users); }
+        if (!users[currentUser.username]) {
+            users[currentUser.username] = {};
+        }
+        users[currentUser.username].achievements = d;
+        saveUsers(users);
+        
         if (sb) {
-            try { await sb.from('players').update({ achievements: d }).eq('username', currentUser.username); } catch(e) {}
+            try { 
+                const { data, error } = await sb.from('players').update({ achievements: d }).eq('username', currentUser.username);
+                console.log('🏅 Достижения сохранены в Supabase:', { data, error });
+                if (error) console.log('⚠️ Ошибка сохранения достижений:', error.message);
+            } catch(e) {
+                console.log('⚠️ Ошибка сети при сохранении достижений:', e.message);
+            }
         }
     } else {
         localStorage.setItem('snakeGuestAch', JSON.stringify(d));
@@ -1130,16 +1223,13 @@ async function claimAchievement(id) {
     
     ach[id] = 'claimed';
     
-    // СОХРАНЯЕМ ВЕЗДЕ
     saveAchData(ach);
     saveStats(s);
     
-    // Обновляем currentUser сразу
     if (currentUser) {
         currentUser.achievements = ach;
         localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
         
-        // Сохраняем в users
         const users = getAllUsers();
         if (users[currentUser.username]) {
             users[currentUser.username].achievements = ach;
@@ -1149,14 +1239,15 @@ async function claimAchievement(id) {
         }
     }
     
-    // Сохраняем в Supabase
     if (currentUser && sb) { 
         try { 
-            await sb.from('players').update({ 
+            const { data, error } = await sb.from('players').update({ 
                 achievements: ach,
                 sparks: sp,
                 stats: s
-            }).eq('username', currentUser.username); 
+            }).eq('username', currentUser.username);
+            console.log('🎁 Награда сохранена в Supabase:', { data, error });
+            if (error) console.log('⚠️ Ошибка сохранения награды:', error.message);
         } catch (e) {
             console.log('Сохранено локально');
         }
@@ -1251,7 +1342,6 @@ function drawGame() {
     snake.unshift(head);
     let ate = false;
     
-    // Проверка обычной еды
     if (head.x === food.x && head.y === food.y && !attackBalls.some(b => b.x === food.x && b.y === food.y)) {
         ate = true;
         if (goldenActive) {
@@ -1271,7 +1361,6 @@ function drawGame() {
         updateSparkBalance();
     }
     
-    // Проверка бонусной еды
     for (let i = bonusFoods.length - 1; i >= 0; i--) {
         if (head.x === bonusFoods[i].x && head.y === bonusFoods[i].y) {
             ate = true; score++;
@@ -1283,7 +1372,6 @@ function drawGame() {
         }
     }
     
-    // Проверка радужных яблок
     for (let i = rainbowApples.length - 1; i >= 0; i--) {
         if (head.x === rainbowApples[i].x && head.y === rainbowApples[i].y) {
             ate = true; score++;
@@ -1297,7 +1385,6 @@ function drawGame() {
         }
     }
     
-    // Проверка шариков атаки
     for (let i = attackBalls.length - 1; i >= 0; i--) {
         const b = attackBalls[i];
         if (head.x === b.x && head.y === b.y) {
@@ -1315,14 +1402,11 @@ function drawGame() {
     
     if (!ate) snake.pop();
     
-    // Проверка столкновений
     if (head.x < 0 || head.y < 0 || head.x >= tileCount || head.y >= tileCount) { deathType = 'wall'; endGame(); return; }
     for (let i = 1; i < snake.length; i++) { if (head.x === snake[i].x && head.y === snake[i].y) { deathType = 'self'; endGame(); return; } }
     
-    // Отрисовка обычной/золотой еды
     if (!attackBalls.some(b => b.x === food.x && b.y === food.y)) {
         if (goldenActive) {
-            // ✨ Свечение для золотой еды
             ctx.shadowColor = '#FFD700';
             ctx.shadowBlur = 15;
             ctx.fillStyle = '#FFD700';
@@ -1334,11 +1418,9 @@ function drawGame() {
         }
     }
     
-    // Отрисовка бонусной еды
     ctx.fillStyle = "#00BFFF";
     bonusFoods.forEach(bf => ctx.fillRect(bf.x * size, bf.y * size, size, size));
     
-    // Отрисовка радужных яблок
     rainbowApples.forEach(ra => {
         const g = ctx.createRadialGradient(ra.x * size + size/2, ra.y * size + size/2, 2, ra.x * size + size/2, ra.y * size + size/2, size/2);
         g.addColorStop(0, "#FFD700");
@@ -1348,10 +1430,8 @@ function drawGame() {
         ctx.fillRect(ra.x * size, ra.y * size, size, size);
     });
     
-    // Отрисовка шариков атаки с простым свечением
     attackBalls.forEach(b => {
         if (b.active) {
-            // ✨ Свечение для активных шариков
             ctx.shadowColor = '#4488FF';
             ctx.shadowBlur = 10;
             ctx.fillStyle = '#4488FF';
@@ -1366,7 +1446,6 @@ function drawGame() {
         ctx.shadowBlur = 0;
     });
     
-    // Отрисовка змейки с скином (без глаз и глоу)
     const skinColor = getCurrentSkinColor();
     snake.forEach((p, i) => {
         ctx.fillStyle = i === 0 ? skinColor : darkenColor(skinColor, 0.7 - (i * 0.02));
@@ -1497,11 +1576,12 @@ function startAttackEvent() {
 }
 
 // ================================================================
-// ЗОНА 11: КОНЕЦ ИГРЫ
+// ЗОНА 11: КОНЕЦ ИГРЫ (ИСПРАВЛЕННАЯ)
 // ================================================================
 async function endGame() {
     if (isGameOver) return;
     isGameOver = true;
+    
     const s = getStats();
     s.deaths = (s.deaths || 0) + 1;
     if (score > (s.record || 0)) s.record = score;
@@ -1513,51 +1593,61 @@ async function endGame() {
     s.totalEvents += sessionEvents;
     if (deathType === 'self') s.selfDeaths = (s.selfDeaths || 0) + 1;
     if (deathType === 'wall') s.wallDeaths = (s.wallDeaths || 0) + 1;
+    
+    console.log('💾 Сохраняем статистику после смерти:', s);
     saveStats(s);
     updateStatsDisplay();
     updateSparkBalance();
     
-    // Показываем результат
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = 'Счёт: ' + score;
     const highScoreEl = document.getElementById('highScore');
     if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
     
-    // Отправка в Supabase (DELETE + INSERT)
+    // ✅ ИСПРАВЛЕННАЯ ОТПРАВКА В SUPABASE
     if (currentUser && sb) {
         try {
             const skinColor = getCurrentSkinColor();
-            const username = encodeURIComponent(currentUser.username);
             
-            // Удаляем старую запись
-            await fetch(SB_URL + '/rest/v1/snake_leaderboard?username=eq.' + username, {
-                method: 'DELETE',
-                headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-            });
+            console.log('🔄 Отправляем рекорд в Supabase...');
             
-            // Вставляем новую
-            await fetch(SB_URL + '/rest/v1/snake_leaderboard', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SB_KEY,
-                    'Authorization': 'Bearer ' + SB_KEY
-                },
-                body: JSON.stringify({
+            // Удаляем старые записи этого пользователя
+            const { error: delError } = await sb
+                .from('snake_leaderboard')
+                .delete()
+                .eq('username', currentUser.username);
+            
+            if (delError) {
+                console.log('⚠️ Ошибка удаления старых записей:', delError.message);
+            } else {
+                console.log('🗑️ Старые записи удалены');
+            }
+            
+            // Вставляем новую запись
+            const { data, error: insError } = await sb
+                .from('snake_leaderboard')
+                .insert({
                     username: currentUser.username,
-                    score: s.record,
+                    score: s.record || 0,
                     gold_apples: s.totalGoldApples || 0,
                     events: s.totalEvents || 0,
-                    deaths: s.deaths,
-                    skin_color: skinColor,
-                    updated_at: new Date().toISOString()
-                })
-            });
+                    deaths: s.deaths || 0,
+                    skin_color: skinColor
+                });
+            
+            if (insError) {
+                console.log('❌ Ошибка сохранения рекорда в Supabase:', insError.message);
+                console.log('📋 Полная ошибка:', JSON.stringify(insError));
+            } else {
+                console.log('✅ Рекорд успешно сохранён в Supabase:', data);
+            }
             
             loadLeaderboard();
         } catch(e) {
-            console.log('Рекорд сохранён локально');
+            console.log('⚠️ Рекорд сохранён локально (ошибка сети):', e.message);
         }
+    } else {
+        console.log('ℹ️ Гостевой режим — рекорд сохранён локально');
     }
     
     endEvent();
