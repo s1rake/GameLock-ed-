@@ -715,17 +715,30 @@ async function register() {
     if (p !== p2) return alert('Не совпадают');
     if (!sb) return alert('Нет соединения');
     
+    const salt = generateSalt();
     const hashed = await hashPassword(p);
     
     // Проверяем занятость
     const { data: existing } = await sb.from('players').select('username').eq('username', u).maybeSingle();
     if (existing) return alert('Занято');
     
-    // Пробуем создать
+    // ✅ ДОБАВЛЕНЫ salt И ВСЕ НУЖНЫЕ ПОЛЯ
     const newPlayer = {
         username: u,
         password_hash: hashed,
-        created_at: new Date().toISOString()
+        salt: salt,
+        created_at: new Date().toISOString(),
+        stats: {
+            deaths: 0, record: 0, eventsEncountered: 0,
+            applesEaten: 0, goldApplesEaten: 0,
+            totalScore: 0, totalGoldApples: 0, totalEvents: 0,
+            selfDeaths: 0, wallDeaths: 0,
+            bonusEvents: 0, rainbowEvents: 0, goldenEvents: 0, attackEvents: 0
+        },
+        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
+        owned_skins: ['green'],
+        selected_skin: 'green',
+        achievements: {}
     };
     
     console.log('📝 Отправляемые данные:', JSON.stringify(newPlayer));
@@ -735,14 +748,19 @@ async function register() {
     if (error) {
         console.log('❌ Ошибка регистрации:', error.message);
         console.log('📋 Полная ошибка:', JSON.stringify(error));
-        console.log('🔍 Код ошибки:', error.code);
-        console.log('🔍 Детали:', error.details);
         return alert('Ошибка: ' + error.message);
     }
     
     console.log('✅ Пользователь создан:', data);
     
-    currentUser = { username: u };
+    currentUser = { 
+        username: u,
+        stats: newPlayer.stats,
+        sparks: newPlayer.sparks,
+        ownedSkins: ['green'],
+        selectedSkin: 'green',
+        achievements: {}
+    };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
     
     closeModal();
