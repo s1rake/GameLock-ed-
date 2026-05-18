@@ -673,12 +673,12 @@
         function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
         function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)); }
 
-        async function hashPassword(password) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(password + 'gamelock_salt_2026');
-            const hash = await crypto.subtle.digest('SHA-256', data);
-            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-        }
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'gamelock_salt_2026');
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
         function updateProfileUI() {
             if (currentUser) { document.getElementById('profileName').textContent = currentUser.username; document.getElementById('profileBtn').textContent = 'Выйти'; document.getElementById('profileBtn').onclick = logout; }
@@ -689,30 +689,49 @@
         function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
         function switchModal(type) { if (type === 'register') { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'block'; } else { document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none'; } }
 
-        async function register() {
-            const u = document.getElementById('registerUsername').value.trim();
-            const p = document.getElementById('registerPassword').value;
-            const p2 = document.getElementById('registerPasswordConfirm').value;
-            if (!u || u.length < 3) return alert('Имя: мин 3');
-            if (!p || p.length < 4) return alert('Пароль: мин 4');
-            if (p !== p2) return alert('Не совпадают');
-            if (sb) { const { data: exists } = await sb.from('players').select('username').eq('username', u).single(); if (exists) return alert('Занято'); const hashed = await hashPassword(p); await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() }); }
-            const users = getAllUsers(); if (users[u]) return alert('Занято');
-            users[u] = { password: p, tictactoe: { bot3x3: { winsX: 0, winsO: 0, draws: 0 }, bot10x10: { winsX: 0, winsO: 0, draws: 0 }, pvp3x3: { winsX: 0, winsO: 0, draws: 0 }, pvp10x10: { winsX: 0, winsO: 0, draws: 0 } }, created: Date.now() };
-            saveUsers(users); currentUser = { username: u }; localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-            closeModal(); updateProfileUI();
-        }
+async function register() {
+    const u = document.getElementById('registerUsername').value.trim();
+    const p = document.getElementById('registerPassword').value;
+    const p2 = document.getElementById('registerPasswordConfirm').value;
+    if (!u || u.length < 3) return alert('Имя: мин 3');
+    if (!p || p.length < 4) return alert('Пароль: мин 4');
+    if (p !== p2) return alert('Не совпадают');
+    if (!sb) return alert('Нет соединения');
+    
+    const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
+    if (exists) return alert('Занято');
+    
+    const hashed = await hashPassword(p);
+    await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() });
+    
+    currentUser = { username: u };
+    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
+    closeModal();
+    updateProfileUI();
+    loadScores();
+    toast('✅ Аккаунт создан!');
+}
 
-        async function login() {
-            const u = document.getElementById('loginUsername').value.trim();
-            const p = document.getElementById('loginPassword').value;
-            if (!u || !p) return alert('Заполните');
-            if (sb) { const { data: user } = await sb.from('players').select('*').eq('username', u).single(); if (user) { const hashed = await hashPassword(p); if (hashed !== user.password_hash) return alert('Неверный пароль'); } }
-            const users = getAllUsers(); if (!users[u]) return alert('Не найден'); if (users[u].password !== p) return alert('Неверный пароль');
-            if (users[u].tictactoe && typeof users[u].tictactoe.winsX === 'number' && !users[u].tictactoe.bot3x3) { const old = users[u].tictactoe; users[u].tictactoe = { bot3x3: { winsX: old.winsX || 0, winsO: old.winsO || 0, draws: old.draws || 0 }, bot10x10: { winsX: 0, winsO: 0, draws: 0 }, pvp3x3: { winsX: 0, winsO: 0, draws: 0 }, pvp10x10: { winsX: 0, winsO: 0, draws: 0 } }; saveUsers(users); }
-            currentUser = { username: u }; localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-            closeModal(); updateProfileUI(); generateAntiCheatToken();
-        }
+async function login() {
+    const u = document.getElementById('loginUsername').value.trim();
+    const p = document.getElementById('loginPassword').value;
+    if (!u || !p) return alert('Заполните');
+    if (!sb) return alert('Нет соединения');
+    
+    const hashed = await hashPassword(p);
+    const { data, error } = await sb.rpc('check_password', { username: u, password_hash: hashed });
+    
+    if (error || !data) return alert('Неверный логин или пароль');
+    
+    currentUser = { username: u };
+    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
+    closeModal();
+    updateProfileUI();
+    loadScores();
+    toast('✅ Вход!');
+}
 
         function logout() { if (confirm('Выйти?')) { currentUser = null; localStorage.removeItem('snakeCurrentUser'); updateProfileUI(); } }
         document.getElementById('modalOverlay').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
@@ -842,43 +861,65 @@
         // ========== СТАТИСТИКА + SUPABASE ==========
         function getStatKey() { if (vsBot) return boardSize === 3 ? 'bot3x3' : 'bot10x10'; return boardSize === 3 ? 'pvp3x3' : 'pvp10x10'; }
 
-        async function updateScore(winner) {
-            if (!await verifyGameIntegrity()) return;
-            const users = getAllUsers(); const username = currentUser ? currentUser.username : 'guest';
-            if (!users[username]) users[username] = {}; if (!users[username].tictactoe) users[username].tictactoe = {};
-            const key = getStatKey(); if (!users[username].tictactoe[key]) users[username].tictactoe[key] = { winsX: 0, winsO: 0, draws: 0 };
-
-            if (winner === 'X') { scores.X++; users[username].tictactoe[key].winsX++; }
-            else if (winner === 'O') { scores.O++; users[username].tictactoe[key].winsO++; }
-            else { scores.draw++; users[username].tictactoe[key].draws++; }
-
-            saveUsers(users); loadScores();
-
-            if (currentUser && sb) {
-                try {
-                    await sb.from('tictactoe_leaderboard').upsert({
-                        username: currentUser.username, mode: key,
-                        wins: users[username].tictactoe[key].winsX,
-                        losses: users[username].tictactoe[key].winsO,
-                        draws: users[username].tictactoe[key].draws,
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'username,mode' });
-                    updateBotLeaderboard();
-                } catch (e) { }
-            }
+async function updateScore(winner) {
+    const users = getAllUsers();
+    const username = currentUser ? currentUser.username : 'guest';
+    if (!users[username]) users[username] = {};
+    if (!users[username].tictactoe) users[username].tictactoe = {};
+    
+    const key = getStatKey();
+    if (!users[username].tictactoe[key]) {
+        users[username].tictactoe[key] = { winsX: 0, winsO: 0, draws: 0 };
+    }
+    
+    if (winner === 'X') {
+        scores.X++;
+        users[username].tictactoe[key].winsX++;
+    } else if (winner === 'O') {
+        scores.O++;
+        users[username].tictactoe[key].winsO++;
+    } else {
+        scores.draw++;
+        users[username].tictactoe[key].draws++;
+    }
+    
+    saveUsers(users);
+    loadScores();
+    
+    // Сохранение в Supabase
+    if (currentUser && sb) {
+        try {
+            await sb.from('tictactoe_leaderboard').upsert({
+                username: currentUser.username,
+                mode: key,
+                wins: users[username].tictactoe[key].winsX,
+                losses: users[username].tictactoe[key].winsO,
+                draws: users[username].tictactoe[key].draws,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'username,mode' });
+        } catch(e) {
+            console.log('Статистика сохранена локально');
         }
+    }
+    
+    updateBotLeaderboard();
+}
 
-        function loadScores() {
-            if (currentUser) {
-                const users = getAllUsers(); const key = getStatKey(); const stats = users[currentUser.username]?.tictactoe?.[key];
-                if (stats) { scores.X = stats.winsX || 0; scores.O = stats.winsO || 0; scores.draw = stats.draws || 0; }
-                else { scores.X = 0; scores.O = 0; scores.draw = 0; }
-            }
-            else { scores.X = 0; scores.O = 0; scores.draw = 0; }
-            document.getElementById('scoreX').textContent = scores.X;
-            document.getElementById('scoreO').textContent = scores.O;
-            document.getElementById('scoreDraw').textContent = scores.draw;
-        }
+function loadScores() {
+    const users = getAllUsers();
+    const username = currentUser ? currentUser.username : 'guest';
+    const key = getStatKey();
+    const allStats = (users[username] && users[username].tictactoe) || {};
+    const stats = allStats[key] || { winsX: 0, winsO: 0, draws: 0 };
+    
+    scores.X = stats.winsX || 0;
+    scores.O = stats.winsO || 0;
+    scores.draw = stats.draws || 0;
+    
+    document.getElementById('scoreX').textContent = scores.X;
+    document.getElementById('scoreO').textContent = scores.O;
+    document.getElementById('scoreDraw').textContent = scores.draw;
+}
 
         function switchBotLB(mode) {
             document.querySelectorAll('.leaders-tab').forEach(t => t.classList.remove('active'));
