@@ -715,11 +715,32 @@ async function register() {
     if (p !== p2) return alert('Не совпадают');
     if (!sb) return alert('Нет соединения');
     
-    const { data: exists } = await sb.from('players').select('username').eq('username', u).maybeSingle();
-    if (exists) return alert('Занято');
-    
     const hashed = await hashPassword(p);
-    await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() });
+    
+    // Проверяем занятость
+    const { data: existing } = await sb.from('players').select('username').eq('username', u).maybeSingle();
+    if (existing) return alert('Занято');
+    
+    // Пробуем создать
+    const newPlayer = {
+        username: u,
+        password_hash: hashed,
+        created_at: new Date().toISOString()
+    };
+    
+    console.log('📝 Отправляемые данные:', JSON.stringify(newPlayer));
+    
+    const { data, error } = await sb.from('players').insert(newPlayer).select();
+    
+    if (error) {
+        console.log('❌ Ошибка регистрации:', error.message);
+        console.log('📋 Полная ошибка:', JSON.stringify(error));
+        console.log('🔍 Код ошибки:', error.code);
+        console.log('🔍 Детали:', error.details);
+        return alert('Ошибка: ' + error.message);
+    }
+    
+    console.log('✅ Пользователь создан:', data);
     
     currentUser = { username: u };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
