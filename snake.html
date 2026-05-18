@@ -629,8 +629,9 @@ async function loadUserDataFromSupabase() {
             } else if (error) {
                 console.log('⚠️ Ошибка загрузки из Supabase:', error.message);
             } else {
-                console.log('ℹ️ Пользователь не найден в Supabase, создаём новую запись');
-                // ✅ ИСПРАВЛЕНО: создаём запись с ВСЕМИ нужными полями
+                console.log('ℹ️ Пользователь не найден в Supabase');
+                // ✅ Не создаём запись здесь — она создаётся при регистрации
+                // Просто инициализируем локальные данные
                 const defaultStats = {
                     deaths: 0, record: 0, eventsEncountered: 0,
                     applesEaten: 0, goldApplesEaten: 0,
@@ -640,41 +641,22 @@ async function loadUserDataFromSupabase() {
                     goldenEvents: 0, attackEvents: 0
                 };
                 
-                const { error: createError } = await sb
-                    .from('players')
-                    .insert({
-                        username: currentUser.username,
-                        created_at: new Date().toISOString(),
-                        stats: defaultStats,
-                        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-                        owned_skins: ['green'],
-                        selected_skin: 'green',
-                        achievements: {}
-                    });
-                
-                if (createError) {
-                    console.log('❌ Ошибка создания пользователя в Supabase:', createError.message);
-                    console.log('📋 Полная ошибка:', JSON.stringify(createError));
-                } else {
-                    console.log('✅ Пользователь создан в Supabase');
-                    
-                    // Сохраняем локально
-                    const users = getAllUsers();
-                    users[currentUser.username] = {
-                        stats: defaultStats,
-                        sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
-                        ownedSkins: ['green'],
-                        selectedSkin: 'green',
-                        achievements: {}
-                    };
-                    saveUsers(users);
-                    currentUser.stats = defaultStats;
-                    currentUser.sparks = { golden: 0, rainbow: 0, bonus: 0, random: 0 };
-                    currentUser.ownedSkins = ['green'];
-                    currentUser.selectedSkin = 'green';
-                    currentUser.achievements = {};
-                    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-                }
+                const users = getAllUsers();
+                users[currentUser.username] = {
+                    stats: defaultStats,
+                    sparks: { golden: 0, rainbow: 0, bonus: 0, random: 0 },
+                    ownedSkins: ['green'],
+                    selectedSkin: 'green',
+                    achievements: {}
+                };
+                saveUsers(users);
+                currentUser.stats = defaultStats;
+                currentUser.sparks = { golden: 0, rainbow: 0, bonus: 0, random: 0 };
+                currentUser.ownedSkins = ['green'];
+                currentUser.selectedSkin = 'green';
+                currentUser.achievements = {};
+                localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+                console.log('ℹ️ Используем локальные данные');
             }
         } catch(e) {
             console.log('⚠️ Оффлайн-режим, используем локальные данные:', e.message);
