@@ -547,7 +547,83 @@ body.dark-theme .achievement-desc { color: #aaa; }
 })();
 
 // ================================================================
-// ЗАЩИТА КОНСОЛИ — БЛОКИРУЕМ ПРЯМЫЕ ЗАПРОСЫ К SUPABASE
+// ЗАЩИТА LOCALSTORAGE
+// ================================================================
+(function() {
+    var _origSetItem = localStorage.setItem.bind(localStorage);
+    var _origGetItem = localStorage.getItem.bind(localStorage);
+    var _origRemoveItem = localStorage.removeItem.bind(localStorage);
+    
+    var _storageKey = btoa('snake_storage_' + Date.now());
+    sessionStorage.setItem('_snake_auth', _storageKey);
+    
+    var _callCount = 0;
+    var _lastCall = Date.now();
+    
+    localStorage.setItem = function(key, value) {
+        var allowedKeys = [
+            'snakeUsers', 'snakeCurrentUser', 'snakeDarkTheme',
+            'snakeGuestStats', 'snakeGuestSparks', 'snakeGuestOwnedSkins',
+            'snakeGuestSelectedSkin', 'snakeGuestAch', 'snakeGuestSettings'
+        ];
+        
+        var isAllowed = allowedKeys.some(function(k) { return key.startsWith(k); });
+        
+        if (!isAllowed) {
+            console.warn('🛡️ Блокировано:', key);
+            return undefined;
+        }
+        
+        var now = Date.now();
+        if (now - _lastCall < 100) {
+            _callCount++;
+            if (_callCount > 5) {
+                console.warn('🛡️ Слишком частые вызовы!');
+                return undefined;
+            }
+        } else {
+            _callCount = 0;
+        }
+        _lastCall = now;
+        
+        if (typeof value === 'string') {
+            try {
+                var parsed = JSON.parse(value);
+                parsed._signed = btoa(key + '|' + _storageKey);
+                value = JSON.stringify(parsed);
+            } catch(e) {}
+        }
+        
+        return _origSetItem(key, value);
+    };
+    
+    localStorage.getItem = function(key) {
+        var value = _origGetItem(key);
+        if (typeof value === 'string') {
+            try {
+                var parsed = JSON.parse(value);
+                if (parsed._signed) delete parsed._signed;
+            } catch(e) {}
+        }
+        return value;
+    };
+    
+    localStorage.removeItem = function(key) {
+        if (!key.startsWith('snake') && !key.startsWith('clicker')) {
+            console.warn('🛡️ Удаление блокировано:', key);
+            return undefined;
+        }
+        return _origRemoveItem(key);
+    };
+    
+    localStorage.clear = function() {
+        console.warn('🛡️ Очистка заблокирована!');
+        return undefined;
+    };
+})();
+
+// ================================================================
+// ЗАЩИТА ОТ ПРЯМЫХ ЗАПРОСОВ К SUPABASE
 // ================================================================
 (function() {
     var _realFetch = window.fetch;
@@ -567,6 +643,36 @@ body.dark-theme .achievement-desc { color: #aaa; }
     };
 })();
 
+// ================================================================
+// ЗАЩИТА КРИТИЧЕСКИХ ФУНКЦИЙ
+// ================================================================
+Object.defineProperty(window, 'saveToSupabase', {
+    get: function() { 
+        return function() { 
+            console.warn('🛡️ Прямое сохранение заблокировано!');
+            return { status: 'blocked' }; 
+        }; 
+    },
+    set: function() { console.warn('🛡️ Нельзя переопределить!'); },
+    configurable: false
+});
+
+// Блокируем изменение важных переменных через defineProperty
+['score', 'sessionApples', 'sessionGoldApples'].forEach(function(varName) {
+    var _value = eval(varName);
+    Object.defineProperty(window, varName, {
+        get: function() { return _value; },
+        set: function(newVal) {
+            var stack = new Error().stack || '';
+            if (stack.includes('<anonymous>') || stack.includes('eval')) {
+                console.warn('🛡️ Изменение ' + varName + ' из консоли заблокировано!');
+                return;
+            }
+            _value = newVal;
+        },
+        configurable: false
+    });
+});
 // ================================================================
 // SUPABASE
 // ================================================================
