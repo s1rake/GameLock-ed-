@@ -804,7 +804,7 @@ function loadUserStats() {
 }
 
 function updateStatsDisplay() {
-    const s = getStats() || {}; 
+    const s = getStats() || {};
     document.getElementById('statDeaths').textContent = s.deaths || 0;
     document.getElementById('statRecord').textContent = s.record || 0;
     document.getElementById('statApples').textContent = s.applesEaten || 0;
