@@ -531,7 +531,8 @@ body.dark-theme .achievement-desc { color: #aaa; }
     <h2>🏅 Достижения</h2>
     <div class="achievements-grid" id="achievementsGrid"></div>
 </div>
-
+    
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ================================================================
 // ЗАЩИТА КОДА
@@ -550,16 +551,12 @@ body.dark-theme .achievement-desc { color: #aaa; }
 // ================================================================
 (function() {
     var _realFetch = window.fetch;
-    var _blocked = false;
     
-    // Блокируем прямые fetch-запросы к Supabase из консоли
     window.fetch = function(url, options) {
         var urlStr = typeof url === 'string' ? url : url.url;
         
-        // Разрешаем только запросы, инициированные из кода игры
         if (urlStr && urlStr.includes('supabase.co')) {
             var stack = new Error().stack || '';
-            // Если вызов из консоли — в стеке будет "<anonymous>" или "eval"
             if (stack.includes('<anonymous>') || stack.includes('eval') || !stack.includes('snake.html')) {
                 console.warn('🛡️ Прямой запрос к Supabase заблокирован!');
                 return Promise.reject(new Error('Blocked'));
@@ -568,42 +565,6 @@ body.dark-theme .achievement-desc { color: #aaa; }
         
         return _realFetch.apply(this, arguments);
     };
-    
-    // Защита от переопределения fetch
-    Object.defineProperty(window, 'fetch', {
-        get: function() { return window.fetch; },
-        set: function() { console.warn('🛡️ Нельзя переопределить fetch'); }
-    });
-})();
-
-// ================================================================
-// ЗАЩИТА ОСНОВНЫХ ФУНКЦИЙ ОТ ПОДМЕНЫ
-// ================================================================
-(function() {
-    var _protectedFunctions = {};
-    
-    function protect(name, fn) {
-        _protectedFunctions[name] = fn;
-        window[name] = function() {
-            var stack = new Error().stack || '';
-            if (arguments.length > 0 && arguments[0] && typeof arguments[0] === 'object' && arguments[0].__hack) {
-                console.warn('🛡️ Попытка взлома через', name);
-                return undefined;
-            }
-            return fn.apply(this, arguments);
-        };
-    }
-    
-    // Защищаем критические функции
-    protect('saveStats', async function(s) {
-        // Только логируем, не сохраняем напрямую
-        console.log('ℹ️ saveStats вызван, но сохранение только через сессию');
-    });
-    
-    protect('saveToSupabase', async function() {
-        console.warn('🛡️ Прямое сохранение заблокировано! Используйте сессии.');
-        return { status: 'blocked' };
-    });
 })();
 
 // ================================================================
@@ -618,48 +579,6 @@ try {
     console.log('✅ Supabase подключен');
 } catch(e) {
     console.warn('⚠️ Supabase не загрузился');
-}
-
-// ================================================================
-// ПЕРЕМЕННЫЕ СЕССИИ
-// ================================================================
-let currentSessionId = null;
-let gameStartTime = Date.now();
-let sessionApples = 0;
-let sessionGoldApples = 0;
-
-// ================================================================
-// ФУНКЦИЯ ЛОГИРОВАНИЯ ДЕЙСТВИЯ
-// ================================================================
-async function logAction(action, opts = {}) {
-    if (!currentUser || !sb || !currentSessionId) return null;
-    
-    const gameTime = Date.now() - gameStartTime;
-    
-    try {
-        const { data, error } = await sb.rpc('log_snake_action', {
-            p_username: currentUser.username,
-            p_session_id: currentSessionId,
-            p_action: action,
-            p_points: opts.points || 0,
-            p_gold_points: opts.goldPoints || 0,
-            p_apples_delta: opts.applesDelta || 0,
-            p_sparks_delta: opts.sparksDelta || {},
-            p_skin_id: opts.skinId || null,
-            p_achievement_id: opts.achievementId || null,
-            p_event_type: opts.eventType || null,
-            p_extra: opts.extra || {},
-            p_game_time_ms: gameTime
-        });
-        
-        if (error) {
-            console.log('⚠️ Ошибка логирования:', error.message);
-        }
-        
-        return data;
-    } catch(e) {
-        return null;
-    }
 }
 
 // ================================================================
@@ -836,6 +755,43 @@ document.getElementById('modalOverlay').addEventListener('click', function(e) {
 });
 
 // ================================================================
+// СЕССИЯ
+// ================================================================
+let currentSessionId = null;
+let gameStartTime = Date.now();
+let sessionApples = 0;
+let sessionGoldApples = 0;
+let sessionEvents = 0;
+
+async function logAction(action, opts = {}) {
+    if (!currentUser || !sb || !currentSessionId) return null;
+    
+    const gameTime = Date.now() - gameStartTime;
+    
+    try {
+        const { data, error } = await sb.rpc('log_snake_action', {
+            p_username: currentUser.username,
+            p_session_id: currentSessionId,
+            p_action: action,
+            p_points: opts.points || 0,
+            p_gold_points: opts.goldPoints || 0,
+            p_apples_delta: opts.applesDelta || 0,
+            p_sparks_delta: opts.sparksDelta || {},
+            p_skin_id: opts.skinId || null,
+            p_achievement_id: opts.achievementId || null,
+            p_event_type: opts.eventType || null,
+            p_extra: opts.extra || {},
+            p_game_time_ms: gameTime
+        });
+        
+        if (error) console.log('⚠️ Ошибка логирования:', error.message);
+        return data;
+    } catch(e) {
+        return null;
+    }
+}
+
+// ================================================================
 // ЛИДЕРБОРД
 // ================================================================
 function switchLeaderTab(tab) {
@@ -879,7 +835,7 @@ async function loadLeaderboard() {
 }
 
 // ================================================================
-// СТАТИСТИКА
+// СТАТИСТИКА (только локальное сохранение)
 // ================================================================
 function getStats() {
     if (currentUser) {
@@ -891,7 +847,6 @@ function getStats() {
     return JSON.parse(localStorage.getItem('snakeGuestStats') || '{"deaths":0,"record":0,"applesEaten":0,"goldApplesEaten":0,"totalScore":0,"totalGoldApples":0,"totalEvents":0,"selfDeaths":0,"wallDeaths":0,"bonusEvents":0,"rainbowEvents":0,"goldenEvents":0,"attackEvents":0}');
 }
 
-// saveStats теперь только локальный (серверное сохранение через сессию)
 function saveStatsLocal(s) {
     if (currentUser) {
         const users = getAllUsers();
@@ -987,7 +942,6 @@ async function buySpark(type) {
     sp[type] = (sp[type] || 0) + 1;
     saveSparksLocal(sp);
     
-    // ✅ Логируем покупку
     await logAction('buy_spark_' + type, {
         applesDelta: -pr,
         sparksDelta: { [type]: 1 }
@@ -1005,7 +959,6 @@ async function useSpark(type) {
     sp[type]--;
     saveSparksLocal(sp);
     
-    // ✅ Логируем использование
     await logAction('use_spark_' + type, {
         sparksDelta: { [type]: -1 }
     });
@@ -1053,7 +1006,6 @@ async function buySkin(id, price, priceGold) {
     owned.push(id);
     if (currentUser) { currentUser.ownedSkins = owned; saveUsers(getAllUsers()); }
     
-    // ✅ Логируем покупку скина
     await logAction('buy_skin', {
         skinId: id,
         applesDelta: priceGold ? 0 : -price,
@@ -1077,9 +1029,7 @@ async function selectSkin(id) {
         localStorage.setItem('snakeGuestSelectedSkin', id);
     }
     
-    // ✅ Логируем выбор скина
     await logAction('select_skin', { skinId: id });
-    
     updateSkinShop();
 }
 
@@ -1106,14 +1056,19 @@ function updateSkinShop() {
 }
 
 // ================================================================
-// ДОСТИЖЕНИЯ (сокращённая версия — остальное без изменений)
+// ДОСТИЖЕНИЯ
 // ================================================================
 const ACHIEVEMENTS = [
     { id: 'register', name: 'Добро пожаловать!', desc: 'Зарегистрируйтесь', icon: '👋', reward: { type: 'apples', amount: 10 }, condition: () => currentUser !== null },
     { id: 'death_1', name: 'Конец Игры!', desc: 'Умрите 1 раз', icon: '💀', reward: { type: 'goldApples', amount: 1 }, condition: s => s.deaths >= 1 },
+    { id: 'death_10', name: 'Смертоносец!', desc: 'Умрите 10 раз', icon: '☠️', reward: { type: 'goldApples', amount: 3 }, condition: s => s.deaths >= 10 },
     { id: 'record_5', name: 'Первые повороты', desc: 'Рекорд: 5', icon: '🔄', reward: { type: 'spark', sparkType: 'bonus', amount: 1 }, condition: s => s.record >= 5 },
+    { id: 'record_15', name: 'Наповорачивался', desc: 'Рекорд: 15', icon: '🔀', reward: { type: 'spark', sparkType: 'rainbow', amount: 1 }, condition: s => s.record >= 15 },
+    { id: 'record_35', name: 'Поворот за поворотом', desc: 'Рекорд: 35', icon: '🔁', reward: { type: 'spark', sparkType: 'golden', amount: 1 }, condition: s => s.record >= 35 },
+    { id: 'record_50', name: 'Абсолютный рекордсмен', desc: 'Рекорд: 50', icon: '👑', reward: { type: 'spark', sparkType: 'golden', amount: 2 }, condition: s => s.record >= 50 },
     { id: 'self_death', name: 'Об себя стукнись!', desc: 'Умрите об себя', icon: '🤕', reward: { type: 'apples', amount: 20 }, condition: s => (s.selfDeaths || 0) >= 1 },
-    { id: 'wall_death', name: 'Головой об стенку', desc: 'Умрите об стенку', icon: '🧱', reward: { type: 'apples', amount: 20 }, condition: s => (s.wallDeaths || 0) >= 1 }
+    { id: 'wall_death', name: 'Головой об стенку', desc: 'Умрите об стенку', icon: '🧱', reward: { type: 'apples', amount: 20 }, condition: s => (s.wallDeaths || 0) >= 1 },
+    { id: 'skins_4', name: 'Коллекционер-любитель', desc: 'Откройте 4 скина', icon: '🎨', reward: { type: 'apples', amount: 100 }, condition: () => getOwnedSkins().length >= 4 }
 ];
 
 function getAchData() {
@@ -1141,17 +1096,21 @@ function saveAchLocal(d) {
 function checkAchievements(dt = null) {
     const s = getStats();
     const ach = getAchData();
+    let changed = false;
     
     ACHIEVEMENTS.forEach(a => {
         if (ach[a.id]) return;
         if (a.condition(s)) {
             ach[a.id] = 'completed';
+            changed = true;
             showAchToast(a);
         }
     });
     
-    saveAchLocal(ach);
-    renderAchievements();
+    if (changed) {
+        saveAchLocal(ach);
+        renderAchievements();
+    }
 }
 
 async function claimAchievement(id) {
@@ -1160,30 +1119,103 @@ async function claimAchievement(id) {
     const a = ACHIEVEMENTS.find(x => x.id === id);
     if (!a) return;
     
-    // ✅ Логируем получение награды
     await logAction('achievement_claim', {
         achievementId: id,
         applesDelta: a.reward.type === 'apples' ? a.reward.amount : 0,
-        goldPoints: a.reward.type === 'goldApples' ? a.reward.amount : 0
+        goldPoints: a.reward.type === 'goldApples' ? a.reward.amount : 0,
+        sparksDelta: a.reward.type === 'spark' ? { [a.reward.sparkType]: a.reward.amount } : {}
     });
     
     ach[id] = 'claimed';
     saveAchLocal(ach);
+    
+    const s = getStats();
+    if (a.reward.type === 'apples') s.applesEaten += a.reward.amount;
+    if (a.reward.type === 'goldApples') s.goldApplesEaten += a.reward.amount;
+    if (a.reward.type === 'spark') {
+        const sp = getSparks();
+        sp[a.reward.sparkType] = (sp[a.reward.sparkType] || 0) + a.reward.amount;
+        saveSparksLocal(sp);
+        updateSparkButtons();
+    }
+    saveStatsLocal(s);
+    
     renderAchievements();
-    alert('✅ ' + (a.reward.type === 'apples' ? a.reward.amount + '🍎' : a.reward.type === 'goldApples' ? a.reward.amount + '⭐' : ''));
+    updateStatsDisplay();
+    updateSparkBalance();
+    toast('✅ ' + (a.reward.type === 'apples' ? a.reward.amount + '🍎' : a.reward.type === 'goldApples' ? a.reward.amount + '⭐' : a.reward.type === 'spark' ? a.reward.amount + '🕯️' : ''));
 }
 
-function showAchToast(a) { /* без изменений */ }
-function formatReward(r) { /* без изменений */ }
-function renderAchievements() { /* без изменений */ }
+function showAchToast(a) {
+    const t = document.createElement('div');
+    t.className = 'achievement-toast';
+    t.innerHTML = '<div class="achievement-toast-title">' + a.icon + ' ' + a.name + '</div><div class="achievement-toast-reward">Награда: ' + formatReward(a.reward) + '</div>';
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = '0.5s'; setTimeout(() => t.remove(), 500); }, 5000);
+}
+
+function formatReward(r) {
+    if (r.type === 'apples') return r.amount + '🍎';
+    if (r.type === 'goldApples') return r.amount + '⭐';
+    if (r.type === 'spark') { const n = { golden: 'Золотая еда', rainbow: 'Радужный дождь', bonus: 'Бонусная еда', random: 'Рандом' }; return r.amount + '🕯️ ' + n[r.sparkType]; }
+    return '';
+}
+
+function renderAchievements() {
+    const g = document.getElementById('achievementsGrid');
+    const ach = getAchData();
+    g.innerHTML = ACHIEVEMENTS.map(a => {
+        const s = ach[a.id] || 'locked';
+        return '<div class="achievement-card ' + (s === 'completed' ? 'completed' : '') + ' ' + (s === 'claimed' ? 'claimed' : '') + '"><div class="achievement-icon">' + a.icon + '</div><div class="achievement-name">' + a.name + '</div><div class="achievement-desc">' + a.desc + '</div><div class="achievement-reward">' + formatReward(a.reward) + '</div>' + (s === 'completed' ? '<button class="achievement-claim-btn" onclick="claimAchievement(\'' + a.id + '\')">Забрать ✅</button>' : s === 'claimed' ? '<div style="font-size:11px;color:#999">Получено ✔️</div>' : '<div style="font-size:11px;color:#999">🔒</div>') + '</div>';
+    }).join('');
+}
 
 // ================================================================
-// НАСТРОЙКИ (без изменений)
+// НАСТРОЙКИ
 // ================================================================
-// ... (весь код настроек остаётся как был)
+const DEFAULT_SETTINGS = { up: 'w', down: 's', left: 'a', right: 'd' };
+
+function getSettings() {
+    if (currentUser) return currentUser.settings || DEFAULT_SETTINGS;
+    return JSON.parse(localStorage.getItem('snakeGuestSettings') || JSON.stringify(DEFAULT_SETTINGS));
+}
+
+function saveSettingsData(s) {
+    if (currentUser) { currentUser.settings = s; } else { localStorage.setItem('snakeGuestSettings', JSON.stringify(s)); }
+}
+
+function openSettings() {
+    document.getElementById('modalOverlay').style.display = 'flex';
+    document.getElementById('modalLogin').style.display = 'none';
+    document.getElementById('modalRegister').style.display = 'none';
+    document.getElementById('modalSkins').style.display = 'none';
+    document.getElementById('modalSettings').style.display = 'block';
+    const s = getSettings();
+    document.getElementById('bindUp').value = s.up;
+    document.getElementById('bindDown').value = s.down;
+    document.getElementById('bindLeft').value = s.left;
+    document.getElementById('bindRight').value = s.right;
+}
+
+function saveSettings() {
+    saveSettingsData({
+        up: document.getElementById('bindUp').value.toLowerCase() || 'w',
+        down: document.getElementById('bindDown').value.toLowerCase() || 's',
+        left: document.getElementById('bindLeft').value.toLowerCase() || 'a',
+        right: document.getElementById('bindRight').value.toLowerCase() || 'd'
+    });
+    alert('✅ Сохранено!');
+    closeModal();
+}
+
+function resetSettings() {
+    saveSettingsData(DEFAULT_SETTINGS);
+    alert('✅ Сброшено!');
+    openSettings();
+}
 
 // ================================================================
-// ИГРА (drawGame, generateFood, ивенты — добавляем logAction)
+// ИГРА
 // ================================================================
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -1198,24 +1230,250 @@ let goldenActive = false;
 let dx = 1, dy = 0, score = 0, isGameOver = false, gameLoopInterval = null, baseSpeed = 100, currentSpeed = 100;
 let eventActive = false, eventType = null, eventEndTime = 0, manualEvent = false, rainbowApples = [], rainbowInterval = null;
 let attackBalls = [], attackInterval = null;
-let sessionGoldApples = 0, deathType = null;
+let deathType = null;
+let eventDuration = 0;
+let _st = 0;
 
-// В drawGame() добавь логирование при поедании:
-// Обычное яблоко: logAction('eat_apple', { points: 1, applesDelta: 1 });
-// Золотое: logAction('eat_golden_apple', { points: 3, goldPoints: 1, applesDelta: 1, eventType: 'golden' });
-// Бонус: logAction('eat_bonus_food', { points: 1, applesDelta: 1, eventType: 'bonus' });
-// Радужное: logAction('eat_rainbow_apple', { points: 1, goldPoints: 1, applesDelta: 1, eventType: 'rainbow' });
-// Синий шар: logAction('eat_attack_blue', { points: 4, applesDelta: 4 });
-
-function startEvent(type, dur = null) {
-    // ... существующий код ...
+function drawGame() {
+    if (isGameOver) return;
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // ✅ Логируем старт ивента
-    logAction('start_event_' + type, { eventType: type });
+    const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+    snake.unshift(head);
+    let ate = false;
+    
+    if (head.x === food.x && head.y === food.y && !attackBalls.some(b => b.x === food.x && b.y === food.y)) {
+        ate = true;
+        if (goldenActive) {
+            for (let i = 0; i < 3; i++) snake.push({...snake[snake.length - 1]});
+            score += 3;
+            sessionGoldApples++;
+            sessionApples += 3;
+            logAction('eat_golden_apple', { points: 3, goldPoints: 1, applesDelta: 3, eventType: 'golden' });
+        } else {
+            score++;
+            sessionApples++;
+            logAction('eat_apple', { points: 1, applesDelta: 1 });
+        }
+        scoreText.textContent = 'Счёт: ' + score;
+        currentSpeed = Math.max(40, baseSpeed - score * 0.5);
+        restartGameLoop();
+        generateFood();
+        if (!manualEvent) checkRandomEvent();
+        updateSparkBalance();
+    }
+    
+    for (let i = bonusFoods.length - 1; i >= 0; i--) {
+        if (head.x === bonusFoods[i].x && head.y === bonusFoods[i].y) {
+            ate = true; score++;
+            sessionApples++;
+            logAction('eat_bonus_food', { points: 1, applesDelta: 1, eventType: 'bonus' });
+            scoreText.textContent = 'Счёт: ' + score;
+            currentSpeed = Math.max(40, baseSpeed - score * 0.5);
+            restartGameLoop();
+            bonusFoods.splice(i, 1);
+        }
+    }
+    
+    for (let i = rainbowApples.length - 1; i >= 0; i--) {
+        if (head.x === rainbowApples[i].x && head.y === rainbowApples[i].y) {
+            ate = true; score++;
+            sessionApples++;
+            sessionGoldApples++;
+            logAction('eat_rainbow_apple', { points: 1, goldPoints: 1, applesDelta: 1, eventType: 'rainbow' });
+            scoreText.textContent = 'Счёт: ' + score;
+            currentSpeed = Math.max(40, baseSpeed - score * 0.5);
+            restartGameLoop();
+            rainbowApples.splice(i, 1);
+        }
+    }
+    
+    for (let i = attackBalls.length - 1; i >= 0; i--) {
+        const b = attackBalls[i];
+        if (head.x === b.x && head.y === b.y) {
+            if (b.active) { deathType = 'attack'; endGame(); return; }
+            else {
+                ate = true; score += 4;
+                sessionApples += 4;
+                logAction('eat_attack_blue', { points: 4, applesDelta: 4 });
+                scoreText.textContent = 'Счёт: ' + score;
+                currentSpeed = Math.max(40, baseSpeed - score * 0.5);
+                restartGameLoop();
+                attackBalls.splice(i, 1);
+            }
+        }
+    }
+    
+    if (!ate) snake.pop();
+    
+    if (head.x < 0 || head.y < 0 || head.x >= tileCount || head.y >= tileCount) { deathType = 'wall'; endGame(); return; }
+    for (let i = 1; i < snake.length; i++) { if (head.x === snake[i].x && head.y === snake[i].y) { deathType = 'self'; endGame(); return; } }
+    
+    if (!attackBalls.some(b => b.x === food.x && b.y === food.y)) {
+        if (goldenActive) {
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(food.x * size, food.y * size, size - 2, size - 2);
+            ctx.shadowBlur = 0;
+        } else {
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x * size, food.y * size, size, size);
+        }
+    }
+    
+    ctx.fillStyle = "#00BFFF";
+    bonusFoods.forEach(bf => ctx.fillRect(bf.x * size, bf.y * size, size, size));
+    
+    rainbowApples.forEach(ra => {
+        const g = ctx.createRadialGradient(ra.x * size + size/2, ra.y * size + size/2, 2, ra.x * size + size/2, ra.y * size + size/2, size/2);
+        g.addColorStop(0, "#FFD700");
+        g.addColorStop(0.5, "#FF6B6B");
+        g.addColorStop(1, "#FF4500");
+        ctx.fillStyle = g;
+        ctx.fillRect(ra.x * size, ra.y * size, size, size);
+    });
+    
+    attackBalls.forEach(b => {
+        if (b.active) {
+            ctx.shadowColor = '#4488FF';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#4488FF';
+        } else {
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#FF4444';
+        }
+        ctx.beginPath();
+        ctx.arc(b.x * size + size/2, b.y * size + size/2, size/2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+    
+    const skinColor = getCurrentSkinColor();
+    snake.forEach((p, i) => {
+        ctx.fillStyle = i === 0 ? skinColor : darkenColor(skinColor, 0.7 - (i * 0.02));
+        ctx.fillRect(p.x * size, p.y * size, size - 2, size - 2);
+    });
+    
+    updateEventTimer();
+}
+
+function darkenColor(hex, f) {
+    let r = 0, g = 0, b = 0;
+    if (hex.startsWith('#')) {
+        r = parseInt(hex.slice(1, 3), 16);
+        g = parseInt(hex.slice(3, 5), 16);
+        b = parseInt(hex.slice(5, 7), 16);
+    }
+    return 'rgb(' + Math.floor(r * f) + ',' + Math.floor(g * f) + ',' + Math.floor(b * f) + ')';
+}
+
+function generateFood() {
+    if (eventType !== 'golden') goldenActive = false;
+    let p, a = 0;
+    do { p = {x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount)}; a++; if (a > 200) break; }
+    while (isOccupied(p) || attackBalls.some(b => b.x === p.x && b.y === p.y));
+    food = p;
+}
+
+function isOccupied(p) {
+    return snake.some(s => s.x === p.x && s.y === p.y) || (food.x === p.x && food.y === p.y) || bonusFoods.some(bf => bf.x === p.x && bf.y === p.y) || rainbowApples.some(ra => ra.x === p.x && ra.y === p.y);
+}
+
+function checkRandomEvent() {
+    if (eventActive) return;
+    const r = Math.random() * 100;
+    if (r < 1) startEvent('golden');
+    else if (r < 6) startEvent('bonus');
+    else if (r < 9) startEvent('rainbow');
+    else if (r < 10.5) startEvent('attack');
+}
+
+async function startEvent(type, dur = null) {
+    eventActive = true;
+    eventType = type;
+    manualEvent = (dur !== null);
+    if (!manualEvent) sessionEvents++;
+    eventDuration = type === 'attack' ? (dur || 20000) : (dur || (5000 + Math.random() * 7000));
+    eventEndTime = Date.now() + eventDuration;
+    
+    await logAction('start_event_' + type, { eventType: type });
+    
+    document.getElementById('eventTimer').style.display = 'flex';
+    if (type === 'golden') { goldenActive = true; document.getElementById('eventIcon').textContent = '⭐'; document.getElementById('eventName').textContent = 'Золотая еда!'; }
+    else if (type === 'bonus') { document.getElementById('eventIcon').textContent = '🎁'; document.getElementById('eventName').textContent = 'Бонусная еда!'; bonusFoods = []; for (let i = 0; i < 3; i++) { let p; do { p = {x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount)}; } while (isOccupied(p)); bonusFoods.push(p); } }
+    else if (type === 'rainbow') { document.getElementById('eventIcon').textContent = '🌈'; document.getElementById('eventName').textContent = 'Радужный дождь!'; startRainbowRain(); }
+    else if (type === 'attack') { document.getElementById('eventIcon').textContent = '💀'; document.getElementById('eventName').textContent = 'Атака!'; startAttackEvent(); }
+    updateEventTimer();
+}
+
+function endEvent() {
+    if (eventType === 'attack') { attackBalls.forEach(b => b.active = false); setTimeout(() => { attackBalls = []; }, 10000); }
+    eventActive = false; eventType = null; goldenActive = false; bonusFoods = []; manualEvent = false;
+    if (rainbowInterval) { clearInterval(rainbowInterval); rainbowInterval = null; }
+    rainbowApples = [];
+    if (attackInterval) { clearInterval(attackInterval); attackInterval = null; }
+    document.getElementById('eventTimer').style.display = 'none';
+}
+
+function updateEventTimer() {
+    if (!eventActive) return;
+    const rem = Math.max(0, eventEndTime - Date.now());
+    document.getElementById('eventCountdown').textContent = Math.ceil(rem / 1000) + 'с';
+    if (rem <= 0) endEvent();
+}
+
+function startRainbowRain() {
+    rainbowApples = [];
+    rainbowInterval = setInterval(() => {
+        if (!eventActive || eventType !== 'rainbow') { clearInterval(rainbowInterval); rainbowInterval = null; return; }
+        const a = {x: Math.floor(Math.random() * tileCount), y: 0};
+        if (!isOccupied(a)) rainbowApples.push(a);
+        for (let i = rainbowApples.length - 1; i >= 0; i--) {
+            rainbowApples[i].y++;
+            if (rainbowApples[i].y >= tileCount) { rainbowApples.splice(i, 1); continue; }
+            if (snake[0].x === rainbowApples[i].x && snake[0].y === rainbowApples[i].y) {
+                score++; sessionApples++; sessionGoldApples++;
+                logAction('eat_rainbow_apple', { points: 1, goldPoints: 1, applesDelta: 1, eventType: 'rainbow' });
+                scoreText.textContent = 'Счёт: ' + score;
+                currentSpeed = Math.max(40, baseSpeed - score * 0.5);
+                restartGameLoop();
+                rainbowApples.splice(i, 1);
+            }
+        }
+    }, 300);
+}
+
+function startAttackEvent() {
+    attackBalls = [];
+    for (let i = 0; i < 5; i++) {
+        const p = {x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount)};
+        attackBalls.push({x: p.x, y: p.y, dx: 0, dy: 0, active: true});
+        if (Math.random() > 0.5) attackBalls[i].dx = Math.random() > 0.5 ? 1 : -1;
+        else attackBalls[i].dy = Math.random() > 0.5 ? 1 : -1;
+        if (attackBalls[i].dx === 0 && attackBalls[i].dy === 0) attackBalls[i].dx = 1;
+    }
+    attackInterval = setInterval(() => {
+        if (!eventActive || eventType !== 'attack') { attackBalls.forEach(b => { b.dx = 0; b.dy = 0; }); return; }
+        for (let b of attackBalls) {
+            if (!b.active) continue;
+            const h = snake[0];
+            if (Math.abs(h.x - b.x) > Math.abs(h.y - b.y)) { b.dx = h.x > b.x ? 1 : -1; b.dy = 0; }
+            else { b.dx = 0; b.dy = h.y > b.y ? 1 : -1; }
+            if (Math.random() < 0.2) { if (b.dx !== 0) { b.dx = 0; b.dy = Math.random() > 0.5 ? 1 : -1; } else { b.dy = 0; b.dx = Math.random() > 0.5 ? 1 : -1; } }
+            let nx = b.x + b.dx, ny = b.y + b.dy;
+            if (nx < 0 || nx >= tileCount) b.dx *= -1;
+            if (ny < 0 || ny >= tileCount) b.dy *= -1;
+            b.x = Math.max(0, Math.min(tileCount - 1, b.x + b.dx));
+            b.y = Math.max(0, Math.min(tileCount - 1, b.y + b.dy));
+        }
+    }, 200);
 }
 
 // ================================================================
-// КОНЕЦ ИГРЫ (СВЕРКА С СЕРВЕРОМ)
+// КОНЕЦ ИГРЫ
 // ================================================================
 async function endGame() {
     if (isGameOver) return;
@@ -1223,10 +1481,8 @@ async function endGame() {
     
     const sessionDuration = Date.now() - gameStartTime;
     
-    // Логируем смерть
     await logAction('die_' + (deathType || 'unknown'), { points: 0 });
     
-    // Отправляем на сверку
     if (currentUser && sb && currentSessionId) {
         try {
             const { data, error } = await sb.rpc('end_snake_session', {
@@ -1243,11 +1499,7 @@ async function endGame() {
                 console.error('❌ Ошибка сервера:', error.message);
             } else if (data && data.status === 'rollback') {
                 console.warn('🛡️ ЧИТ ОБНАРУЖЕН!', data.reasons);
-                console.log('🛡️ Клиент: score=' + score + ' gold=' + sessionGoldApples + ' apples=' + sessionApples);
-                console.log('🛡️ Сервер: score=' + data.calculated_score + ' restored_from=' + data.restored_from);
                 toast('🛡️ Подозрительная активность! Данные восстановлены.', '#ff4444');
-                
-                // Перезагружаем данные
                 await loadUserDataFromSupabase();
                 updateStatsDisplay();
                 updateSparkBalance();
@@ -1256,16 +1508,21 @@ async function endGame() {
                 loadLeaderboard();
             } else {
                 console.log('✅ Сессия чистая. Счёт:', data.score || score);
+                loadLeaderboard();
             }
         } catch(e) {
             console.log('⚠️ Оффлайн — сверка пропущена');
         }
     }
     
-    // Локальное сохранение
     const s = getStats();
     s.deaths = (s.deaths || 0) + 1;
     if (score > (s.record || 0)) s.record = score;
+    s.totalScore = (s.totalScore || 0) + score;
+    s.totalGoldApples = (s.totalGoldApples || 0) + sessionGoldApples;
+    s.totalEvents = (s.totalEvents || 0) + sessionEvents;
+    s.applesEaten = (s.applesEaten || 0) + sessionApples;
+    s.goldApplesEaten = (s.goldApplesEaten || 0) + sessionGoldApples;
     if (deathType === 'self') s.selfDeaths = (s.selfDeaths || 0) + 1;
     if (deathType === 'wall') s.wallDeaths = (s.wallDeaths || 0) + 1;
     saveStatsLocal(s);
@@ -1294,8 +1551,9 @@ function restartGame() {
     score = 0;
     isGameOver = false;
     currentSpeed = baseSpeed;
-    sessionGoldApples = 0;
     sessionApples = 0;
+    sessionGoldApples = 0;
+    sessionEvents = 0;
     deathType = null;
     gameStartTime = Date.now();
     scoreText.textContent = "Счёт: 0";
@@ -1304,8 +1562,40 @@ function restartGame() {
     startGameLoop();
 }
 
+function restartGameLoop() { if (gameLoopInterval) clearInterval(gameLoopInterval); startGameLoop(); }
+
+function startGameLoop() {
+    if (gameLoopInterval) clearInterval(gameLoopInterval);
+    _st = Date.now();
+    gameLoopInterval = setInterval(drawGame, currentSpeed);
+}
+
 // ================================================================
-// ИНИЦИАЛИЗАЦИЯ СЕССИИ
+// УПРАВЛЕНИЕ
+// ================================================================
+document.addEventListener('keydown', e => {
+    if (isGameOver) return;
+    if (document.getElementById('modalOverlay').style.display === 'flex') return;
+    const s = getSettings(), k = e.key.toLowerCase();
+    if (k === s.up) { e.preventDefault(); if (dy !== 1) { dx = 0; dy = -1; } }
+    else if (k === s.down) { e.preventDefault(); if (dy !== -1) { dx = 0; dy = 1; } }
+    else if (k === s.left) { e.preventDefault(); if (dx !== 1) { dx = -1; dy = 0; } }
+    else if (k === s.right) { e.preventDefault(); if (dx !== -1) { dx = 1; dy = 0; } }
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        if (!isGameOver) {
+            switch (e.key) {
+                case 'ArrowUp': if (dy !== 1) { dx = 0; dy = -1; } break;
+                case 'ArrowDown': if (dy !== -1) { dx = 0; dy = 1; } break;
+                case 'ArrowLeft': if (dx !== 1) { dx = -1; dy = 0; } break;
+                case 'ArrowRight': if (dx !== -1) { dx = 1; dy = 0; } break;
+            }
+        }
+    }
+});
+
+// ================================================================
+// ИНИЦИАЛИЗАЦИЯ
 // ================================================================
 async function initGame() {
     if (currentUser && sb) {
@@ -1323,6 +1613,7 @@ async function initGame() {
     }
     
     gameStartTime = Date.now();
+    loadUserDataFromSupabase();
     updateProfileUI();
     updateStatsDisplay();
     updateSparkBalance();
@@ -1332,7 +1623,6 @@ async function initGame() {
     startGameLoop();
 }
 
-// Автосохранение сессии при закрытии
 window.addEventListener('beforeunload', function() {
     if (!isGameOver && currentUser && sb && currentSessionId && score > 0) {
         navigator.sendBeacon(
@@ -1350,7 +1640,6 @@ window.addEventListener('beforeunload', function() {
     }
 });
 
-// Запуск
 initGame();
 </script>
 </body>
