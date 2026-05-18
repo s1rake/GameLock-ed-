@@ -644,36 +644,6 @@ body.dark-theme .achievement-desc { color: #aaa; }
 })();
 
 // ================================================================
-// ЗАЩИТА КРИТИЧЕСКИХ ФУНКЦИЙ
-// ================================================================
-Object.defineProperty(window, 'saveToSupabase', {
-    get: function() { 
-        return function() { 
-            console.warn('🛡️ Прямое сохранение заблокировано!');
-            return { status: 'blocked' }; 
-        }; 
-    },
-    set: function() { console.warn('🛡️ Нельзя переопределить!'); },
-    configurable: false
-});
-
-// Блокируем изменение важных переменных через defineProperty
-['score', 'sessionApples', 'sessionGoldApples'].forEach(function(varName) {
-    var _value = eval(varName);
-    Object.defineProperty(window, varName, {
-        get: function() { return _value; },
-        set: function(newVal) {
-            var stack = new Error().stack || '';
-            if (stack.includes('<anonymous>') || stack.includes('eval')) {
-                console.warn('🛡️ Изменение ' + varName + ' из консоли заблокировано!');
-                return;
-            }
-            _value = newVal;
-        },
-        configurable: false
-    });
-});
-// ================================================================
 // SUPABASE
 // ================================================================
 const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
