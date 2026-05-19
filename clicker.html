@@ -1513,28 +1513,27 @@
     function sellStickers() { var total = 0, ts = []; for (var t in stickers) { if (favorites[t]) continue; var tp = TYPES[t]; if (tp) total += tp.v * stickers[t]; ts.push(t) } if (total === 0) { toast('Нет стикеров!', '#f44'); return } if (!confirm('Продать за ' + formatMoney(total) + '?')) return; balance += total; ts.forEach(function (t) { delete stickers[t] }); updateUI(); saveClickerData(); toast('💸 +' + formatMoney(total), '#ffd700') }
 
     // ========== СОХРАНЕНИЕ В SUPABASE ==========
-    async function saveToSupabase() {
-        if (!currentUser || !sb) return;
-        try {
-            const { error } = await sb.rpc('save_clicker_data', {
-                p_username: currentUser.username,
-                p_balance: Math.floor(balance),
-                p_total_clicks: Math.floor(totalClicks),
-                p_click_power: clickPower,
-                p_auto_clicker: autoClicker,
-                p_multiplier: multiplier,
-                p_rebirths: rebirths,
-                p_coins: coins,
-                p_collectible_tokens: collectibleTokens,
-                p_prestige_level: prestigeLevel,
-                p_stickers: stickers,
-                p_limited_stickers: limitedStickers,
-                p_collectible_stickers: collectibleStickers,
-                p_favorites: favorites,
-                p_pinned: pinned
-            });
-        } catch (e) { }
-    }
+async function saveToSupabase() {
+    if (!currentUser || !sb) return;
+    try {
+        var safeStickers = {};
+        for (var id in limitedStickers) { if (!limitedStickers[id]) continue; safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: Math.min(limitedStickers[id].basePrice || 0, 9000000000000), price: Math.min(limitedStickers[id].price || 0, 9000000000000), created: limitedStickers[id].created || Date.now() }; }
+        var safeCollectible = {};
+        for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), price: Math.min(collectibleStickers[id].price || 0, 9000000), created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
+        
+        await sb.rpc('save_with_validation', {
+            data: {
+                username: currentUser.username,
+                balance: Math.min(Math.floor(balance), 9000000000000),
+                coins: Math.min(Math.floor(coins), 9000000000),
+                collectible_tokens: Math.min(collectibleTokens, 9000000),
+                prestige_level: Math.min(prestigeLevel, 9000000),
+                limited_stickers: safeStickers,
+                collectible_stickers: safeCollectible
+            }
+        });
+    } catch (e) {}
+}
 
     // ========== АВТОСОХРАНЕНИЕ ==========
     setInterval(function () { saveClickerData(); saveToSupabase(); }, 5000);
