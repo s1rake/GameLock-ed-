@@ -1738,49 +1738,40 @@ function sellStickers() { var total = 0, ts = []; for (var t in stickers) { if (
 // ========== СОХРАНЕНИЕ ЧЕРЕЗ EDGE FUNCTION ==========
 async function saveToSupabase() {
     if (!currentUser || !sb) return;
+    
     try {
-        var safeStickers = {};
-        for (var id in limitedStickers) { if (!limitedStickers[id]) continue; safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: Math.min(limitedStickers[id].basePrice || 0, 9000000000000), price: Math.min(limitedStickers[id].price || 0, 9000000000000), created: limitedStickers[id].created || Date.now() }; }
-        var safeCollectible = {};
-        for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), price: Math.min(collectibleStickers[id].price || 0, 9000000), created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
-        
-        var { data, error } = await sb.rpc('save_with_validation', {
-            data: {
-                username: currentUser.username,
-                balance: Math.min(Math.floor(balance), 9000000000000),
-                coins: Math.min(Math.floor(coins), 9000000000),
-                collectible_tokens: Math.min(collectibleTokens, 9000000),
-                prestige_level: Math.min(prestigeLevel, 9000000),
-                limited_stickers: safeStickers,
-                collectible_stickers: safeCollectible
-            }
-        });
+        // Сохраняем стикеры как JSON строки
+        const { error } = await sb
+            .from('clicker_data')
+            .update({
+                balance: Math.floor(balance),
+                total_clicks: Math.floor(totalClicks),
+                click_power: clickPower,
+                auto_clicker: autoClicker,
+                multiplier: multiplier,
+                rebirths: rebirths,
+                coins: coins,
+                collectible_tokens: collectibleTokens,
+                prestige_level: prestigeLevel,
+                stickers: JSON.stringify(stickers),
+                limited_stickers: JSON.stringify(limitedStickers),
+                collectible_stickers: JSON.stringify(collectibleStickers),
+                favorites: JSON.stringify(favorites),
+                pinned: JSON.stringify(pinned),
+                updated_at: new Date().toISOString()
+            })
+            .eq('username', currentUser.username);
         
         if (error) {
-            console.error('❌ Ошибка сервера:', error.message);
-        } else if (data && data.status === 'rollback') {
-            console.warn('🛡️ Сервер отклонил сохранение!');
-            var { data: fresh } = await sb.from('clicker_data').select('balance, coins, collectible_tokens, prestige_level').eq('username', currentUser.username).single();
-            if (fresh) {
-                balance = fresh.balance || 0;
-                coins = fresh.coins || 0;
-                collectibleTokens = fresh.collectible_tokens || 0;
-                prestigeLevel = fresh.prestige_level || 0;
-                updateUI();
-                saveClickerData();
-                updateCoins();
-                updateTokenBal();
-                checkPrestigeDisplay();
-                toast('🛡️ Сервер отклонил изменения!', '#ff4444');
-            }
+            console.log('❌ Ошибка сохранения:', error.message);
         }
-    } catch (e) {
+    } catch(e) {
         console.log('⚠️ Оффлайн');
     }
 }
 
 // ========== АВТОСОХРАНЕНИЕ ==========
-setInterval(function () { saveClickerData(); saveToSupabase(); }, 10000);
+setInterval(function () { saveClickerData(); saveToSupabase(); }, 5000);
 
 // ========== ЛИДЕРБОРД ==========
 async function updateStickerLB() { var listEl = document.getElementById('stickerLB'); if (!listEl) return; var bestStickers = {}, medals = ['🥇', '🥈', '🥉']; function addSticker(username, sticker) { if (!sticker || !sticker.price || !sticker.emoji) return; if (!bestStickers[username] || sticker.price > bestStickers[username].price) { bestStickers[username] = { username: username, emoji: sticker.emoji, colorName: sticker.color?.name || '?', colorBg: sticker.color?.bg || '#ccc', price: sticker.price } } } var un = currentUser ? currentUser.username : 'Гость'; for (var id in limitedStickers) { if (limitedStickers[id]) addSticker(un, limitedStickers[id]) } for (var id in collectibleStickers) { if (collectibleStickers[id]) addSticker(un, collectibleStickers[id]) } if (sb) { try { var { data } = await sb.from('clicker_data').select('username,limited_stickers,collectible_stickers'); if (data) { for (var row of data) { var stickers = row.limited_stickers; if (typeof stickers === 'string') { try { stickers = JSON.parse(stickers) } catch (e) { continue } } if (stickers) for (var id in stickers) { if (stickers[id]) addSticker(row.username, stickers[id]) } var cstickers = row.collectible_stickers; if (typeof cstickers === 'string') { try { cstickers = JSON.parse(cstickers) } catch (e) { continue } } if (cstickers) for (var id in cstickers) { if (cstickers[id]) addSticker(row.username, cstickers[id]) } } } } catch (e) { } } var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price); listEl.innerHTML = sorted.slice(0, 10).map(function (s, i) { return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span> ' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> ' + formatMoney(s.price || 0) + '</span></li>' }).join('') || '<li>Нет стикеров</li>' }
