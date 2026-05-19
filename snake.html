@@ -1254,9 +1254,24 @@ function getSelectedSkin() {
     return 'green';
 }
 
-function getCurrentSkinColor() { 
-    const s = SKIN_COLORS.find(s => s.id === getSelectedSkin()); 
-    return s ? s.color : '#00FF00'; 
+function getCurrentSkinColor() {
+    const skinId = getSelectedSkin();
+    
+    // ✅ Проверяем, владеет ли игрок этим скином
+    const owned = getOwnedSkins();
+    if (!owned.includes(skinId)) {
+        // Если скин не куплен — сбрасываем на зелёный
+        if (currentUser) {
+            currentUser.selectedSkin = 'green';
+            const users = getAllUsers();
+            if (users[currentUser.username]) users[currentUser.username].selectedSkin = 'green';
+            saveUsers(users);
+        }
+        return '#00FF00';
+    }
+    
+    const s = SKIN_COLORS.find(s => s.id === skinId);
+    return s ? s.color : '#00FF00';
 }
 
 async function buySkin(id, price, priceGold) {
@@ -1314,13 +1329,17 @@ async function buySkin(id, price, priceGold) {
 }
 
 function selectSkin(id) {
+    // ✅ Проверяем, куплен ли скин
+    if (!getOwnedSkins().includes(id)) {
+        return alert('🛡️ Скин не куплен!');
+    }
+    
     currentUser.selectedSkin = id;
     
     const users = getAllUsers();
     if (users[currentUser.username]) users[currentUser.username].selectedSkin = id;
     saveUsers(users);
     
-    // ✅ Сохраняем в Supabase
     if (currentUser && sb) {
         sb.from('players').update({ selected_skin: id }).eq('username', currentUser.username).then(() => {});
     }
