@@ -1482,18 +1482,31 @@
         function isOccupied(p) { return snake.some(s => s.x === p.x && s.y === p.y) || (food.x === p.x && food.y === p.y) || bonusFoods.some(bf => bf.x === p.x && bf.y === p.y) || rainbowApples.some(ra => ra.x === p.x && ra.y === p.y); }
         function checkRandomEvent() { if (eventActive) return; const r = Math.random() * 100; if (r < 1) startEvent('golden'); else if (r < 6) startEvent('bonus'); else if (r < 9) startEvent('rainbow'); else if (r < 10.5) startEvent('attack'); }
 
-        function startEvent(type, dur = null) {
-            eventActive = true; eventType = type; manualEvent = (dur !== null);
-            if (!manualEvent) sessionEvents++;
-            eventDuration = type === 'attack' ? (dur || 20000) : (dur || (5000 + Math.random() * 7000));
-            eventEndTime = Date.now() + eventDuration;
-            document.getElementById('eventTimer').style.display = 'flex';
-            if (type === 'golden') { goldenActive = true; document.getElementById('eventIcon').textContent = '⭐'; document.getElementById('eventName').textContent = 'Золотая еда!'; }
-            else if (type === 'bonus') { document.getElementById('eventIcon').textContent = '🎁'; document.getElementById('eventName').textContent = 'Бонусная еда!'; bonusFoods = []; for (let i = 0; i < 3; i++) { let p; do { p = { x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount) }; } while (isOccupied(p)); bonusFoods.push(p); } }
-            else if (type === 'rainbow') { document.getElementById('eventIcon').textContent = '🌈'; document.getElementById('eventName').textContent = 'Радужный дождь!'; startRainbowRain(); }
-            else if (type === 'attack') { document.getElementById('eventIcon').textContent = '💀'; document.getElementById('eventName').textContent = 'Атака!'; startAttackEvent(); }
-            updateEventTimer();
-        }
+       function startEvent(type, dur = null) {
+    eventActive = true; eventType = type; manualEvent = (dur !== null);
+    if (!manualEvent) sessionEvents++;
+    
+    // ✅ Обновляем счётчики ивентов в статистике
+    const s = getStats();
+    if (type === 'bonus') s.bonusEvents = (s.bonusEvents || 0) + 1;
+    if (type === 'rainbow') s.rainbowEvents = (s.rainbowEvents || 0) + 1;
+    if (type === 'golden') s.goldenEvents = (s.goldenEvents || 0) + 1;
+    if (type === 'attack') s.attackEvents = (s.attackEvents || 0) + 1;
+    s.totalEvents = (s.totalEvents || 0) + 1;
+    saveStatsLocal(s);
+    
+    eventDuration = type === 'attack' ? (dur || 20000) : (dur || (5000 + Math.random() * 7000));
+    eventEndTime = Date.now() + eventDuration;
+    document.getElementById('eventTimer').style.display = 'flex';
+    if (type === 'golden') { goldenActive = true; document.getElementById('eventIcon').textContent = '⭐'; document.getElementById('eventName').textContent = 'Золотая еда!'; }
+    else if (type === 'bonus') { document.getElementById('eventIcon').textContent = '🎁'; document.getElementById('eventName').textContent = 'Бонусная еда!'; bonusFoods = []; for (let i = 0; i < 3; i++) { let p; do { p = {x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount)}; } while (isOccupied(p)); bonusFoods.push(p); } }
+    else if (type === 'rainbow') { document.getElementById('eventIcon').textContent = '🌈'; document.getElementById('eventName').textContent = 'Радужный дождь!'; startRainbowRain(); }
+    else if (type === 'attack') { document.getElementById('eventIcon').textContent = '💀'; document.getElementById('eventName').textContent = 'Атака!'; startAttackEvent(); }
+    updateEventTimer();
+    
+    // ✅ Проверяем ачивки сразу после ивента
+    checkAchievements();
+}
 
         function endEvent() { if (eventType === 'attack') { attackBalls.forEach(b => b.active = false); setTimeout(() => { attackBalls = []; }, 10000); } eventActive = false; eventType = null; goldenActive = false; bonusFoods = []; manualEvent = false; if (rainbowInterval) { clearInterval(rainbowInterval); rainbowInterval = null; } rainbowApples = []; if (attackInterval) { clearInterval(attackInterval); attackInterval = null; } document.getElementById('eventTimer').style.display = 'none'; }
         function updateEventTimer() { if (!eventActive) return; const rem = Math.max(0, eventEndTime - Date.now()); document.getElementById('eventCountdown').textContent = Math.ceil(rem / 1000) + 'с'; if (rem <= 0) endEvent(); }
