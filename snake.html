@@ -1253,15 +1253,51 @@ function getOwnedSkins() {
         
         function getSelectedSkin() { return currentUser ? (currentUser.selectedSkin || 'green') : (localStorage.getItem('snakeGuestSelectedSkin') || 'green'); }
 
-        function buySkin(id, price, priceGold) {
-            const s = getStats();
-            if (priceGold) { if ((s.goldApplesEaten || 0) < priceGold) return alert('Нужно ' + priceGold + '⭐'); s.goldApplesEaten -= priceGold; }
-            else { if ((s.applesEaten || 0) < price) return alert('Нужно ' + price + '🍎'); s.applesEaten -= price; }
-            saveStatsLocal(s);
-            const owned = getOwnedSkins(); owned.push(id);
-            if (currentUser) { currentUser.ownedSkins = owned; saveUsers(getAllUsers()); }
-            selectSkin(id); updateStatsDisplay(); updateSparkBalance(); updateSkinShop(); checkAchievements();
+async function buySkin(id, price, priceGold) {
+    const s = getStats();
+    
+    // ✅ Проверяем, хватает ли реально
+    if (priceGold) {
+        if ((s.goldApplesEaten || 0) < priceGold) return alert('Нужно ' + priceGold + '⭐');
+    } else {
+        if ((s.applesEaten || 0) < price) return alert('Нужно ' + price + '🍎');
+    }
+    
+    // ✅ Проверяем через сервер перед покупкой
+    if (currentUser && sb) {
+        const { data } = await sb.from('players').select('stats').eq('username', currentUser.username).maybeSingle();
+        if (data && data.stats) {
+            if (priceGold && (data.stats.goldApplesEaten || 0) < priceGold) {
+                return alert('🛡️ Недостаточно золотых яблок!');
+            }
+            if (!priceGold && (data.stats.applesEaten || 0) < price) {
+                return alert('🛡️ Недостаточно яблок!');
+            }
         }
+    }
+    
+    if (priceGold) s.goldApplesEaten -= priceGold;
+    else s.applesEaten -= price;
+    saveStatsLocal(s);
+    
+    const owned = getOwnedSkins();
+    owned.push(id);
+    if (currentUser) { currentUser.ownedSkins = owned; saveUsers(getAllUsers()); }
+    
+    // ✅ Сохраняем в Supabase
+    if (currentUser && sb) {
+        await sb.from('players').update({
+            stats: s,
+            owned_skins: owned
+        }).eq('username', currentUser.username);
+    }
+    
+    selectSkin(id);
+    updateStatsDisplay();
+    updateSparkBalance();
+    updateSkinShop();
+    checkAchievements();
+}
 
         function selectSkin(id) {
             if (currentUser) { currentUser.selectedSkin = id; const users = getAllUsers(); if (users[currentUser.username]) users[currentUser.username].selectedSkin = id; saveUsers(users); }
@@ -1350,29 +1386,37 @@ const saveAchLocal = (function() {
             if (changed) { saveAchLocal(ach); renderAchievements(); }
         }
 
-   async function claimAchievement(id) {
+async function claimAchievement(id) {
     const ach = getAchData();
     if (ach[id] !== 'completed') return;
     const a = ACHIEVEMENTS.find(x => x.id === id);
     if (!a) return;
     
-    // ✅ Проверяем, что ачивка действительно выполнена (считаем заново)
+    // ✅ Проверяем сервер — не получена ли уже?
+    if (currentUser && sb) {
+        const { data } = await sb.from('players').select('achievements').eq('username', currentUser.username).maybeSingle();
+        if (data && data.achievements && data.achievements[id] === 'claimed') {
+            // Уже получена — удаляем локальную накрутку
+            delete ach[id];
+            saveAchLocal(ach);
+            renderAchievements();
+            return alert('🛡️ Эта награда уже получена!');
+        }
+    }
+    
+    // ✅ Проверяем условие
     const s = getStats();
     if (!a.condition(s)) {
-        console.warn('🛡️ Ачивка не выполнена! Условие не пройдено.');
-        // Удаляем накрученную ачивку
         delete ach[id];
         saveAchLocal(ach);
         renderAchievements();
-        return;
+        return alert('🛡️ Условие не выполнено!');
     }
     
     ach[id] = 'claimed';
     saveAchLocal(ach);
     
     const sp = getSparks();
-    
-    // Выдаём награду только если условие реально выполнено
     if (a.reward.type === 'apples') s.applesEaten = (s.applesEaten || 0) + a.reward.amount;
     if (a.reward.type === 'goldApples') s.goldApplesEaten = (s.goldApplesEaten || 0) + a.reward.amount;
     if (a.reward.type === 'spark') {
@@ -1388,17 +1432,11 @@ const saveAchLocal = (function() {
     
     // Сохраняем в Supabase
     if (currentUser && sb) {
-        try {
-            const { data } = await sb.from('players').select('achievements').eq('username', currentUser.username).maybeSingle();
-            if (data && data.achievements) {
-                data.achievements[id] = 'claimed';
-                await sb.from('players').update({ 
-                    achievements: data.achievements,
-                    stats: s,
-                    sparks: sp
-                }).eq('username', currentUser.username);
-            }
-        } catch(e) {}
+        await sb.from('players').update({
+            achievements: ach,
+            stats: s,
+            sparks: sp
+        }).eq('username', currentUser.username);
     }
     
     toast('✅ ' + formatReward(a.reward));
