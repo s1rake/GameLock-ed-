@@ -1597,30 +1597,21 @@ async function saveClickerData() {
     
     if (currentUser && sb) {
         try {
-            // ✅ Преобразуем объекты в JSON строки, pinned в массив
-            const safePinned = Array.isArray(pinned) ? pinned : [];
-            
-            await sb
+            const { data, error } = await sb
                 .from('clicker_data')
                 .update({
                     balance: Math.floor(balance),
-                    total_clicks: Math.floor(totalClicks),
-                    click_power: clickPower,
-                    auto_clicker: autoClicker,
-                    multiplier: multiplier,
-                    rebirths: rebirths,
-                    stickers: stickers,
-                    limited_stickers: limitedStickers,
-                    collectible_stickers: collectibleStickers,
-                    collectible_tokens: collectibleTokens,
-                    prestige_level: prestigeLevel,
-                    coins: coins,
-                    favorites: favorites,
-                    pinned: safePinned,
-                    updated_at: new Date().toISOString()
+                    total_clicks: Math.floor(totalClicks)
                 })
-                .eq('username', currentUser.username);
-        } catch(e) {}
+                .eq('username', currentUser.username)
+                .select();
+            
+            if (error) {
+                console.log('❌ Полная ошибка:', JSON.stringify(error));
+            }
+        } catch(e) {
+            console.log('⚠️', e.message);
+        }
     }
 }
     function loadClickerData() {
