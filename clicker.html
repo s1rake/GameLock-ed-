@@ -1751,15 +1751,18 @@ async function saveToSupabase() {
             p_coins: coins,
             p_collectible_tokens: collectibleTokens,
             p_prestige_level: prestigeLevel,
-            p_stickers: stickers,
-            p_limited_stickers: limitedStickers,
-            p_collectible_stickers: collectibleStickers,
-            p_favorites: favorites,
-            p_pinned: pinned
+            p_stickers: JSON.stringify(stickers),
+            p_limited_stickers: JSON.stringify(limitedStickers),
+            p_collectible_stickers: JSON.stringify(collectibleStickers),
+            p_favorites: JSON.stringify(favorites),
+            p_pinned: JSON.stringify(pinned)
         });
         
         if (error) console.log('❌ Ошибка:', error.message);
-    } catch(e) {}
+        else console.log('✅ Сохранено в Supabase');
+    } catch(e) {
+        console.log('⚠️ Оффлайн');
+    }
 }
 
 // ========== АВТОСОХРАНЕНИЕ ==========
