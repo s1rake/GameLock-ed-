@@ -1222,50 +1222,56 @@ const saveUsers = (function() {
             startEvent(ev, 10000);
         }
 
-        // ================================================================
-        // СКИНЫ
-        // ================================================================
-        const SKIN_COLORS = [
-            { name: 'Зелёный', color: '#00FF00', price: 0, id: 'green' },
-            { name: 'Красный', color: '#FF4444', price: 50, id: 'red' },
-            { name: 'Синий', color: '#4488FF', price: 50, id: 'blue' },
-            { name: 'Жёлтый', color: '#FFDD00', price: 50, id: 'yellow' },
-            { name: 'Фиолетовый', color: '#CC44FF', price: 50, id: 'purple' },
-            { name: 'Оранжевый', color: '#FF8800', price: 50, id: 'orange' },
-            { name: 'Розовый', color: '#FF69B4', price: 50, id: 'pink' },
-            { name: 'Голубой', color: '#00CCFF', price: 50, id: 'cyan' },
-            { name: 'Белый', color: '#FFFFFF', price: 50, id: 'white' },
-            { name: 'Лаймовый', color: '#CCFF00', price: 50, id: 'lime' },
-            { name: 'Бирюзовый', color: '#00FFCC', price: 50, id: 'teal' },
-            { name: 'Коралловый', color: '#FF7F50', price: 50, id: 'coral' },
-            { name: 'Золотой', color: '#FFD700', price: 0, priceGold: 250, id: 'gold' },
-            { name: 'Мятный', color: '#98FF98', price: 50, id: 'mint' },
-            { name: 'Лавандовый', color: '#E6E6FA', price: 50, id: 'lavender' },
-            { name: 'Серый', color: '#888888', price: 1000, id: 'gray' }
-        ];
+// ================================================================
+// СКИНЫ
+// ================================================================
+const SKIN_COLORS = [
+    { name: 'Зелёный', color: '#00FF00', price: 0, id: 'green' },
+    { name: 'Красный', color: '#FF4444', price: 50, id: 'red' },
+    { name: 'Синий', color: '#4488FF', price: 50, id: 'blue' },
+    { name: 'Жёлтый', color: '#FFDD00', price: 50, id: 'yellow' },
+    { name: 'Фиолетовый', color: '#CC44FF', price: 50, id: 'purple' },
+    { name: 'Оранжевый', color: '#FF8800', price: 50, id: 'orange' },
+    { name: 'Розовый', color: '#FF69B4', price: 50, id: 'pink' },
+    { name: 'Голубой', color: '#00CCFF', price: 50, id: 'cyan' },
+    { name: 'Белый', color: '#FFFFFF', price: 50, id: 'white' },
+    { name: 'Лаймовый', color: '#CCFF00', price: 50, id: 'lime' },
+    { name: 'Бирюзовый', color: '#00FFCC', price: 50, id: 'teal' },
+    { name: 'Коралловый', color: '#FF7F50', price: 50, id: 'coral' },
+    { name: 'Золотой', color: '#FFD700', price: 0, priceGold: 250, id: 'gold' },
+    { name: 'Мятный', color: '#98FF98', price: 50, id: 'mint' },
+    { name: 'Лавандовый', color: '#E6E6FA', price: 50, id: 'lavender' },
+    { name: 'Серый', color: '#888888', price: 1000, id: 'gray' }
+];
 
 function getOwnedSkins() { 
-    if (currentUser) {
-        return currentUser.ownedSkins || ['green'];
-    }
-    return JSON.parse(localStorage.getItem('snakeGuestOwnedSkins') || '["green"]'); 
+    if (currentUser && currentUser.ownedSkins) return currentUser.ownedSkins;
+    return ['green'];
 }
-        
-        function getSelectedSkin() { return currentUser ? (currentUser.selectedSkin || 'green') : (localStorage.getItem('snakeGuestSelectedSkin') || 'green'); }
+
+function getSelectedSkin() { 
+    if (currentUser && currentUser.selectedSkin) return currentUser.selectedSkin;
+    return 'green';
+}
+
+function getCurrentSkinColor() { 
+    const s = SKIN_COLORS.find(s => s.id === getSelectedSkin()); 
+    return s ? s.color : '#00FF00'; 
+}
 
 async function buySkin(id, price, priceGold) {
     const s = getStats();
     
-    // ✅ Проверяем, хватает ли реально
+    // ✅ Проверяем локально
     if (priceGold) {
         if ((s.goldApplesEaten || 0) < priceGold) return alert('Нужно ' + priceGold + '⭐');
     } else {
         if ((s.applesEaten || 0) < price) return alert('Нужно ' + price + '🍎');
     }
     
-    // ✅ Проверяем через сервер перед покупкой
+    // ✅ Проверяем через сервер
     if (currentUser && sb) {
-        const { data } = await sb.from('players').select('stats').eq('username', currentUser.username).maybeSingle();
+        const { data } = await sb.from('players').select('stats,owned_skins').eq('username', currentUser.username).maybeSingle();
         if (data && data.stats) {
             if (priceGold && (data.stats.goldApplesEaten || 0) < priceGold) {
                 return alert('🛡️ Недостаточно золотых яблок!');
@@ -1273,16 +1279,20 @@ async function buySkin(id, price, priceGold) {
             if (!priceGold && (data.stats.applesEaten || 0) < price) {
                 return alert('🛡️ Недостаточно яблок!');
             }
+            // ✅ Загружаем актуальные скины с сервера
+            currentUser.ownedSkins = data.owned_skins || ['green'];
         }
     }
+    
+    // Проверяем, не куплен ли уже
+    if (getOwnedSkins().includes(id)) return alert('Уже куплен!');
     
     if (priceGold) s.goldApplesEaten -= priceGold;
     else s.applesEaten -= price;
     saveStatsLocal(s);
     
-    const owned = getOwnedSkins();
-    owned.push(id);
-    if (currentUser) { currentUser.ownedSkins = owned; saveUsers(getAllUsers()); }
+    const owned = [...getOwnedSkins(), id];
+    currentUser.ownedSkins = owned;
     
     // ✅ Сохраняем в Supabase
     if (currentUser && sb) {
@@ -1292,6 +1302,10 @@ async function buySkin(id, price, priceGold) {
         }).eq('username', currentUser.username);
     }
     
+    const users = getAllUsers();
+    if (users[currentUser.username]) users[currentUser.username].ownedSkins = owned;
+    saveUsers(users);
+    
     selectSkin(id);
     updateStatsDisplay();
     updateSparkBalance();
@@ -1299,34 +1313,75 @@ async function buySkin(id, price, priceGold) {
     checkAchievements();
 }
 
-        function selectSkin(id) {
-            if (currentUser) { currentUser.selectedSkin = id; const users = getAllUsers(); if (users[currentUser.username]) users[currentUser.username].selectedSkin = id; saveUsers(users); }
-            else { localStorage.setItem('snakeGuestSelectedSkin', id); }
-            updateSkinShop();
-        }
+function selectSkin(id) {
+    currentUser.selectedSkin = id;
+    
+    const users = getAllUsers();
+    if (users[currentUser.username]) users[currentUser.username].selectedSkin = id;
+    saveUsers(users);
+    
+    // ✅ Сохраняем в Supabase
+    if (currentUser && sb) {
+        sb.from('players').update({ selected_skin: id }).eq('username', currentUser.username).then(() => {});
+    }
+    
+    updateSkinShop();
+}
 
-        function getCurrentSkinColor() { const s = SKIN_COLORS.find(s => s.id === getSelectedSkin()); return s ? s.color : '#00FF00'; }
+function openSkinShop() {
+    // ✅ Загружаем актуальные данные с сервера
+    if (currentUser && sb) {
+        sb.from('players').select('owned_skins,selected_skin,stats').eq('username', currentUser.username).maybeSingle().then(({ data }) => {
+            if (data) {
+                currentUser.ownedSkins = data.owned_skins || ['green'];
+                currentUser.selectedSkin = data.selected_skin || 'green';
+                if (data.stats) {
+                    currentUser.stats = data.stats;
+                    const users = getAllUsers();
+                    if (!users[currentUser.username]) users[currentUser.username] = {};
+                    users[currentUser.username].stats = data.stats;
+                    saveUsers(users);
+                }
+                updateSkinShop();
+                updateStatsDisplay();
+                updateSparkBalance();
+            }
+        });
+    }
+    
+    document.getElementById('modalOverlay').style.display = 'flex';
+    document.getElementById('modalLogin').style.display = 'none';
+    document.getElementById('modalRegister').style.display = 'none';
+    document.getElementById('modalSkins').style.display = 'block';
+    document.getElementById('modalSettings').style.display = 'none';
+    updateSkinShop();
+}
 
-        function openSkinShop() {
-            document.getElementById('modalOverlay').style.display = 'flex';
-            document.getElementById('modalLogin').style.display = 'none';
-            document.getElementById('modalRegister').style.display = 'none';
-            document.getElementById('modalSkins').style.display = 'block';
-            document.getElementById('modalSettings').style.display = 'none';
-            updateSkinShop();
+function updateSkinShop() {
+    const s = getStats();
+    document.getElementById('skinBalApples').textContent = s.applesEaten || 0;
+    document.getElementById('skinBalGold').textContent = s.goldApplesEaten || 0;
+    const owned = getOwnedSkins();
+    const sel = getSelectedSkin();
+    
+    document.getElementById('skinGrid').innerHTML = SKIN_COLORS.map(skin => {
+        const o = owned.includes(skin.id);
+        const l = !o;
+        let pt = '';
+        if (l) {
+            if (skin.priceGold) pt = '💰 ' + skin.priceGold + '⭐';
+            else if (skin.price) pt = '💰 ' + skin.price + '🍎';
         }
-
-        function updateSkinShop() {
-            document.getElementById('skinBalApples').textContent = getStats().applesEaten || 0;
-            document.getElementById('skinBalGold').textContent = getStats().goldApplesEaten || 0;
-            const owned = getOwnedSkins(), sel = getSelectedSkin();
-            document.getElementById('skinGrid').innerHTML = SKIN_COLORS.map(s => {
-                const o = owned.includes(s.id), l = !o;
-                let pt = '';
-                if (l) { if (s.priceGold) pt = '💰 ' + s.priceGold + '⭐'; else if (s.price) pt = '💰 ' + s.price + '🍎'; }
-                return '<div style="text-align:center"><div class="skin-item ' + (s.id === sel ? 'selected' : '') + ' ' + (l ? 'locked' : '') + '" style="background:' + s.color + '" onclick="' + (l ? "buySkin('" + s.id + "'," + s.price + "," + (s.priceGold || 0) + ")" : "selectSkin('" + s.id + "')") + '"></div><div class="skin-price">' + s.name + '</div>' + (l ? '<div class="skin-price" style="color:#ff6b6b">' + pt + '</div>' : '') + '</div>';
-            }).join('');
-        }
+        return '<div style="text-align:center">' +
+            '<div class="skin-item ' + (skin.id === sel ? 'selected' : '') + ' ' + (l ? 'locked' : '') + '" ' +
+            'style="background:' + skin.color + '" ' +
+            'onclick="' + (l ? "buySkin('" + skin.id + "'," + skin.price + "," + (skin.priceGold || 0) + ")" : "selectSkin('" + skin.id + "')") + '" ' +
+            'title="' + skin.name + (l ? ' - ' + pt : '') + '"></div>' +
+            '<div class="skin-price">' + skin.name + '</div>' +
+            (l ? '<div class="skin-price" style="color:#ff6b6b">' + pt + '</div>' : '') +
+            '</div>';
+    }).join('');
+}
 
         // ================================================================
         // ДОСТИЖЕНИЯ
