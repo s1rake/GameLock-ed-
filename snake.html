@@ -1014,8 +1014,16 @@
         // ================================================================
         let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
         function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
-        function saveUsers(u) { localStorage.setItem('snakeUsers', JSON.stringify(u)); }
-        async function hashPassword(p) { const e = new TextEncoder(); const d = e.encode(p + 'gamelock_salt_2026'); const h = await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join(''); }
+const saveUsers = (function() {
+    return function(u) {
+        const stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM')) {
+            console.warn('🛡️ Блокировано!');
+            return;
+        }
+        localStorage.setItem('snakeUsers', JSON.stringify(u));
+    };
+})();        async function hashPassword(p) { const e = new TextEncoder(); const d = e.encode(p + 'gamelock_salt_2026'); const h = await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join(''); }
         function generateSalt() { return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join(''); }
 
         async function loadUserDataFromSupabase() {
@@ -1311,10 +1319,24 @@
             return JSON.parse(localStorage.getItem('snakeGuestAch') || '{}');
         }
 
-        function saveAchLocal(d) {
-            if (currentUser) { currentUser.achievements = d; const users = getAllUsers(); if (!users[currentUser.username]) users[currentUser.username] = {}; users[currentUser.username].achievements = d; saveUsers(users); }
-            else { localStorage.setItem('snakeGuestAch', JSON.stringify(d)); }
+const saveAchLocal = (function() {
+    return function(d) {
+        const stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM')) {
+            console.warn('🛡️ Блокировано!');
+            return;
         }
+        if (currentUser) {
+            currentUser.achievements = d;
+            const users = getAllUsers();
+            if (!users[currentUser.username]) users[currentUser.username] = {};
+            users[currentUser.username].achievements = d;
+            saveUsers(users);
+        } else {
+            localStorage.setItem('snakeGuestAch', JSON.stringify(d));
+        }
+    };
+})();
 
         function checkAchievements() {
             const s = getStats(); const ach = getAchData(); let changed = false;
