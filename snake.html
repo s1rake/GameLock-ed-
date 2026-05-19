@@ -1244,7 +1244,13 @@ const saveUsers = (function() {
             { name: 'Серый', color: '#888888', price: 1000, id: 'gray' }
         ];
 
-        function getOwnedSkins() { return currentUser ? (currentUser.ownedSkins || ['green']) : JSON.parse(localStorage.getItem('snakeGuestOwnedSkins') || '["green"]'); }
+function getOwnedSkins() { 
+    if (currentUser) {
+        return currentUser.ownedSkins || ['green'];
+    }
+    return JSON.parse(localStorage.getItem('snakeGuestOwnedSkins') || '["green"]'); 
+}
+        
         function getSelectedSkin() { return currentUser ? (currentUser.selectedSkin || 'green') : (localStorage.getItem('snakeGuestSelectedSkin') || 'green'); }
 
         function buySkin(id, price, priceGold) {
@@ -1344,18 +1350,29 @@ const saveAchLocal = (function() {
             if (changed) { saveAchLocal(ach); renderAchievements(); }
         }
 
-       function claimAchievement(id) {
+   async function claimAchievement(id) {
     const ach = getAchData();
     if (ach[id] !== 'completed') return;
     const a = ACHIEVEMENTS.find(x => x.id === id);
     if (!a) return;
     
+    // ✅ Проверяем, что ачивка действительно выполнена (считаем заново)
+    const s = getStats();
+    if (!a.condition(s)) {
+        console.warn('🛡️ Ачивка не выполнена! Условие не пройдено.');
+        // Удаляем накрученную ачивку
+        delete ach[id];
+        saveAchLocal(ach);
+        renderAchievements();
+        return;
+    }
+    
     ach[id] = 'claimed';
     saveAchLocal(ach);
     
-    const s = getStats();
     const sp = getSparks();
     
+    // Выдаём награду только если условие реально выполнено
     if (a.reward.type === 'apples') s.applesEaten = (s.applesEaten || 0) + a.reward.amount;
     if (a.reward.type === 'goldApples') s.goldApplesEaten = (s.goldApplesEaten || 0) + a.reward.amount;
     if (a.reward.type === 'spark') {
@@ -1369,13 +1386,19 @@ const saveAchLocal = (function() {
     updateSparkBalance();
     renderAchievements();
     
-    // ✅ Сохраняем в Supabase
+    // Сохраняем в Supabase
     if (currentUser && sb) {
-        sb.from('players').update({
-            achievements: ach,
-            stats: s,
-            sparks: sp
-        }).eq('username', currentUser.username).then(() => {});
+        try {
+            const { data } = await sb.from('players').select('achievements').eq('username', currentUser.username).maybeSingle();
+            if (data && data.achievements) {
+                data.achievements[id] = 'claimed';
+                await sb.from('players').update({ 
+                    achievements: data.achievements,
+                    stats: s,
+                    sparks: sp
+                }).eq('username', currentUser.username);
+            }
+        } catch(e) {}
     }
     
     toast('✅ ' + formatReward(a.reward));
