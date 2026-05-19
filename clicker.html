@@ -1582,37 +1582,22 @@ function getClickerData() {
     return users[u].clicker;
 }
     
-async function saveClickerData() {
-    const users = getAllUsers();
-    const u = currentUser ? currentUser.username : 'guest';
-    if (!users[u]) users[u] = {};
-    users[u].clicker = {
-        balance: Math.floor(balance),
-        totalClicks: Math.floor(totalClicks),
-        clickPower, autoClicker, multiplier, rebirths,
-        stickers, craftSel, craftCnt, craftTarget,
-        limitedStickers, collectibleStickers,
-        collectibleTokens, prestigeLevel
-    };
-    saveUsers(users);
-    
-    if (currentUser && sb) {
-        try {
-            const { data, error } = await sb
-                .from('clicker_data')
-                .update({
-                    balance: Math.floor(balance),
-                    total_clicks: Math.floor(totalClicks),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('username', currentUser.username)
-                .select();
-            
-            if (error) {
+function saveClickerData() { 
+    const users = getAllUsers(); 
+    const u = currentUser ? currentUser.username : 'guest'; 
+    if (!users[u]) users[u] = {}; 
+    users[u].clicker = { 
+        balance: Math.floor(balance), 
+        totalClicks: Math.floor(totalClicks), 
+        clickPower, autoClicker, multiplier, rebirths, 
+        stickers, craftSel, craftCnt, craftTarget, 
+        limitedStickers, collectibleStickers, 
+        collectibleTokens, prestigeLevel 
+    }; 
+    saveUsers(users); 
+                if (error) {
                 console.log('❌ Ошибка:', JSON.stringify(error));
             }
-        } catch(e) {}
-    }
 }
     function loadClickerData() {
     const d = getClickerData();
