@@ -1581,6 +1581,7 @@ function getClickerData() {
     }
     return users[u].clicker;
 }
+    
 async function saveClickerData() {
     const users = getAllUsers();
     const u = currentUser ? currentUser.username : 'guest';
@@ -1601,17 +1602,16 @@ async function saveClickerData() {
                 .from('clicker_data')
                 .update({
                     balance: Math.floor(balance),
-                    total_clicks: Math.floor(totalClicks)
+                    total_clicks: Math.floor(totalClicks),
+                    updated_at: new Date().toISOString()
                 })
                 .eq('username', currentUser.username)
                 .select();
             
             if (error) {
-                console.log('❌ Полная ошибка:', JSON.stringify(error));
+                console.log('❌ Ошибка:', JSON.stringify(error));
             }
-        } catch(e) {
-            console.log('⚠️', e.message);
-        }
+        } catch(e) {}
     }
 }
     function loadClickerData() {
@@ -1639,9 +1639,19 @@ async function saveClickerData() {
     checkPrestigeDisplay();
     updateTokenBal();
 }
-    function loadExtra() { const e = JSON.parse(localStorage.getItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest')) || '{}'); coins = e.coins || 0; favorites = e.favorites || {}; pinned = e.pinned || []; updateCoins(); setTimeout(function () { applyPinnedBackground(); updatePinned(); updateUnpinButton() }, 100) }
-function saveExtra() { localStorage.setItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest'), JSON.stringify({ coins, favorites, pinned })); updateCoins() }
-function updateCoins() { document.getElementById('coinsDisplay').textContent = coins }
+function loadExtra() { 
+    const e = JSON.parse(localStorage.getItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest')) || '{}'); 
+    coins = e.coins || 0; 
+    favorites = e.favorites || {}; 
+    pinned = Array.isArray(e.pinned) ? e.pinned : []; 
+    updateCoins(); 
+    setTimeout(function () { applyPinnedBackground(); updatePinned(); updateUnpinButton() }, 100); 
+}
+    function saveExtra() { 
+    localStorage.setItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest'), JSON.stringify({ coins, favorites, pinned })); 
+    updateCoins(); 
+}
+    function updateCoins() { document.getElementById('coinsDisplay').textContent = coins }
 
 // ========== ПЕРЕМЕННЫЕ ==========
 let balance = 0, totalClicks = 0, clickPower = 1, autoClicker = 0, multiplier = 0, rebirths = 0, stickers = {}, craftSel = {}, boostPct = 0, boostActive = false, craftCnt = 0, craftTarget = null, cps = 0, clickTime = 0, limitedStickers = {};
