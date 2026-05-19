@@ -1740,34 +1740,26 @@ async function saveToSupabase() {
     if (!currentUser || !sb) return;
     
     try {
-        // Сохраняем стикеры как JSON строки
-        const { error } = await sb
-            .from('clicker_data')
-            .update({
-                balance: Math.floor(balance),
-                total_clicks: Math.floor(totalClicks),
-                click_power: clickPower,
-                auto_clicker: autoClicker,
-                multiplier: multiplier,
-                rebirths: rebirths,
-                coins: coins,
-                collectible_tokens: collectibleTokens,
-                prestige_level: prestigeLevel,
-                stickers: JSON.stringify(stickers),
-                limited_stickers: JSON.stringify(limitedStickers),
-                collectible_stickers: JSON.stringify(collectibleStickers),
-                favorites: JSON.stringify(favorites),
-                pinned: JSON.stringify(pinned),
-                updated_at: new Date().toISOString()
-            })
-            .eq('username', currentUser.username);
+        const { error } = await sb.rpc('save_clicker_data', {
+            p_username: currentUser.username,
+            p_balance: Math.floor(balance),
+            p_total_clicks: Math.floor(totalClicks),
+            p_click_power: clickPower,
+            p_auto_clicker: autoClicker,
+            p_multiplier: multiplier,
+            p_rebirths: rebirths,
+            p_coins: coins,
+            p_collectible_tokens: collectibleTokens,
+            p_prestige_level: prestigeLevel,
+            p_stickers: stickers,
+            p_limited_stickers: limitedStickers,
+            p_collectible_stickers: collectibleStickers,
+            p_favorites: favorites,
+            p_pinned: pinned
+        });
         
-        if (error) {
-            console.log('❌ Ошибка сохранения:', error.message);
-        }
-    } catch(e) {
-        console.log('⚠️ Оффлайн');
-    }
+        if (error) console.log('❌ Ошибка:', error.message);
+    } catch(e) {}
 }
 
 // ========== АВТОСОХРАНЕНИЕ ==========
