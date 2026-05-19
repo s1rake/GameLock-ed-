@@ -831,43 +831,6 @@ document.getElementById('modalOverlay').addEventListener('click', function(e) {
 });
 
 // ================================================================
-// СЕССИЯ
-// ================================================================
-let currentSessionId = null;
-let gameStartTime = Date.now();
-let sessionApples = 0;
-let sessionGoldApples = 0;
-let sessionEvents = 0;
-
-async function logAction(action, opts = {}) {
-    if (!currentUser || !sb || !currentSessionId) return null;
-    
-    const gameTime = Date.now() - gameStartTime;
-    
-    try {
-        const { data, error } = await sb.rpc('log_snake_action', {
-            p_username: currentUser.username,
-            p_session_id: currentSessionId,
-            p_action: action,
-            p_points: opts.points || 0,
-            p_gold_points: opts.goldPoints || 0,
-            p_apples_delta: opts.applesDelta || 0,
-            p_sparks_delta: opts.sparksDelta || {},
-            p_skin_id: opts.skinId || null,
-            p_achievement_id: opts.achievementId || null,
-            p_event_type: opts.eventType || null,
-            p_extra: opts.extra || {},
-            p_game_time_ms: gameTime
-        });
-        
-        if (error) console.log('⚠️ Ошибка логирования:', error.message);
-        return data;
-    } catch(e) {
-        return null;
-    }
-}
-
-// ================================================================
 // ЛИДЕРБОРД
 // ================================================================
 function switchLeaderTab(tab) {
@@ -911,7 +874,7 @@ async function loadLeaderboard() {
 }
 
 // ================================================================
-// СТАТИСТИКА (только локальное сохранение)
+// СТАТИСТИКА 
 // ================================================================
 function getStats() {
     if (currentUser) {
@@ -940,6 +903,12 @@ function updateStatsDisplay() {
     document.getElementById('statRecord').textContent = s.record || 0;
     document.getElementById('statApples').textContent = s.applesEaten || 0;
     document.getElementById('statGoldApples').textContent = s.goldApplesEaten || 0;
+    
+    // ✅ Показываем рекорд на экране Game Over
+    const highScoreEl = document.getElementById('highScore');
+    if (highScoreEl) {
+        highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
+    }
 }
 
 // ================================================================
@@ -1562,14 +1531,13 @@ function startAttackEvent() {
 
 // ================================================================
 // КОНЕЦ ИГРЫ
-// ================================================================
 async function endGame() {
     if (isGameOver) return;
     isGameOver = true;
     
     const sessionDuration = Date.now() - gameStartTime;
     
-    // ✅ ПРОСТАЯ ОТПРАВКА
+    // Отправка на сервер
     if (currentUser && sb) {
         try {
             const { data, error } = await sb.rpc('validate_snake_score', {
@@ -1592,23 +1560,28 @@ async function endGame() {
         }
     }
     
-    // Локальное сохранение
+    // ✅ Локальное сохранение (исправлено)
     const s = getStats();
     s.deaths = (s.deaths || 0) + 1;
     if (score > (s.record || 0)) s.record = score;
+    s.applesEaten = (s.applesEaten || 0) + sessionApples;
+    s.goldApplesEaten = (s.goldApplesEaten || 0) + sessionGoldApples;
     saveStatsLocal(s);
-    updateStatsDisplay();
-    updateSparkBalance();
     
+    // ✅ Показываем результат (ДО обновления UI)
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = 'Счёт: ' + score;
+    const highScoreEl = document.getElementById('highScore');
+    if (highScoreEl) highScoreEl.textContent = 'Рекорд: ' + (s.record || 0);
+    
+    updateStatsDisplay();
+    updateSparkBalance();
     
     endEvent();
     if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
     checkAchievements(deathType);
     deathType = null;
 }
-
 function restartGame() {
     if (gameLoopInterval) clearInterval(gameLoopInterval);
     endEvent();
