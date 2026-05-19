@@ -1293,491 +1293,262 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ========== ЗАЩИТА КОДА ==========
-(function () { const PROTECTED_CODE = 'clicker_v16_edge'; if (window.__CLICKER_INTEGRITY__ && window.__CLICKER_INTEGRITY__ !== PROTECTED_CODE) { document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;color:red;">🚫 Код изменён!</h1>'; throw new Error('Integrity') } window.__CLICKER_INTEGRITY__ = PROTECTED_CODE })();
+    // ========== ЗАЩИТА КОДА ==========
+    (function () { const PROTECTED_CODE = 'clicker_v17_final'; if (window.__CLICKER_INTEGRITY__ && window.__CLICKER_INTEGRITY__ !== PROTECTED_CODE) { document.body.innerHTML = '<h1 style="text-align:center;margin-top:100px;color:red;">🚫 Код изменён!</h1>'; throw new Error('Integrity') } window.__CLICKER_INTEGRITY__ = PROTECTED_CODE })();
 
-// ========== SUPABASE ==========
-const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
-let sb = null; try { sb = window.supabase.createClient(SB_URL, SB_KEY) } catch (e) { }
+    // ========== SUPABASE ==========
+    const SB_URL = 'https://omrajmxjntinlzcdyufd.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcmFqbXhqbnRpbmx6Y2R5dWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODg1MTQsImV4cCI6MjA5NDE2NDUxNH0.loUeQndiG8P1p9Cy4VakP2X2C3kSdQFSzjLGGwd1fn0';
+    let sb = null; try { sb = window.supabase.createClient(SB_URL, SB_KEY) } catch (e) { }
 
-// ========== ЗАЩИТА LOCALSTORAGE ==========
-(function() {
-    var _origSetItem = localStorage.setItem.bind(localStorage);
-    var _origGetItem = localStorage.getItem.bind(localStorage);
-    var _origRemoveItem = localStorage.removeItem.bind(localStorage);
-    
-    // Секретный ключ для проверки
-    var _storageKey = btoa('clicker_storage_' + Date.now());
-    sessionStorage.setItem('_storage_auth', _storageKey);
-    
-    // Счётчик вызовов из консоли
-    var _callCount = 0;
-    var _lastCall = Date.now();
-    
-    localStorage.setItem = function(key, value) {
-        var allowedKeys = [
-            'clicker_extra_', 'clicker_collectible_stickers', 'clicker_collectible_tokens',
-            'clicker_prestige', 'clicker_daily_deals', 'clicker_last_deal_refresh',
-            'clicker_fuse_slots', 'clicker_sessions', 'clicker_prestige_upgrades',
-            'snakeUsers', 'snakeCurrentUser', 'snakeDarkTheme'
-        ];
-        
-        var isAllowed = allowedKeys.some(function(k) { return key.startsWith(k); });
-        
-        if (!isAllowed) {
-            console.warn('🛡️ Блокировано:', key);
-            return undefined;
+    // ========== ТЕМА ==========
+    let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true'; if (darkTheme) document.body.classList.add('dark-theme');
+    function toggleTheme() { darkTheme = !darkTheme; localStorage.setItem('snakeDarkTheme', darkTheme); document.body.classList.toggle('dark-theme'); document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙' }
+    document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙';
+
+    // ========== АККАУНТЫ ==========
+    let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
+    function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}') }
+    function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)) }
+    async function hashPassword(password) { const e = new TextEncoder(); const d = e.encode(password + 'gamelock_salt_2026'); const h = await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('') }
+
+    function updateProfileUI() { if (currentUser) { document.getElementById('profileName').textContent = currentUser.username; document.getElementById('profileBtn').textContent = 'Выйти'; document.getElementById('profileBtn').onclick = logout } else { document.getElementById('profileName').textContent = 'Гость'; document.getElementById('profileBtn').textContent = 'Войти'; document.getElementById('profileBtn').onclick = openAuthModal } loadClickerData() }
+    function openAuthModal() { if (currentUser) { logout(); return } document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalCraft').style.display = 'none'; document.getElementById('modalShop').style.display = 'none' }
+    function closeModal() { document.getElementById('modalOverlay').style.display = 'none' }
+    function closeCraftModal() { document.getElementById('modalCraft').style.display = 'none' }
+    function closeShopModal() { document.getElementById('modalOverlay').style.display = 'none' }
+    function switchModal(type) { if (type === 'register') { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'block' } else { document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none' } }
+    function toast(msg, c) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.style.background = c || '#4caf50'; document.body.appendChild(t); setTimeout(function () { t.style.opacity = '0'; t.style.transition = '0.5s'; setTimeout(function () { t.remove() }, 500) }, 2500) }
+
+    async function register() {
+        const u = document.getElementById('registerUsername').value.trim();
+        const p = document.getElementById('registerPassword').value;
+        const p2 = document.getElementById('registerPasswordConfirm').value;
+        if (!u || u.length < 3) return alert('Имя: мин 3');
+        if (!p || p.length < 4) return alert('Пароль: мин 4');
+        if (p !== p2) return alert('Не совпадают');
+        if (!sb) return alert('Нет соединения');
+        const hashed = await hashPassword(p);
+        const { data: exists } = await sb.from('players').select('username').eq('username', u).maybeSingle();
+        if (exists) return alert('Занято');
+        await sb.from('players').insert({ username: u, password_hash: hashed, created_at: new Date().toISOString() });
+        await sb.from('clicker_data').insert({ username: u, balance: 0, total_clicks: 0, click_power: 1, auto_clicker: 0, multiplier: 0, rebirths: 0, stickers: {}, limited_stickers: {}, collectible_stickers: {}, collectible_tokens: 0, prestige_level: 0, coins: 0, favorites: {}, pinned: [], updated_at: new Date().toISOString() });
+        currentUser = { username: u };
+        localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+        closeModal(); updateProfileUI(); toast('✅ Аккаунт создан!');
+    }
+
+    async function login() {
+        const u = document.getElementById('loginUsername').value.trim();
+        const p = document.getElementById('loginPassword').value;
+        if (!u || !p) return alert('Заполните');
+        if (!sb) return alert('Нет соединения');
+        const hashed = await hashPassword(p);
+        const { data, error } = await sb.rpc('check_password', { username: u, password_hash: hashed });
+        if (error || !data) return alert('Неверный логин или пароль');
+        currentUser = { username: u };
+        localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+        await loadFromSupabase();
+        closeModal(); updateProfileUI(); updateUI(); toast('✅ Вход!');
+    }
+
+    async function loadFromSupabase() {
+        if (!currentUser || !sb) return;
+        const { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).maybeSingle();
+        if (data) {
+            balance = data.balance || 0;
+            totalClicks = data.total_clicks || 0;
+            clickPower = data.click_power || 1;
+            autoClicker = data.auto_clicker || 0;
+            multiplier = data.multiplier || 0;
+            rebirths = data.rebirths || 0;
+            coins = data.coins || 0;
+            collectibleTokens = data.collectible_tokens || 0;
+            prestigeLevel = data.prestige_level || 0;
+            stickers = typeof data.stickers === 'string' ? JSON.parse(data.stickers) : (data.stickers || {});
+            limitedStickers = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
+            collectibleStickers = typeof data.collectible_stickers === 'string' ? JSON.parse(data.collectible_stickers) : (data.collectible_stickers || {});
+            favorites = typeof data.favorites === 'string' ? JSON.parse(data.favorites) : (data.favorites || {});
+            pinned = typeof data.pinned === 'string' ? JSON.parse(data.pinned) : (data.pinned || []);
+            updateCoins(); updateTokenBal(); checkPrestigeDisplay();
         }
-        
-        // Проверяем частоту вызовов (нельзя вызывать чаще 1 раза в 100мс из консоли)
-        var now = Date.now();
-        if (now - _lastCall < 100) {
-            _callCount++;
-            if (_callCount > 5) {
-                console.warn('🛡️ Слишком частые вызовы localStorage!');
-                return undefined;
-            }
-        } else {
-            _callCount = 0;
-        }
-        _lastCall = now;
-        
-        // Добавляем подпись к данным
-        if (typeof value === 'string') {
-            try {
-                var parsed = JSON.parse(value);
-                parsed._signed = btoa(key + '|' + _storageKey);
-                value = JSON.stringify(parsed);
-            } catch(e) {}
-        }
-        
-        return _origSetItem(key, value);
-    };
-    
-    localStorage.getItem = function(key) {
-        var value = _origGetItem(key);
-        
-        // Проверяем подпись
-        if (typeof value === 'string' && key.startsWith('clicker_')) {
-            try {
-                var parsed = JSON.parse(value);
-                if (parsed._signed) {
-                    delete parsed._signed;
-                    // Подпись не проверяем строго, но чистим
-                }
-            } catch(e) {}
-        }
-        
-        return value;
-    };
-    
-    localStorage.removeItem = function(key) {
-        if (!key.startsWith('clicker_') && key !== 'snakeUsers' && key !== 'snakeCurrentUser') {
-            console.warn('🛡️ Удаление блокировано:', key);
-            return undefined;
-        }
-        return _origRemoveItem(key);
-    };
-    
-    localStorage.clear = function() {
-        console.warn('🛡️ Очистка заблокирована!');
-        return undefined;
-    };
-})();
+    }
 
-// ========== ЗАЩИТА ОСНОВНЫХ ПЕРЕМЕННЫХ ==========
-var _gameState = {
-    balance: 0,
-    coins: 0,
-    collectibleTokens: 0,
-    prestigeLevel: 0,
-    clickPower: 1,
-    autoClicker: 0,
-    multiplier: 0,
-    rebirths: 0
-};
-
-// Проверка целостности переменных каждые 5 секунд
-setInterval(function() {
-    if (typeof balance !== 'number' || isNaN(balance) || balance < 0 || balance > 9e15) {
-        console.warn('🛡️ Баланс повреждён!');
-        balance = 0;
-    }
-    if (typeof coins !== 'number' || isNaN(coins) || coins < 0 || coins > 1e9) {
-        console.warn('🛡️ Кристаллы повреждены!');
-        coins = 0;
-    }
-    if (typeof collectibleTokens !== 'number' || isNaN(collectibleTokens) || collectibleTokens < 0) {
-        console.warn('🛡️ Токены повреждены!');
-        collectibleTokens = 0;
-    }
-    if (typeof prestigeLevel !== 'number' || isNaN(prestigeLevel) || prestigeLevel < 0) {
-        console.warn('🛡️ Престиж повреждён!');
-        prestigeLevel = 0;
-    }
-    if (typeof clickPower !== 'number' || clickPower < 1 || clickPower > 9999) {
-        console.warn('🛡️ Сила клика повреждена!');
-        clickPower = 1;
-    }
-    if (typeof autoClicker !== 'number' || autoClicker < 0 || autoClicker > 999) {
-        console.warn('🛡️ Автокликер повреждён!');
-        autoClicker = 0;
-    }
-    if (typeof multiplier !== 'number' || multiplier < 0 || multiplier > 999) {
-        console.warn('🛡️ Множитель повреждён!');
-        multiplier = 0;
-    }
-    if (typeof rebirths !== 'number' || rebirths < 0 || rebirths > 4) {
-        console.warn('🛡️ Перерождения повреждены!');
-        rebirths = 0;
-    }
-}, 5000);
-    
-// ========== ТЕМА ==========
-let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true'; if (darkTheme) document.body.classList.add('dark-theme');
-function toggleTheme() { darkTheme = !darkTheme; localStorage.setItem('snakeDarkTheme', darkTheme); document.body.classList.toggle('dark-theme'); document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙' }
-document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙';
-
-// ========== ЕСА ==========
-let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
-function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}') }
-function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)) }
-async function hashPassword(password) { const e = new TextEncoder(); const d = e.encode(password + 'gamelock_salt_2026'); const h = await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('') }
-
-function updateProfileUI() { if (currentUser) { document.getElementById('profileName').textContent = currentUser.username; document.getElementById('profileBtn').textContent = 'Выйти'; document.getElementById('profileBtn').onclick = logout } else { document.getElementById('profileName').textContent = 'Гость'; document.getElementById('profileBtn').textContent = 'Войти'; document.getElementById('profileBtn').onclick = openAuthModal } loadClickerData() }
-function openAuthModal() { if (currentUser) { logout(); return } document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalCraft').style.display = 'none'; document.getElementById('modalShop').style.display = 'none' }
-function closeModal() { document.getElementById('modalOverlay').style.display = 'none' }
-function closeCraftModal() { document.getElementById('modalCraft').style.display = 'none' }
-function closeShopModal() { document.getElementById('modalOverlay').style.display = 'none' }
-function switchModal(type) { if (type === 'register') { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'block' } else { document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none' } }
-
-async function register() {
-    const u = document.getElementById('registerUsername').value.trim();
-    const p = document.getElementById('registerPassword').value;
-    const p2 = document.getElementById('registerPasswordConfirm').value;
-    if (!u || u.length < 3) return alert('Имя: мин 3');
-    if (!p || p.length < 4) return alert('Пароль: мин 4');
-    if (p !== p2) return alert('Не совпадают');
-    
-    if (!sb) return alert('Нет соединения с сервером');
-    
-    // Проверяем в Supabase
-    const { data: exists } = await sb.from('players').select('username').eq('username', u).single();
-    if (exists) return alert('Занято');
-    
-    // Хешируем пароль
-    const hashed = await hashPassword(p);
-    
-    // Сохраняем в Supabase
-    await sb.from('players').insert({ 
-        username: u, 
-        password_hash: hashed, 
-        created_at: new Date().toISOString() 
-    });
-    
-    // Создаём запись в clicker_data
-    await sb.from('clicker_data').insert({
-        username: u,
-        balance: 0, total_clicks: 0, click_power: 1,
-        auto_clicker: 0, multiplier: 0, rebirths: 0,
-        stickers: {}, limited_stickers: {}, collectible_stickers: {},
-        collectible_tokens: 0, prestige_level: 0,
-        coins: 0, favorites: {}, pinned: [],
-        updated_at: new Date().toISOString()
-    });
-    
-    currentUser = { username: u };
-    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-    
-    closeModal();
-    updateProfileUI();
-    loadClickerData();
-    toast('✅ Аккаунт создан!');
-}
-
-async function login() {
-    const u = document.getElementById('loginUsername').value.trim();
-    const p = document.getElementById('loginPassword').value;
-    if (!u || !p) return alert('Заполните');
-    if (!sb) return alert('Нет соединения');
-    
-    // Хешируем пароль
-    const hashed = await hashPassword(p);
-    
-    // Проверяем через СЕРВЕРНУЮ функцию
-    const { data, error } = await sb.rpc('check_password', {
-        username: u,
-        password_hash: hashed
-    });
-    
-    if (error || !data) return alert('Неверный логин или пароль');
-    
-    currentUser = { username: u };
-    localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
-    
-    await loadFromSupabase();
-    
-    closeModal();
-    updateProfileUI();
-    updateUI();
-    toast('✅ Вход!');
-}
-
-// Загрузка из Supabase
-async function loadFromSupabase() {
-    if (!currentUser || !sb) return;
-    const { data } = await sb.from('clicker_data').select('*').eq('username', currentUser.username).single();
-    if (data) {
-        balance = data.balance || 0;
-        totalClicks = data.total_clicks || 0;
-        clickPower = data.click_power || 1;
-        autoClicker = data.auto_clicker || 0;
-        multiplier = data.multiplier || 0;
-        rebirths = data.rebirths || 0;
-        coins = data.coins || 0;
-        collectibleTokens = data.collectible_tokens || 0;
-        prestigeLevel = data.prestige_level || 0;
-        stickers = typeof data.stickers === 'string' ? JSON.parse(data.stickers) : (data.stickers || {});
-        limitedStickers = typeof data.limited_stickers === 'string' ? JSON.parse(data.limited_stickers) : (data.limited_stickers || {});
-        collectibleStickers = typeof data.collectible_stickers === 'string' ? JSON.parse(data.collectible_stickers) : (data.collectible_stickers || {});
-        favorites = typeof data.favorites === 'string' ? JSON.parse(data.favorites) : (data.favorites || {});
-        pinned = typeof data.pinned === 'string' ? JSON.parse(data.pinned) : (data.pinned || []);
-        updateCoins();
-        updateTokenBal();
-        checkPrestigeDisplay();
-    }
-}
     function logout() { if (confirm('Выйти?')) { clearFuse(); saveClickerData(); currentUser = null; localStorage.removeItem('snakeCurrentUser'); localStorage.removeItem('clicker_fuse_slots'); updateProfileUI(); } }
-document.getElementById('modalOverlay').addEventListener('click', function (e) { if (e.target === this) closeModal() });
-function toast(msg, c) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.style.background = c || '#4caf50'; document.body.appendChild(t); setTimeout(function () { t.style.opacity = '0'; t.style.transition = '0.5s'; setTimeout(function () { t.remove() }, 500) }, 2500) }
+    document.getElementById('modalOverlay').addEventListener('click', function (e) { if (e.target === this) closeModal() });
 
-// ========== ФОРМАТИРОВАНИЕ ==========
-function formatMoney(num) { if (num >= 1e12) { var dollars = Math.floor(num / 1e12); var remainder = num % 1e12; if (remainder === 0) return dollars + '💲'; return dollars + '💲' + Math.floor(remainder).toLocaleString() } return Math.floor(num).toLocaleString() + '💰' }
+    // ========== ФОРМАТИРОВАНИЕ ==========
+    function formatMoney(num) { if (num >= 1e12) { var dollars = Math.floor(num / 1e12); var remainder = num % 1e12; if (remainder === 0) return dollars + '💲'; return dollars + '💲' + Math.floor(remainder).toLocaleString() } return Math.floor(num).toLocaleString() + '💰' }
 
-// ========== ДАННЫЕ ==========
-function getClickerData() {
-    const users = getAllUsers();
-    const u = currentUser ? currentUser.username : 'guest';
-    if (!users[u]) {
-        users[u] = { 
-            clicker: { 
-                balance: 0, totalClicks: 0, clickPower: 1, 
-                autoClicker: 0, multiplier: 0, rebirths: 0, 
-                stickers: {}, craftCnt: 0, craftTarget: null, 
-                limitedStickers: {}, collectibleStickers: {}, 
-                collectibleTokens: 0, prestigeLevel: 0 
-            } 
-        };
+    // ========== ДАННЫЕ ==========
+    function getClickerData() {
+        const users = getAllUsers();
+        const u = currentUser ? currentUser.username : 'guest';
+        if (!users[u]) users[u] = { clicker: { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {}, collectibleStickers: {}, collectibleTokens: 0, prestigeLevel: 0 } };
+        if (!users[u].clicker) users[u].clicker = { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {}, collectibleStickers: {}, collectibleTokens: 0, prestigeLevel: 0 };
+        return users[u].clicker;
     }
-    if (!users[u].clicker) {
-        users[u].clicker = { 
-            balance: 0, totalClicks: 0, clickPower: 1, 
-            autoClicker: 0, multiplier: 0, rebirths: 0, 
-            stickers: {}, craftCnt: 0, craftTarget: null, 
-            limitedStickers: {}, collectibleStickers: {}, 
-            collectibleTokens: 0, prestigeLevel: 0 
-        };
+
+    function saveClickerData() {
+        const users = getAllUsers();
+        const u = currentUser ? currentUser.username : 'guest';
+        if (!users[u]) users[u] = {};
+        users[u].clicker = { balance: Math.floor(balance), totalClicks: Math.floor(totalClicks), clickPower, autoClicker, multiplier, rebirths, stickers, craftSel, craftCnt, craftTarget, limitedStickers, collectibleStickers, collectibleTokens, prestigeLevel };
+        saveUsers(users);
     }
-    return users[u].clicker;
-}
-    
-function saveClickerData() { 
-    const users = getAllUsers(); 
-    const u = currentUser ? currentUser.username : 'guest'; 
-    if (!users[u]) users[u] = {}; 
-    users[u].clicker = { 
-        balance: Math.floor(balance), 
-        totalClicks: Math.floor(totalClicks), 
-        clickPower, autoClicker, multiplier, rebirths, 
-        stickers, craftSel, craftCnt, craftTarget, 
-        limitedStickers, collectibleStickers, 
-        collectibleTokens, prestigeLevel 
-    }; 
-    saveUsers(users); 
-}
+
     function loadClickerData() {
-    const d = getClickerData();
-    if (!d) return;
-    
-    balance = d.balance || 0;
-    totalClicks = d.totalClicks || 0;
-    clickPower = d.clickPower || 1;
-    autoClicker = d.autoClicker || 0;
-    multiplier = d.multiplier || 0;
-    rebirths = d.rebirths || 0;
-    stickers = d.stickers || {};
-    craftSel = d.craftSel || {};
-    craftCnt = d.craftCnt || 0;
-    craftTarget = d.craftTarget || null;
-    limitedStickers = d.limitedStickers || {};
-    collectibleStickers = d.collectibleStickers || {};
-    collectibleTokens = d.collectibleTokens || 0;
-    prestigeLevel = d.prestigeLevel || 0;
-    boostPct = 0;
-    boostActive = false;
-    loadFuseSlots();
-    updateUI();
-    checkPrestigeDisplay();
-    updateTokenBal();
-}
-function loadExtra() { 
-    const e = JSON.parse(localStorage.getItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest')) || '{}'); 
-    coins = e.coins || 0; 
-    favorites = e.favorites || {}; 
-    pinned = Array.isArray(e.pinned) ? e.pinned : []; 
-    updateCoins(); 
-    setTimeout(function () { applyPinnedBackground(); updatePinned(); updateUnpinButton() }, 100); 
-}
-    function saveExtra() { 
-    localStorage.setItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest'), JSON.stringify({ coins, favorites, pinned })); 
-    updateCoins(); 
-}
+        const d = getClickerData();
+        if (!d) return;
+        balance = d.balance || 0; totalClicks = d.totalClicks || 0; clickPower = d.clickPower || 1;
+        autoClicker = d.autoClicker || 0; multiplier = d.multiplier || 0; rebirths = d.rebirths || 0;
+        stickers = d.stickers || {}; craftSel = d.craftSel || {}; craftCnt = d.craftCnt || 0;
+        craftTarget = d.craftTarget || null; limitedStickers = d.limitedStickers || {};
+        collectibleStickers = d.collectibleStickers || {}; collectibleTokens = d.collectibleTokens || 0;
+        prestigeLevel = d.prestigeLevel || 0; boostPct = 0; boostActive = false;
+        loadFuseSlots(); updateUI(); checkPrestigeDisplay(); updateTokenBal();
+    }
+
+    function loadExtra() { const e = JSON.parse(localStorage.getItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest')) || '{}'); coins = e.coins || 0; favorites = e.favorites || {}; pinned = Array.isArray(e.pinned) ? e.pinned : []; updateCoins(); setTimeout(function () { applyPinnedBackground(); updatePinned(); updateUnpinButton() }, 100); }
+    function saveExtra() { localStorage.setItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest'), JSON.stringify({ coins, favorites, pinned })); updateCoins(); }
     function updateCoins() { document.getElementById('coinsDisplay').textContent = coins }
 
-// ========== ПЕРЕМЕННЫЕ ==========
-let balance = 0, totalClicks = 0, clickPower = 1, autoClicker = 0, multiplier = 0, rebirths = 0, stickers = {}, craftSel = {}, boostPct = 0, boostActive = false, craftCnt = 0, craftTarget = null, cps = 0, clickTime = 0, limitedStickers = {};
-let coins = 0, favorites = {}, pinned = [];
-let collectibleTokens = 0, prestigeLevel = 0, collectibleStickers = {};
-let dailyDealsData = [], lastDealRefresh = parseInt(localStorage.getItem('clicker_last_deal_refresh') || '0');
-let fuseSlots = [];
-let actionCounters = { clicks: 0, sells: 0, packs: 0, crafts: 0, fuses: 0 };
-const REBIRTH_COSTS = [5000, 1e6, 3e7, 4.5e8]; const REBIRTH_MULTS = [2, 4, 8, 16, 32, 64];
-const MAX_LVLS = [{ click: 10, auto: 10, multi: 5 }, { click: 15, auto: 15, multi: 10 }, { click: 25, auto: 25, multi: 15 }, { click: 40, auto: 40, multi: 20 }, { click: 50, auto: 50, multi: 25 }];
-const LIMITED_COLORS = [{ name: 'Красный', bg: '#ff4444', border: '#cc0000', chance: 12, coeff: 1.2 }, { name: 'Синий', bg: '#4488ff', border: '#2266cc', chance: 10, coeff: 1.5 }, { name: 'Зелёный', bg: '#44cc44', border: '#228822', chance: 10, coeff: 1.5 }, { name: 'Жёлтый', bg: '#ffdd00', border: '#ccaa00', chance: 10, coeff: 1.5 }, { name: 'Фиолетовый', bg: '#cc44ff', border: '#8822cc', chance: 10, coeff: 1.5 }, { name: 'Оранжевый', bg: '#ff8800', border: '#cc6600', chance: 10, coeff: 1.5 }, { name: 'Розовый', bg: '#ff69b4', border: '#cc4488', chance: 10, coeff: 1.5 }, { name: 'Голубой', bg: '#00ccff', border: '#0099cc', chance: 10, coeff: 1.5 }, { name: 'Белый', bg: '#ffffff', border: '#cccccc', chance: 10, coeff: 1.5 }, { name: 'Лаймовый', bg: '#ccff00', border: '#99cc00', chance: 4, coeff: 2.5 }, { name: 'Бирюзовый', bg: '#00ffcc', border: '#00cc99', chance: 10, coeff: 1.5 }, { name: 'Коралловый', bg: '#ff7f50', border: '#cc5533', chance: 10, coeff: 1.5 }, { name: 'Золотой', bg: '#ffd700', border: '#ccaa00', chance: 10, coeff: 1.5 }, { name: 'Мятный', bg: '#98ff98', border: '#66cc66', chance: 10, coeff: 1.5 }, { name: 'Лавандовый', bg: '#e6e6fa', border: '#b8b8d0', chance: 10, coeff: 1.5 }, { name: 'Чёрный', bg: '#333333', border: '#111111', chance: 6, coeff: 2.0 }, { name: 'Серебряный', bg: '#c0c0c0', border: '#999999', chance: 10, coeff: 1.5 }, { name: 'Бронзовый', bg: '#cd7f32', border: '#996622', chance: 10, coeff: 1.5 }, { name: 'Изумрудный', bg: '#50c878', border: '#339955', chance: 10, coeff: 1.5 }, { name: 'Сапфировый', bg: '#0f52ba', border: '#0a3d88', chance: 10, coeff: 1.5 }, { name: 'Рубиновый', bg: '#e0115f', border: '#b00d4a', chance: 10, coeff: 1.5 }, { name: 'Аметистовый', bg: '#9966cc', border: '#664499', chance: 10, coeff: 1.5 }, { name: 'Янтарный', bg: '#ffbf00', border: '#cc9900', chance: 10, coeff: 1.5 }, { name: 'Перламутровый', bg: '#f5f5dc', border: '#ccccaa', chance: 10, coeff: 1.5 }];
-const TYPES = { '⭐': { t: 1, p: 1, v: 250, w: 40, n: 'Звезда' }, '❤️': { t: 1, p: 1, v: 250, w: 40, n: 'Сердце' }, '🍀': { t: 1, p: 1, v: 250, w: 40, n: 'Клевер' }, '💎': { t: 2, p: 3, v: 1000, w: 25, n: 'Алмаз' }, '🔥': { t: 2, p: 3, v: 1000, w: 25, n: 'Огонь' }, '👑': { t: 2, p: 3, v: 1000, w: 25, n: 'Корона' }, '🟡': { t: 3, p: 10, v: 10000, w: 8, n: 'Золотой' }, '🐉': { t: 3, p: 10, v: 10000, w: 8, n: 'Дракон' }, '🌈': { t: 4, p: 30, v: 5000000, w: 2, n: 'Радуга' }, '🌌': { t: 4, p: 30, v: 5000000, w: 2, n: 'Галактика' }, '🏆': { t: 5, p: 100, v: 50000000, w: 0.5, n: 'Трофей' }, '🦄': { t: 5, p: 100, v: 50000000, w: 0.5, n: 'Единорог' }, '♾️': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Бесконечность' }, '🌠': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Падающая звезда' }, '💫': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Комета' }, '🔮': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Хрустальный шар' }, '👁️': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Всевидящее око' }, '🌟': { t: 7, p: 1000, v: 50000000000, w: 0, n: 'Золотая звезда', secret: true }, '💠': { t: 7, p: 1000, v: 50000000000, w: 0, n: 'Алмазный вихрь', secret: true }, '🕳️': { t: 7, p: 1000, v: 50000000000, w: 0, n: 'Чёрная дыра', secret: true } };
-const STICKER_PACKS = [{ name: 'Обычный пак', price: 60, guaranteed: { tier: 1, chance: 100 }, slots: [{ tier: 1, chance: 79 }, { tier: 2, chance: 20 }, { tier: 3, chance: 1 }], id: 'common' }, { name: 'Необычный пак', price: 110, guaranteed: { tier: 2, chance: 100 }, slots: [{ tier: 2, chance: 69 }, { tier: 1, chance: 20 }, { tier: 3, chance: 10 }, { tier: 4, chance: 1 }], id: 'uncommon' }, { name: 'Редкий пак', price: 200, guaranteed: { tier: 3, chance: 100 }, slots: [{ tier: 3, chance: 70 }, { tier: 2, chance: 20 }, { tier: 4, chance: 9 }, { tier: 5, chance: 1 }], id: 'rare' }, { name: 'Эпический пак', price: 500, guaranteed: { tier: 4, chance: 100 }, slots: [{ tier: 4, chance: 75 }, { tier: 3, chance: 15 }, { tier: 5, chance: 8 }, { tier: 6, chance: 2 }], id: 'epic' }, { name: 'Легендарный пак', price: 2500, guaranteed: { tier: 5, chance: 100 }, slots: [{ tier: 5, chance: 75 }, { tier: 4, chance: 15 }, { tier: 6, chance: 8 }, { tier: 7, chance: 2 }], id: 'legendary' }, { name: 'Мифический пак', price: 7500, guaranteed: { tier: 6, chance: 100 }, slots: [{ tier: 6, chance: 80 }, { tier: 5, chance: 15 }, { tier: 7, chance: 5 }], id: 'mythic' }, { name: 'Секретный пак', price: 12000, guaranteed: { tier: 7, chance: 100 }, slots: [{ tier: 7, chance: 85 }, { tier: 6, chance: 15 }], id: 'secret' }];
-const CRAFT_COLLECTIONS = { '🌸 Майские': [{ result: '🌷', recipe: ['❤️', '🍀', '👑'], basePrice: 1 }, { result: '🌱', recipe: ['🍀', '👑', '🟡'], basePrice: 1.5 }, { result: '🌸', recipe: ['🍀', '🌈', '🌱', '🌷'], basePrice: 3.5 }], '🎉 В честь релиза': [{ result: '🌐', recipe: ['🌌', '🏆', '♾️'], basePrice: 6 }] };
-const FUSE_REWARDS = [{ emoji: '🎸', chance: 70, basePrice: 2.5 }, { emoji: '🎹', chance: 23, basePrice: 3.5 }, { emoji: '🎼', chance: 6, basePrice: 5 }, { emoji: '🎵', chance: 1, basePrice: 7 }];
-const FUSE_POINTS_NEEDED = 500;
-const TIER_TOKEN_PRICES = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7.5, 6: 12.5, 7: 12.5 };
-const COLOR_PRICE_MULTS = { 'Красный': 0.9, 'Чёрный': 1.5, 'Лаймовый': 2.5 };
-loadClickerData(); loadExtra();
-setInterval(function () { for (const key of Object.keys(limitedStickers)) { if (limitedStickers[key] && limitedStickers[key].basePrice) { limitedStickers[key].price = Math.floor(limitedStickers[key].price + limitedStickers[key].basePrice * 0.01) } }; for (const key of Object.keys(collectibleStickers)) { if (collectibleStickers[key] && collectibleStickers[key].basePrice) { collectibleStickers[key].price = collectibleStickers[key].price + collectibleStickers[key].basePrice * 0.0001 } } }, 1000);
-setInterval(checkPrestige, 1000);
-setInterval(function () { if (document.getElementById('modalShop').style.display === 'block') updateDealTimer() }, 60000);
+    // ========== ПЕРЕМЕННЫЕ ==========
+    let balance = 0, totalClicks = 0, clickPower = 1, autoClicker = 0, multiplier = 0, rebirths = 0, stickers = {}, craftSel = {}, boostPct = 0, boostActive = false, craftCnt = 0, craftTarget = null, cps = 0, clickTime = 0, limitedStickers = {};
+    let coins = 0, favorites = {}, pinned = [];
+    let collectibleTokens = 0, prestigeLevel = 0, collectibleStickers = {};
+    let dailyDealsData = [], lastDealRefresh = parseInt(localStorage.getItem('clicker_last_deal_refresh') || '0');
+    let fuseSlots = [];
+    let actionCounters = { clicks: 0, sells: 0, packs: 0, crafts: 0, fuses: 0 };
+    const REBIRTH_COSTS = [5000, 1e6, 3e7, 4.5e8]; const REBIRTH_MULTS = [2, 4, 8, 16, 32, 64];
+    const MAX_LVLS = [{ click: 10, auto: 10, multi: 5 }, { click: 15, auto: 15, multi: 10 }, { click: 25, auto: 25, multi: 15 }, { click: 40, auto: 40, multi: 20 }, { click: 50, auto: 50, multi: 25 }];
+    const LIMITED_COLORS = [{ name: 'Красный', bg: '#ff4444', border: '#cc0000', chance: 12, coeff: 1.2 }, { name: 'Синий', bg: '#4488ff', border: '#2266cc', chance: 10, coeff: 1.5 }, { name: 'Зелёный', bg: '#44cc44', border: '#228822', chance: 10, coeff: 1.5 }, { name: 'Жёлтый', bg: '#ffdd00', border: '#ccaa00', chance: 10, coeff: 1.5 }, { name: 'Фиолетовый', bg: '#cc44ff', border: '#8822cc', chance: 10, coeff: 1.5 }, { name: 'Оранжевый', bg: '#ff8800', border: '#cc6600', chance: 10, coeff: 1.5 }, { name: 'Розовый', bg: '#ff69b4', border: '#cc4488', chance: 10, coeff: 1.5 }, { name: 'Голубой', bg: '#00ccff', border: '#0099cc', chance: 10, coeff: 1.5 }, { name: 'Белый', bg: '#ffffff', border: '#cccccc', chance: 10, coeff: 1.5 }, { name: 'Лаймовый', bg: '#ccff00', border: '#99cc00', chance: 4, coeff: 2.5 }, { name: 'Бирюзовый', bg: '#00ffcc', border: '#00cc99', chance: 10, coeff: 1.5 }, { name: 'Коралловый', bg: '#ff7f50', border: '#cc5533', chance: 10, coeff: 1.5 }, { name: 'Золотой', bg: '#ffd700', border: '#ccaa00', chance: 10, coeff: 1.5 }, { name: 'Мятный', bg: '#98ff98', border: '#66cc66', chance: 10, coeff: 1.5 }, { name: 'Лавандовый', bg: '#e6e6fa', border: '#b8b8d0', chance: 10, coeff: 1.5 }, { name: 'Чёрный', bg: '#333333', border: '#111111', chance: 6, coeff: 2.0 }, { name: 'Серебряный', bg: '#c0c0c0', border: '#999999', chance: 10, coeff: 1.5 }, { name: 'Бронзовый', bg: '#cd7f32', border: '#996622', chance: 10, coeff: 1.5 }, { name: 'Изумрудный', bg: '#50c878', border: '#339955', chance: 10, coeff: 1.5 }, { name: 'Сапфировый', bg: '#0f52ba', border: '#0a3d88', chance: 10, coeff: 1.5 }, { name: 'Рубиновый', bg: '#e0115f', border: '#b00d4a', chance: 10, coeff: 1.5 }, { name: 'Аметистовый', bg: '#9966cc', border: '#664499', chance: 10, coeff: 1.5 }, { name: 'Янтарный', bg: '#ffbf00', border: '#cc9900', chance: 10, coeff: 1.5 }, { name: 'Перламутровый', bg: '#f5f5dc', border: '#ccccaa', chance: 10, coeff: 1.5 }];
+    const TYPES = { '⭐': { t: 1, p: 1, v: 250, w: 40, n: 'Звезда' }, '❤️': { t: 1, p: 1, v: 250, w: 40, n: 'Сердце' }, '🍀': { t: 1, p: 1, v: 250, w: 40, n: 'Клевер' }, '💎': { t: 2, p: 3, v: 1000, w: 25, n: 'Алмаз' }, '🔥': { t: 2, p: 3, v: 1000, w: 25, n: 'Огонь' }, '👑': { t: 2, p: 3, v: 1000, w: 25, n: 'Корона' }, '🟡': { t: 3, p: 10, v: 10000, w: 8, n: 'Золотой' }, '🐉': { t: 3, p: 10, v: 10000, w: 8, n: 'Дракон' }, '🌈': { t: 4, p: 30, v: 5000000, w: 2, n: 'Радуга' }, '🌌': { t: 4, p: 30, v: 5000000, w: 2, n: 'Галактика' }, '🏆': { t: 5, p: 100, v: 50000000, w: 0.5, n: 'Трофей' }, '🦄': { t: 5, p: 100, v: 50000000, w: 0.5, n: 'Единорог' }, '♾️': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Бесконечность' }, '🌠': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Падающая звезда' }, '💫': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Комета' }, '🔮': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Хрустальный шар' }, '👁️': { t: 6, p: 300, v: 2050000000, w: 0.03, n: 'Всевидящее око' }, '🌟': { t: 7, p: 1000, v: 50000000000, w: 0, n: 'Золотая звезда', secret: true }, '💠': { t: 7, p: 1000, v: 50000000000, w: 0, n: 'Алмазный вихрь', secret: true }, '🕳️': { t: 7, p: 1000, v: 50000000000, w: 0, n: 'Чёрная дыра', secret: true } };
+    const STICKER_PACKS = [{ name: 'Обычный пак', price: 60, guaranteed: { tier: 1, chance: 100 }, slots: [{ tier: 1, chance: 79 }, { tier: 2, chance: 20 }, { tier: 3, chance: 1 }], id: 'common' }, { name: 'Необычный пак', price: 110, guaranteed: { tier: 2, chance: 100 }, slots: [{ tier: 2, chance: 69 }, { tier: 1, chance: 20 }, { tier: 3, chance: 10 }, { tier: 4, chance: 1 }], id: 'uncommon' }, { name: 'Редкий пак', price: 200, guaranteed: { tier: 3, chance: 100 }, slots: [{ tier: 3, chance: 70 }, { tier: 2, chance: 20 }, { tier: 4, chance: 9 }, { tier: 5, chance: 1 }], id: 'rare' }, { name: 'Эпический пак', price: 500, guaranteed: { tier: 4, chance: 100 }, slots: [{ tier: 4, chance: 75 }, { tier: 3, chance: 15 }, { tier: 5, chance: 8 }, { tier: 6, chance: 2 }], id: 'epic' }, { name: 'Легендарный пак', price: 2500, guaranteed: { tier: 5, chance: 100 }, slots: [{ tier: 5, chance: 75 }, { tier: 4, chance: 15 }, { tier: 6, chance: 8 }, { tier: 7, chance: 2 }], id: 'legendary' }, { name: 'Мифический пак', price: 7500, guaranteed: { tier: 6, chance: 100 }, slots: [{ tier: 6, chance: 80 }, { tier: 5, chance: 15 }, { tier: 7, chance: 5 }], id: 'mythic' }, { name: 'Секретный пак', price: 12000, guaranteed: { tier: 7, chance: 100 }, slots: [{ tier: 7, chance: 85 }, { tier: 6, chance: 15 }], id: 'secret' }];
+    const CRAFT_COLLECTIONS = { '🌸 Майские': [{ result: '🌷', recipe: ['❤️', '🍀', '👑'], basePrice: 1 }, { result: '🌱', recipe: ['🍀', '👑', '🟡'], basePrice: 1.5 }, { result: '🌸', recipe: ['🍀', '🌈', '🌱', '🌷'], basePrice: 3.5 }], '🎉 В честь релиза': [{ result: '🌐', recipe: ['🌌', '🏆', '♾️'], basePrice: 6 }] };
+    const FUSE_REWARDS = [{ emoji: '🎸', chance: 70, basePrice: 2.5 }, { emoji: '🎹', chance: 23, basePrice: 3.5 }, { emoji: '🎼', chance: 6, basePrice: 5 }, { emoji: '🎵', chance: 1, basePrice: 7 }];
+    const FUSE_POINTS_NEEDED = 500;
+    const TIER_TOKEN_PRICES = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7.5, 6: 12.5, 7: 12.5 };
+    const COLOR_PRICE_MULTS = { 'Красный': 0.9, 'Чёрный': 1.5, 'Лаймовый': 2.5 };
+    loadClickerData(); loadExtra();
+    setInterval(function () { for (const key of Object.keys(limitedStickers)) { if (limitedStickers[key] && limitedStickers[key].basePrice) { limitedStickers[key].price = Math.floor(limitedStickers[key].price + limitedStickers[key].basePrice * 0.01) } }; for (const key of Object.keys(collectibleStickers)) { if (collectibleStickers[key] && collectibleStickers[key].basePrice) { collectibleStickers[key].price = collectibleStickers[key].price + collectibleStickers[key].basePrice * 0.0001 } } }, 1000);
+    setInterval(checkPrestige, 1000);
+    setInterval(function () { if (document.getElementById('modalShop').style.display === 'block') updateDealTimer() }, 60000);
 
-// ========== ФУНКЦИИ ==========
-function price(b, g, l) { let p = b; for (let i = 0; i < Math.min(l, 100) && p < 1e15; i++)p = Math.floor(p * g); return Math.min(p, 1e15) }
-function getRebMult() { return REBIRTH_MULTS[Math.min(rebirths, 5)] || 1 }
-function getMaxLvl(type) { var rb = Math.min(rebirths, 4); if (type === 'click') return MAX_LVLS[rb].click; if (type === 'auto') return MAX_LVLS[rb].auto; if (type === 'multi') return MAX_LVLS[rb].multi; return 10 }
-function randomSticker() { const e = Object.entries(TYPES).filter(function (x) { return !x[1].secret }); let r = Math.random() * e.reduce(function (s, x) { return s + x[1].w }, 0); for (var i = 0; i < e.length; i++) { r -= e[i][1].w; if (r <= 0) return e[i][0] } return e[0][0] }
-function randomLimitedColor() { const tc = LIMITED_COLORS.reduce(function (s, c) { return s + c.chance }, 0); let r = Math.random() * tc; for (var i = 0; i < LIMITED_COLORS.length; i++) { r -= LIMITED_COLORS[i].chance; if (r <= 0) return LIMITED_COLORS[i] } return LIMITED_COLORS[0] }
-function getGradient(bgColor) { return 'linear-gradient(135deg,' + bgColor + ',' + lightenColor(bgColor, 0.7) + ',' + darkenColor(bgColor, 0.7) + ')' }
-function lightenColor(hex, factor) { var r, g, b; if (hex.startsWith('#')) { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16) } else { r = 255; g = 215; b = 0 } r = Math.min(255, Math.floor(r + (255 - r) * factor)); g = Math.min(255, Math.floor(g + (255 - g) * factor)); b = Math.min(255, Math.floor(b + (255 - b) * factor)); return 'rgb(' + r + ',' + g + ',' + b + ')' }
-function darkenColor(hex, factor) { var r, g, b; if (hex.startsWith('#')) { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16) } else { r = 255; g = 215; b = 0 } r = Math.floor(r * factor); g = Math.floor(g * factor); b = Math.floor(b * factor); return 'rgb(' + r + ',' + g + ',' + b + ')' }
+    // ========== ФУНКЦИИ ==========
+    function price(b, g, l) { let p = b; for (let i = 0; i < Math.min(l, 100) && p < 1e15; i++)p = Math.floor(p * g); return Math.min(p, 1e15) }
+    function getRebMult() { return REBIRTH_MULTS[Math.min(rebirths, 5)] || 1 }
+    function getMaxLvl(type) { var rb = Math.min(rebirths, 4); if (type === 'click') return MAX_LVLS[rb].click; if (type === 'auto') return MAX_LVLS[rb].auto; if (type === 'multi') return MAX_LVLS[rb].multi; return 10 }
+    function randomSticker() { const e = Object.entries(TYPES).filter(function (x) { return !x[1].secret }); let r = Math.random() * e.reduce(function (s, x) { return s + x[1].w }, 0); for (var i = 0; i < e.length; i++) { r -= e[i][1].w; if (r <= 0) return e[i][0] } return e[0][0] }
+    function randomLimitedColor() { const tc = LIMITED_COLORS.reduce(function (s, c) { return s + c.chance }, 0); let r = Math.random() * tc; for (var i = 0; i < LIMITED_COLORS.length; i++) { r -= LIMITED_COLORS[i].chance; if (r <= 0) return LIMITED_COLORS[i] } return LIMITED_COLORS[0] }
+    function getGradient(bgColor) { return 'linear-gradient(135deg,' + bgColor + ',' + lightenColor(bgColor, 0.7) + ',' + darkenColor(bgColor, 0.7) + ')' }
+    function lightenColor(hex, factor) { var r, g, b; if (hex.startsWith('#')) { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16) } else { r = 255; g = 215; b = 0 } r = Math.min(255, Math.floor(r + (255 - r) * factor)); g = Math.min(255, Math.floor(g + (255 - g) * factor)); b = Math.min(255, Math.floor(b + (255 - b) * factor)); return 'rgb(' + r + ',' + g + ',' + b + ')' }
+    function darkenColor(hex, factor) { var r, g, b; if (hex.startsWith('#')) { r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16) } else { r = 255; g = 215; b = 0 } r = Math.floor(r * factor); g = Math.floor(g * factor); b = Math.floor(b * factor); return 'rgb(' + r + ',' + g + ',' + b + ')' }
+    function checkPrestige() { if (balance >= 1e12) { var newPrestige = Math.floor(balance / 1e12); prestigeLevel += newPrestige; balance = balance % 1e12; localStorage.setItem('clicker_prestige', prestigeLevel); checkPrestigeDisplay(); updateUI() } }
+    function checkPrestigeDisplay() { var badge = document.getElementById('prestigeBadge'); var count = document.getElementById('prestigeCount'); if (prestigeLevel > 0) { if (badge) badge.style.display = 'inline-block'; if (count) count.textContent = prestigeLevel } else { if (badge) badge.style.display = 'none' } }
+    function updateTokenBal() { document.getElementById('tokenBal').textContent = collectibleTokens.toFixed(1); var shopEl = document.getElementById('shopTokenBal'); if (shopEl) shopEl.textContent = collectibleTokens.toFixed(1) }
 
-function checkPrestige() { if (balance >= 1e12) { var newPrestige = Math.floor(balance / 1e12); prestigeLevel += newPrestige; balance = balance % 1e12; localStorage.setItem('clicker_prestige', prestigeLevel); checkPrestigeDisplay(); updateUI() } }
-function checkPrestigeDisplay() { var badge = document.getElementById('prestigeBadge'); var count = document.getElementById('prestigeCount'); if (prestigeLevel > 0) { if (badge) badge.style.display = 'inline-block'; if (count) count.textContent = prestigeLevel } else { if (badge) badge.style.display = 'none' } }
-function updateTokenBal() { document.getElementById('tokenBal').textContent = collectibleTokens.toFixed(1); var shopEl = document.getElementById('shopTokenBal'); if (shopEl) shopEl.textContent = collectibleTokens.toFixed(1) }
+    // ========== ЗАКРЕПЛЕНИЕ ==========
+    function applyPinnedBackground() { if (pinned.length > 0) { document.body.style.background = pinned[0].gradient || getGradient(pinned[0].bg); document.body.style.backgroundAttachment = 'fixed' } }
+    function pinSticker(id) { if (pinned.length > 0) unpinSticker(0); var ls = limitedStickers[id] || collectibleStickers[id]; if (!ls) return; pinned = [{ id: id, emoji: ls.emoji, bg: ls.color.bg, border: ls.color.border, gradient: getGradient(ls.color.bg), price: ls.price || 0, x: 100, y: 100 }]; saveExtra(); applyPinnedBackground(); updatePinned(); updateUI(); updateUnpinButton(); toast('📌 Закреплён!') }
+    function unpinSticker(index) { pinned = []; document.body.style.background = ''; document.body.style.backgroundAttachment = ''; if (darkTheme) document.body.classList.add('dark-theme'); saveExtra(); updatePinned(); updateUI(); updateUnpinButton(); toast('Откреплено') }
+    function updateUnpinButton() { var btn = document.getElementById('unpinBtn'); if (btn) btn.style.display = pinned.length > 0 ? 'block' : 'none' }
+    function updatePinned() { var container = document.getElementById('pinnedArea'); if (!container) return; container.innerHTML = ''; if (pinned.length === 0) return; var p = pinned[0]; var item = document.createElement('div'); item.className = 'pinned-item'; item.style.background = p.gradient; item.style.borderColor = p.border; item.style.position = 'relative'; item.style.left = p.x + 'px'; item.style.top = p.y + 'px'; item.style.cursor = 'grab'; item.innerHTML = p.emoji + '<span class="pinned-coin">' + formatMoney(p.price || 0) + '</span>'; item.addEventListener('mousedown', function (e) { e.preventDefault(); var startX = e.clientX, startY = e.clientY, origX = p.x, origY = p.y; function onMove(e2) { p.x = origX + (e2.clientX - startX); p.y = origY + (e2.clientY - startY); updatePinned() } function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); saveExtra() } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp) }); container.appendChild(item) }
 
-// ========== ЗАКРЕПЛЕНИЕ ==========
-function applyPinnedBackground() { if (pinned.length > 0) { document.body.style.background = pinned[0].gradient || getGradient(pinned[0].bg); document.body.style.backgroundAttachment = 'fixed' } }
-function pinSticker(id) { if (pinned.length > 0) unpinSticker(0); var ls = limitedStickers[id] || collectibleStickers[id]; if (!ls) return; pinned = [{ id: id, emoji: ls.emoji, bg: ls.color.bg, border: ls.color.border, gradient: getGradient(ls.color.bg), price: ls.price || 0, x: 100, y: 100 }]; saveExtra(); applyPinnedBackground(); updatePinned(); updateUI(); updateUnpinButton(); toast('📌 Закреплён!') }
-function unpinSticker(index) { pinned = []; document.body.style.background = ''; document.body.style.backgroundAttachment = ''; if (darkTheme) document.body.classList.add('dark-theme'); saveExtra(); updatePinned(); updateUI(); updateUnpinButton(); toast('Откреплено') }
-function updateUnpinButton() { var btn = document.getElementById('unpinBtn'); if (btn) btn.style.display = pinned.length > 0 ? 'block' : 'none' }
-function updatePinned() { var container = document.getElementById('pinnedArea'); if (!container) return; container.innerHTML = ''; if (pinned.length === 0) return; var p = pinned[0]; var item = document.createElement('div'); item.className = 'pinned-item'; item.style.background = p.gradient; item.style.borderColor = p.border; item.style.position = 'relative'; item.style.left = p.x + 'px'; item.style.top = p.y + 'px'; item.style.cursor = 'grab'; item.innerHTML = p.emoji + '<span class="pinned-coin">' + formatMoney(p.price || 0) + '</span>'; item.addEventListener('mousedown', function (e) { e.preventDefault(); var startX = e.clientX, startY = e.clientY, origX = p.x, origY = p.y; function onMove(e2) { p.x = origX + (e2.clientX - startX); p.y = origY + (e2.clientY - startY); updatePinned() } function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); saveExtra() } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp) }); container.appendChild(item) }
+    // ========== ПРОДАЖА ==========
+    function getLimitedCoinValue(ls) { if (!ls) return 0; var tier = TYPES[ls.emoji] ? TYPES[ls.emoji].t : 1; var vals = { 1: 10, 2: 20, 3: 40, 4: 100, 5: 500, 6: 1500, 7: 2250 }; return Math.floor((vals[tier] || 10) * (ls.color ? ls.color.coeff : 1.5)) }
+    function sellLimitedForCoins(id) { var ls = limitedStickers[id]; if (!ls) return; var stickerAge = (Date.now() - (ls.created || 0)) / 1000; if (stickerAge < 10) { toast('⏳ ' + (10 - stickerAge).toFixed(0) + ' сек', '#ff8800'); return } var coinVal = getLimitedCoinValue(ls), moneyVal = ls.price || 0; if (confirm('Продать?\n💎 ' + coinVal + '\n' + formatMoney(moneyVal))) { coins += coinVal; balance += moneyVal; delete limitedStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id }); actionCounters.sells++; updateUI(); saveClickerData(); saveExtra(); updatePinned(); updateStickerLB(); toast('💎 +' + coinVal + ' | +' + formatMoney(moneyVal)) } }
+    function sellCollectible(id) { var cs = collectibleStickers[id]; if (!cs) return; var tokenVal = cs.price || cs.basePrice || 0; if (tokenVal <= 0) tokenVal = 1; if (confirm('Продать коллекционный стикер?\n\n💷 Цена: ' + (cs.price || cs.basePrice || 0).toFixed(1) + '\n💷 Вы получите: ' + tokenVal.toFixed(1))) { collectibleTokens += tokenVal; delete collectibleStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id }); localStorage.setItem('clicker_collectible_tokens', collectibleTokens); localStorage.setItem('clicker_collectible_stickers', JSON.stringify(collectibleStickers)); updateTokenBal(); updateUI(); saveClickerData(); updatePinned(); updateStickerLB(); toast('💷 +' + tokenVal.toFixed(1) + ' токенов!') } }
 
-// ========== ПРОДАЖА ==========
-function getLimitedCoinValue(ls) { if (!ls) return 0; var tier = TYPES[ls.emoji] ? TYPES[ls.emoji].t : 1; var vals = { 1: 10, 2: 20, 3: 40, 4: 100, 5: 500, 6: 1500, 7: 2250 }; return Math.floor((vals[tier] || 10) * (ls.color ? ls.color.coeff : 1.5)) }
-function sellLimitedForCoins(id) { var ls = limitedStickers[id]; if (!ls) return; var stickerAge = (Date.now() - (ls.created || 0)) / 1000; if (stickerAge < 10) { toast('⏳ ' + (10 - stickerAge).toFixed(0) + ' сек', '#ff8800'); return } var coinVal = getLimitedCoinValue(ls), moneyVal = ls.price || 0; if (confirm('Продать?\n💎 ' + coinVal + '\n' + formatMoney(moneyVal))) { coins += coinVal; balance += moneyVal; delete limitedStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id }); actionCounters.sells++; updateUI(); saveClickerData(); saveExtra(); updatePinned(); updateStickerLB(); toast('💎 +' + coinVal + ' | +' + formatMoney(moneyVal)) } }
-function sellCollectible(id) { var cs = collectibleStickers[id]; if (!cs) return; var tokenVal = cs.price || cs.basePrice || 0; if (tokenVal <= 0) tokenVal = 1; if (confirm('Продать коллекционный стикер?\n\n💷 Цена: ' + (cs.price || cs.basePrice || 0).toFixed(1) + '\n💷 Вы получите: ' + tokenVal.toFixed(1))) { collectibleTokens += tokenVal; delete collectibleStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id }); localStorage.setItem('clicker_collectible_tokens', collectibleTokens); localStorage.setItem('clicker_collectible_stickers', JSON.stringify(collectibleStickers)); updateTokenBal(); updateUI(); saveClickerData(); updatePinned(); updateStickerLB(); toast('💷 +' + tokenVal.toFixed(1) + ' токенов!') } }
+    // ========== СЛИЯНИЕ ==========
+    function mergeStickers(emoji) { if (!stickers[emoji] || stickers[emoji] < 5) return; stickers[emoji] -= 5; if (stickers[emoji] <= 0) delete stickers[emoji]; var color = randomLimitedColor(); var basePrice = Math.floor(Math.min(TYPES[emoji].v, 5000000000) * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; updateUI(); saveClickerData(); updateStickerLB(); toast('✨ Лимит-стикер! ' + color.name + '!', '#ffd700') }
 
-// ========== СЛИЯНИЕ ==========
-function mergeStickers(emoji) { if (!stickers[emoji] || stickers[emoji] < 5) return; stickers[emoji] -= 5; if (stickers[emoji] <= 0) delete stickers[emoji]; var color = randomLimitedColor(); var basePrice = Math.floor(Math.min(TYPES[emoji].v, 5000000000) * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; updateUI(); saveClickerData(); updateStickerLB(); toast('✨ Лимит-стикер! ' + color.name + '!', '#ffd700') }
+    // ========== СТИКЕРПАКИ ==========
+    function openPack(packId) { var pack = STICKER_PACKS.find(function (p) { return p.id === packId }); if (!pack) return; if (coins < pack.price) { toast('Нужно ' + pack.price + '💎', '#f44'); return } coins -= pack.price; saveExtra(); updateCoins(); actionCounters.packs++; var stickersWon = [], tiersWon = [], colorsWon = [], allStickers = []; var guaranteedStickers = Object.entries(TYPES).filter(function (e) { return e[1].t === pack.guaranteed.tier }).map(function (e) { return e[0] }); if (guaranteedStickers.length > 0) { allStickers.push({ emoji: guaranteedStickers[Math.floor(Math.random() * guaranteedStickers.length)], tier: pack.guaranteed.tier }) } for (var i = 0; i < 2; i++) { var rand = Math.random() * 100, cumulative = 0, selectedTier = 1; for (var j = 0; j < pack.slots.length; j++) { cumulative += pack.slots[j].chance; if (rand <= cumulative) { selectedTier = pack.slots[j].tier; break } } var poolStickers = Object.entries(TYPES).filter(function (e) { return e[1].t === selectedTier }).map(function (e) { return e[0] }); if (poolStickers.length > 0) { allStickers.push({ emoji: poolStickers[Math.floor(Math.random() * poolStickers.length)], tier: selectedTier }) } } for (var i = 0; i < allStickers.length; i++) { var sticker = allStickers[i]; var color = randomLimitedColor(); var basePrice = Math.floor(TYPES[sticker.emoji].v * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: sticker.emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; stickersWon.push('✨' + sticker.emoji); tiersWon.push(sticker.tier + 0.5); colorsWon.push(color) } showPackAnimation(pack.name, stickersWon, tiersWon, colorsWon); updateUI(); saveClickerData() }
+    function showPackAnimation(packName, stickers, tiers, colors) { var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; var title = document.createElement('div'); title.style.cssText = 'font-size:32px;color:#ffd700;font-weight:bold;margin-bottom:40px;'; title.textContent = '🎁 ' + packName; overlay.appendChild(title); var cards = document.createElement('div'); cards.style.cssText = 'display:flex;gap:20px;justify-content:center;flex-wrap:wrap;'; overlay.appendChild(cards); var hint = document.createElement('div'); hint.style.cssText = 'color:#666;font-size:14px;margin-top:40px;'; hint.textContent = 'Кликните чтобы закрыть'; overlay.appendChild(hint); document.body.appendChild(overlay); var tierNames = ['', 'Обычный', 'Необычный', 'Редкий', 'Эпический', 'Легендарный', 'Мифический', 'Секретный']; var tierColors = ['', '#aaa', '#4caf50', '#4488ff', '#cc44ff', '#ff8800', '#ff4444', '#ffd700']; var delays = [300, 1000, 2000]; for (var i = 0; i < stickers.length; i++) { var displayEmoji = stickers[i].replace('✨', ''); var tier = tiers[i]; var color = colors[i] || { bg: '#444', border: '#888', name: 'Неизвестный' }; var delay = delays[i] || 300; var stickerType = TYPES[displayEmoji]; var stickerName = stickerType ? stickerType.n : displayEmoji; var card = document.createElement('div'); card.style.cssText = 'width:140px;padding:20px 15px;border-radius:15px;text-align:center;opacity:0;transform:scale(0.3);transition:all 0.6s ease-out;margin:5px;'; card.style.background = getGradient(color.bg); card.style.border = '3px solid ' + color.border; card.style.boxShadow = '0 0 20px ' + color.border; var stickerNameDiv = document.createElement('div'); stickerNameDiv.textContent = stickerName; stickerNameDiv.style.cssText = 'color:#fff;font-weight:bold;font-size:11px;margin-bottom:8px;'; card.appendChild(stickerNameDiv); var emojiDiv = document.createElement('div'); emojiDiv.textContent = displayEmoji; emojiDiv.style.cssText = 'font-size:55px;margin-bottom:8px;'; card.appendChild(emojiDiv); var nameDiv = document.createElement('div'); nameDiv.textContent = color.name; nameDiv.style.cssText = 'color:#fff;font-weight:bold;font-size:13px;'; card.appendChild(nameDiv); var typeDiv = document.createElement('div'); typeDiv.textContent = 'ЛИМИТ'; typeDiv.style.cssText = 'color:#333;font-size:10px;margin-top:5px;background:rgba(255,255,255,0.9);border-radius:8px;padding:2px 8px;display:inline-block;font-weight:bold;'; card.appendChild(typeDiv); var tierText = tierNames[Math.floor(tier)] || ''; if (tierText) { var tierDiv = document.createElement('div'); tierDiv.textContent = tierText; tierDiv.style.cssText = 'color:' + (tierColors[Math.floor(tier)] || '#fff') + ';font-size:10px;margin-top:4px;font-weight:bold;'; card.appendChild(tierDiv) } cards.appendChild(card); (function (card, tier) { setTimeout(function () { card.style.opacity = '1'; card.style.transform = 'scale(1)'; if (Math.floor(tier) >= 5) { card.style.animation = 'glowPulse 0.5s ease-in-out 3' } }, delay) })(card, tier) } overlay.addEventListener('click', function () { overlay.style.opacity = '0'; overlay.style.transition = '0.3s'; setTimeout(function () { overlay.remove() }, 300) }) }
 
-// ========== СТИКЕРПАКИ ==========
-function openPack(packId) { var pack = STICKER_PACKS.find(function (p) { return p.id === packId }); if (!pack) return; if (coins < pack.price) { toast('Нужно ' + pack.price + '💎', '#f44'); return } coins -= pack.price; saveExtra(); updateCoins(); actionCounters.packs++; var stickersWon = [], tiersWon = [], colorsWon = [], allStickers = []; var guaranteedStickers = Object.entries(TYPES).filter(function (e) { return e[1].t === pack.guaranteed.tier }).map(function (e) { return e[0] }); if (guaranteedStickers.length > 0) { allStickers.push({ emoji: guaranteedStickers[Math.floor(Math.random() * guaranteedStickers.length)], tier: pack.guaranteed.tier }) } for (var i = 0; i < 2; i++) { var rand = Math.random() * 100, cumulative = 0, selectedTier = 1; for (var j = 0; j < pack.slots.length; j++) { cumulative += pack.slots[j].chance; if (rand <= cumulative) { selectedTier = pack.slots[j].tier; break } } var poolStickers = Object.entries(TYPES).filter(function (e) { return e[1].t === selectedTier }).map(function (e) { return e[0] }); if (poolStickers.length > 0) { allStickers.push({ emoji: poolStickers[Math.floor(Math.random() * poolStickers.length)], tier: selectedTier }) } } for (var i = 0; i < allStickers.length; i++) { var sticker = allStickers[i]; var color = randomLimitedColor(); var basePrice = Math.floor(TYPES[sticker.emoji].v * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: sticker.emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; stickersWon.push('✨' + sticker.emoji); tiersWon.push(sticker.tier + 0.5); colorsWon.push(color) } showPackAnimation(pack.name, stickersWon, tiersWon, colorsWon); updateUI(); saveClickerData() }
-function showPackAnimation(packName, stickers, tiers, colors) { var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; var title = document.createElement('div'); title.style.cssText = 'font-size:32px;color:#ffd700;font-weight:bold;margin-bottom:40px;'; title.textContent = '🎁 ' + packName; overlay.appendChild(title); var cards = document.createElement('div'); cards.style.cssText = 'display:flex;gap:20px;justify-content:center;flex-wrap:wrap;'; overlay.appendChild(cards); var hint = document.createElement('div'); hint.style.cssText = 'color:#666;font-size:14px;margin-top:40px;'; hint.textContent = 'Кликните чтобы закрыть'; overlay.appendChild(hint); document.body.appendChild(overlay); var tierNames = ['', 'Обычный', 'Необычный', 'Редкий', 'Эпический', 'Легендарный', 'Мифический', 'Секретный']; var tierColors = ['', '#aaa', '#4caf50', '#4488ff', '#cc44ff', '#ff8800', '#ff4444', '#ffd700']; var delays = [300, 1000, 2000]; for (var i = 0; i < stickers.length; i++) { var displayEmoji = stickers[i].replace('✨', ''); var tier = tiers[i]; var color = colors[i] || { bg: '#444', border: '#888', name: 'Неизвестный' }; var delay = delays[i] || 300; var stickerType = TYPES[displayEmoji]; var stickerName = stickerType ? stickerType.n : displayEmoji; var card = document.createElement('div'); card.style.cssText = 'width:140px;padding:20px 15px;border-radius:15px;text-align:center;opacity:0;transform:scale(0.3);transition:all 0.6s ease-out;margin:5px;'; card.style.background = getGradient(color.bg); card.style.border = '3px solid ' + color.border; card.style.boxShadow = '0 0 20px ' + color.border; var stickerNameDiv = document.createElement('div'); stickerNameDiv.textContent = stickerName; stickerNameDiv.style.cssText = 'color:#fff;font-weight:bold;font-size:11px;margin-bottom:8px;'; card.appendChild(stickerNameDiv); var emojiDiv = document.createElement('div'); emojiDiv.textContent = displayEmoji; emojiDiv.style.cssText = 'font-size:55px;margin-bottom:8px;'; card.appendChild(emojiDiv); var nameDiv = document.createElement('div'); nameDiv.textContent = color.name; nameDiv.style.cssText = 'color:#fff;font-weight:bold;font-size:13px;'; card.appendChild(nameDiv); var typeDiv = document.createElement('div'); typeDiv.textContent = 'ЛИМИТ'; typeDiv.style.cssText = 'color:#333;font-size:10px;margin-top:5px;background:rgba(255,255,255,0.9);border-radius:8px;padding:2px 8px;display:inline-block;font-weight:bold;'; card.appendChild(typeDiv); var tierText = tierNames[Math.floor(tier)] || ''; if (tierText) { var tierDiv = document.createElement('div'); tierDiv.textContent = tierText; tierDiv.style.cssText = 'color:' + (tierColors[Math.floor(tier)] || '#fff') + ';font-size:10px;margin-top:4px;font-weight:bold;'; card.appendChild(tierDiv) } cards.appendChild(card); (function (card, tier) { setTimeout(function () { card.style.opacity = '1'; card.style.transform = 'scale(1)'; if (Math.floor(tier) >= 5) { card.style.animation = 'glowPulse 0.5s ease-in-out 3' } }, delay) })(card, tier) } overlay.addEventListener('click', function () { overlay.style.opacity = '0'; overlay.style.transition = '0.3s'; setTimeout(function () { overlay.remove() }, 300) }) }
+    // ========== МАГАЗИН ==========
+    function openShopModal() { document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalShop').style.display = 'block'; document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalCraft').style.display = 'none'; document.getElementById('shopTokenBal').textContent = collectibleTokens.toFixed(1); if (dailyDealsData.length === 0 || Date.now() - lastDealRefresh > 86400000) refreshDailyDeals(); else renderDailyDeals(); renderCrafts(); renderFuseInventory(); updateFuseUI() }
+    async function refreshDailyDeals() { if (!currentUser || !sb) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } lastDealRefresh = Date.now(); renderDailyDeals(); return } try { var { data } = await sb.from('daily_deals').select('*').eq('username', currentUser.username).single(); var now = Date.now(); var needRefresh = true; if (data && data.last_refresh) { var serverTime = new Date(data.last_refresh).getTime(); var hoursSinceRefresh = (now - serverTime) / 3600000; if (hoursSinceRefresh < 24) needRefresh = false } if (needRefresh) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } await sb.from('daily_deals').upsert({ username: currentUser.username, deals: JSON.stringify(dailyDealsData), last_refresh: new Date().toISOString() }); lastDealRefresh = now } else { dailyDealsData = JSON.parse(data.deals || '[]'); lastDealRefresh = new Date(data.last_refresh).getTime() } renderDailyDeals() } catch (e) { } }
+    function renderDailyDeals() { var container = document.getElementById('dailyDeals'); if (!container) return; container.innerHTML = dailyDealsData.map(function (deal, i) { var gradient = getGradient(deal.color.bg); return '<div class="daily-deal" onclick="buyDeal(' + i + ')" style="background:' + gradient + ';border-color:' + deal.color.border + '"><div class="deal-emoji">' + deal.emoji + '</div><div class="deal-name">' + (TYPES[deal.emoji]?.n || deal.emoji) + '</div><div class="deal-price">💷 ' + deal.price + '</div></div>' }).join(''); updateDealTimer() }
+    function updateDealTimer() { var el = document.getElementById('dealTimer'); if (!el) return; var remaining = 86400000 - (Date.now() - lastDealRefresh); var hours = Math.floor(remaining / 3600000); var mins = Math.floor((remaining % 3600000) / 60000); el.textContent = hours + 'ч ' + mins + 'м' }
+    async function buyDeal(index) { if (!dailyDealsData[index]) return; var deal = dailyDealsData[index]; if (sb && currentUser) { try { var { data } = await sb.from('clicker_data').select('collectible_tokens').eq('username', currentUser.username).single(); if (data) collectibleTokens = data.collectible_tokens || 0 } catch (e) { } } if (collectibleTokens < deal.price) { toast('Недостаточно 💷!', '#f44'); return } collectibleTokens -= deal.price; var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: deal.emoji, color: deal.color, basePrice: Math.floor(TYPES[deal.emoji].v * 5 * deal.color.coeff), price: Math.floor(TYPES[deal.emoji].v * 5 * deal.color.coeff), created: Date.now() }; dailyDealsData.splice(index, 1); if (sb && currentUser) { try { await sb.from('daily_deals').upsert({ username: currentUser.username, deals: JSON.stringify(dailyDealsData), last_refresh: new Date(lastDealRefresh).toISOString() }); await sb.from('clicker_data').update({ collectible_tokens: collectibleTokens }).eq('username', currentUser.username) } catch (e) { } } localStorage.setItem('clicker_collectible_tokens', collectibleTokens); localStorage.setItem('clicker_daily_deals', JSON.stringify(dailyDealsData)); updateTokenBal(); renderDailyDeals(); updateUI(); saveClickerData(); toast('✅ Лимит-стикер за 💷' + deal.price + '!') }
 
-// ========== МАГАЗИН ==========
-function openShopModal() { document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalShop').style.display = 'block'; document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalCraft').style.display = 'none'; document.getElementById('shopTokenBal').textContent = collectibleTokens.toFixed(1); if (dailyDealsData.length === 0 || Date.now() - lastDealRefresh > 86400000) refreshDailyDeals(); else renderDailyDeals(); renderCrafts(); renderFuseInventory(); updateFuseUI() }
-async function refreshDailyDeals() { if (!currentUser || !sb) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } lastDealRefresh = Date.now(); renderDailyDeals(); return } try { var { data } = await sb.from('daily_deals').select('*').eq('username', currentUser.username).single(); var now = Date.now(); var needRefresh = true; if (data && data.last_refresh) { var serverTime = new Date(data.last_refresh).getTime(); var hoursSinceRefresh = (now - serverTime) / 3600000; if (hoursSinceRefresh < 24) needRefresh = false } if (needRefresh) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } await sb.from('daily_deals').upsert({ username: currentUser.username, deals: JSON.stringify(dailyDealsData), last_refresh: new Date().toISOString() }); lastDealRefresh = now } else { dailyDealsData = JSON.parse(data.deals || '[]'); lastDealRefresh = new Date(data.last_refresh).getTime() } renderDailyDeals() } catch (e) { } }
-function renderDailyDeals() { var container = document.getElementById('dailyDeals'); if (!container) return; container.innerHTML = dailyDealsData.map(function (deal, i) { var gradient = getGradient(deal.color.bg); return '<div class="daily-deal" onclick="buyDeal(' + i + ')" style="background:' + gradient + ';border-color:' + deal.color.border + '"><div class="deal-emoji">' + deal.emoji + '</div><div class="deal-name">' + (TYPES[deal.emoji]?.n || deal.emoji) + '</div><div class="deal-price">💷 ' + deal.price + '</div></div>' }).join(''); updateDealTimer() }
-function updateDealTimer() { var el = document.getElementById('dealTimer'); if (!el) return; var remaining = 86400000 - (Date.now() - lastDealRefresh); var hours = Math.floor(remaining / 3600000); var mins = Math.floor((remaining % 3600000) / 60000); el.textContent = hours + 'ч ' + mins + 'м' }
-async function buyDeal(index) { if (!dailyDealsData[index]) return; var deal = dailyDealsData[index]; if (sb && currentUser) { try { var { data } = await sb.from('clicker_data').select('collectible_tokens').eq('username', currentUser.username).single(); if (data) collectibleTokens = data.collectible_tokens || 0 } catch (e) { } } if (collectibleTokens < deal.price) { toast('Недостаточно 💷!', '#f44'); return } collectibleTokens -= deal.price; var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: deal.emoji, color: deal.color, basePrice: Math.floor(TYPES[deal.emoji].v * 5 * deal.color.coeff), price: Math.floor(TYPES[deal.emoji].v * 5 * deal.color.coeff), created: Date.now() }; dailyDealsData.splice(index, 1); if (sb && currentUser) { try { await sb.from('daily_deals').upsert({ username: currentUser.username, deals: JSON.stringify(dailyDealsData), last_refresh: new Date(lastDealRefresh).toISOString() }); await sb.from('clicker_data').update({ collectible_tokens: collectibleTokens }).eq('username', currentUser.username) } catch (e) { } } localStorage.setItem('clicker_collectible_tokens', collectibleTokens); localStorage.setItem('clicker_daily_deals', JSON.stringify(dailyDealsData)); updateTokenBal(); renderDailyDeals(); updateUI(); saveClickerData(); toast('✅ Лимит-стикер за 💷' + deal.price + '!') }
+    // ========== КРАФТЫ ==========
+    function renderCrafts() { var container = document.getElementById('craftList2'); if (!container) return; var html = ''; for (var collectionName in CRAFT_COLLECTIONS) { html += '<div class="craft-collection"><div class="craft-collection-title">' + collectionName + '</div>'; CRAFT_COLLECTIONS[collectionName].forEach(function (craft, i) { var canCraft = craft.recipe.every(function (e) { return Object.values(limitedStickers).some(function (ls) { return ls && ls.emoji === e }) || Object.values(collectibleStickers).some(function (cs) { return cs && cs.emoji === e }) }); html += '<div class="craft-panel"><div class="craft-inv">'; craft.recipe.forEach(function (e) { var count = 0; for (var id in limitedStickers) { if (limitedStickers[id] && limitedStickers[id].emoji === e) count++ } for (var id in collectibleStickers) { if (collectibleStickers[id] && collectibleStickers[id].emoji === e) count++ } html += '<span class="craft-inv-item' + (count > 0 ? '' : ' used') + '" title="' + e + ' (есть: ' + count + ')">' + e + '</span>' }); html += '</div><div class="craft-arrow-panel">→</div><div class="craft-result-panel"><div class="craft-result-btn' + (canCraft ? ' ready' : '') + '" onclick="openCraftInventory(\'' + collectionName + '\',' + i + ')" style="opacity:' + (canCraft ? 1 : 0.5) + '">' + craft.result + '</div></div></div>' }); html += '</div>' } container.innerHTML = html }
+    function openCraftInventory(collectionName, craftIndex) { var craft = CRAFT_COLLECTIONS[collectionName][craftIndex]; var needed = {}; craft.recipe.forEach(function (e) { needed[e] = (needed[e] || 0) + 1 }); var available = []; for (var id in limitedStickers) { var ls = limitedStickers[id]; if (ls && needed[ls.emoji] && needed[ls.emoji] > 0) available.push({ id: id, sticker: ls, type: 'limited' }) } for (var id in collectibleStickers) { var cs = collectibleStickers[id]; if (cs && needed[cs.emoji] && needed[cs.emoji] > 0) available.push({ id: id, sticker: cs, type: 'collectible' }) } if (available.length === 0) { toast('Нет нужных стикеров!', '#f44'); return } var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; var title = document.createElement('div'); title.style.cssText = 'color:white;font-size:20px;margin-bottom:10px;'; title.textContent = 'Выберите стикер для ' + craft.result; overlay.appendChild(title); var neededList = []; for (var e in needed) { if (needed[e] > 0) neededList.push(e + '(' + needed[e] + ')') } var neededDiv = document.createElement('div'); neededDiv.style.cssText = 'color:#ff9800;font-size:14px;margin-bottom:15px;'; neededDiv.textContent = 'Осталось: ' + (neededList.length > 0 ? neededList.join(', ') : 'всё собрано!'); overlay.appendChild(neededDiv); var grid = document.createElement('div'); grid.className = 'inv-grid'; var selectedItems = []; var usedColors = []; available.forEach(function (item) { if (!needed[item.sticker.emoji] || needed[item.sticker.emoji] <= 0) return; var el = document.createElement('div'); el.className = 'inv-item limited'; el.style.background = getGradient(item.sticker.color.bg); el.style.borderColor = item.sticker.color.border; el.innerHTML = item.sticker.emoji + '<br><span class="inv-count" style="color:white">' + item.sticker.color.name + '</span>'; el.onclick = function () { if (item.type === 'limited') { if (!limitedStickers[item.id]) return } else { if (!collectibleStickers[item.id]) return } if (!needed[item.sticker.emoji] || needed[item.sticker.emoji] <= 0) return; needed[item.sticker.emoji]--; usedColors.push(item.sticker.color); selectedItems.push(item); if (item.type === 'limited') { delete limitedStickers[item.id] } else { delete collectibleStickers[item.id] } var allDone = true; for (var e in needed) { if (needed[e] > 0) { allDone = false; break } } overlay.remove(); if (allDone) { showCraftAnimation(craft.result, usedColors, craft.basePrice); actionCounters.crafts++; } else { openCraftInventoryWithNeeded(collectionName, craftIndex, needed, usedColors, selectedItems) } }; grid.appendChild(el) }); overlay.appendChild(grid); var cancelBtn = document.createElement('button'); cancelBtn.textContent = '❌ Отменить'; cancelBtn.style.cssText = 'margin-top:15px;padding:10px 20px;border-radius:10px;cursor:pointer;background:#f44;color:white;border:none;'; cancelBtn.onclick = function () { for (var i = 0; i < selectedItems.length; i++) { var item = selectedItems[i]; if (item.type === 'limited') { limitedStickers[item.id] = item.sticker } else { collectibleStickers[item.id] = item.sticker } } overlay.remove(); updateUI(); renderCrafts(); toast('Крафт отменён, стикеры возвращены', '#ff8800') }; overlay.appendChild(cancelBtn); document.body.appendChild(overlay) }
+    function openCraftInventoryWithNeeded(collectionName, craftIndex, needed, usedColors, selectedItems) { if (!selectedItems) selectedItems = []; var craft = CRAFT_COLLECTIONS[collectionName][craftIndex]; var available = []; for (var id in limitedStickers) { var ls = limitedStickers[id]; if (ls && needed[ls.emoji] && needed[ls.emoji] > 0) available.push({ id: id, sticker: ls, type: 'limited' }) } for (var id in collectibleStickers) { var cs = collectibleStickers[id]; if (cs && needed[cs.emoji] && needed[cs.emoji] > 0) available.push({ id: id, sticker: cs, type: 'collectible' }) } if (available.length === 0) { for (var i = 0; i < selectedItems.length; i++) { var item = selectedItems[i]; if (item.type === 'limited') { limitedStickers[item.id] = item.sticker } else { collectibleStickers[item.id] = item.sticker } } updateUI(); renderCrafts(); toast('Нет нужных стикеров! Стикеры возвращены.', '#f44'); return } var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; var title = document.createElement('div'); title.style.cssText = 'color:white;font-size:20px;margin-bottom:10px;'; title.textContent = 'Выберите стикер для ' + craft.result + ' (' + usedColors.length + '/' + craft.recipe.length + ')'; overlay.appendChild(title); var neededList = []; for (var e in needed) { if (needed[e] > 0) neededList.push(e) } var neededDiv = document.createElement('div'); neededDiv.style.cssText = 'color:#ff9800;font-size:14px;margin-bottom:15px;'; neededDiv.textContent = 'Осталось: ' + neededList.join(', '); overlay.appendChild(neededDiv); var grid = document.createElement('div'); grid.className = 'inv-grid'; available.forEach(function (item) { if (!needed[item.sticker.emoji] || needed[item.sticker.emoji] <= 0) return; var el = document.createElement('div'); el.className = 'inv-item limited'; el.style.background = getGradient(item.sticker.color.bg); el.style.borderColor = item.sticker.color.border; el.innerHTML = item.sticker.emoji + '<br><span class="inv-count" style="color:white">' + item.sticker.color.name + '</span>'; el.onclick = function () { if (item.type === 'limited') { if (!limitedStickers[item.id]) return } else { if (!collectibleStickers[item.id]) return } needed[item.sticker.emoji]--; usedColors.push(item.sticker.color); selectedItems.push(item); if (item.type === 'limited') { delete limitedStickers[item.id] } else { delete collectibleStickers[item.id] } var allDone = true; for (var e in needed) { if (needed[e] > 0) { allDone = false; break } } overlay.remove(); if (allDone) { showCraftAnimation(craft.result, usedColors, craft.basePrice); actionCounters.crafts++; } else { openCraftInventoryWithNeeded(collectionName, craftIndex, needed, usedColors, selectedItems) } }; grid.appendChild(el) }); overlay.appendChild(grid); var cancelBtn = document.createElement('button'); cancelBtn.textContent = '❌ Отменить (вернуть стикеры)'; cancelBtn.style.cssText = 'margin-top:15px;padding:10px 20px;border-radius:10px;cursor:pointer;background:#f44;color:white;border:none;'; cancelBtn.onclick = function () { for (var i = 0; i < selectedItems.length; i++) { var item = selectedItems[i]; if (item.type === 'limited') { limitedStickers[item.id] = item.sticker } else { collectibleStickers[item.id] = item.sticker } } overlay.remove(); updateUI(); renderCrafts(); toast('Крафт отменён, стикеры возвращены', '#ff8800') }; overlay.appendChild(cancelBtn); document.body.appendChild(overlay) }
+    function showCraftAnimation(resultEmoji, usedColors, basePrice) { var finalColor = usedColors[Math.floor(Math.random() * usedColors.length)]; var id = 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); collectibleStickers[id] = { emoji: resultEmoji, color: finalColor, basePrice: basePrice || 1, price: basePrice || 1, created: Date.now(), isCollectible: true }; localStorage.setItem('clicker_collectible_stickers', JSON.stringify(collectibleStickers)); updateUI(); renderCrafts(); var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;'; var stickerEl = document.createElement('div'); stickerEl.style.cssText = 'font-size:80px;padding:20px;border-radius:20px;border:4px solid #7c4dff;background:#1a1a2e;animation:popIn 0.5s ease;'; stickerEl.textContent = resultEmoji; overlay.appendChild(stickerEl); var statusEl = document.createElement('div'); statusEl.style.cssText = 'color:white;font-size:18px;margin-top:20px;'; statusEl.textContent = 'Выбираем фон...'; overlay.appendChild(statusEl); document.body.appendChild(overlay); setTimeout(function () { var colorIndex = 0; var spinInterval = setInterval(function () { var color = usedColors[colorIndex % usedColors.length]; stickerEl.style.background = getGradient(color.bg); stickerEl.style.borderColor = color.border; colorIndex++ }, 100); setTimeout(function () { clearInterval(spinInterval); stickerEl.style.background = getGradient(finalColor.bg); stickerEl.style.borderColor = finalColor.border; stickerEl.style.animation = 'glowPulse 0.5s ease-in-out 3'; statusEl.textContent = finalColor.name + '!'; setTimeout(function () { overlay.remove(); toast('✅ Скрафчено: ' + resultEmoji + ' (' + finalColor.name + ')!') }, 1500) }, 2000) }, 1500); overlay.addEventListener('click', function () { overlay.remove() }) }
 
-// ========== КРАФТЫ ==========
-function renderCrafts() { var container = document.getElementById('craftList2'); if (!container) return; var html = ''; for (var collectionName in CRAFT_COLLECTIONS) { html += '<div class="craft-collection"><div class="craft-collection-title">' + collectionName + '</div>'; CRAFT_COLLECTIONS[collectionName].forEach(function (craft, i) { var canCraft = craft.recipe.every(function (e) { return Object.values(limitedStickers).some(function (ls) { return ls && ls.emoji === e }) || Object.values(collectibleStickers).some(function (cs) { return cs && cs.emoji === e }) }); html += '<div class="craft-panel"><div class="craft-inv">'; craft.recipe.forEach(function (e) { var count = 0; for (var id in limitedStickers) { if (limitedStickers[id] && limitedStickers[id].emoji === e) count++ } for (var id in collectibleStickers) { if (collectibleStickers[id] && collectibleStickers[id].emoji === e) count++ } html += '<span class="craft-inv-item' + (count > 0 ? '' : ' used') + '" title="' + e + ' (есть: ' + count + ')">' + e + '</span>' }); html += '</div><div class="craft-arrow-panel">→</div><div class="craft-result-panel"><div class="craft-result-btn' + (canCraft ? ' ready' : '') + '" onclick="openCraftInventory(\'' + collectionName + '\',' + i + ')" style="opacity:' + (canCraft ? 1 : 0.5) + '">' + craft.result + '</div></div></div>' }); html += '</div>' } container.innerHTML = html }
-function openCraftInventory(collectionName, craftIndex) { var craft = CRAFT_COLLECTIONS[collectionName][craftIndex]; var needed = {}; craft.recipe.forEach(function (e) { needed[e] = (needed[e] || 0) + 1 }); var available = []; for (var id in limitedStickers) { var ls = limitedStickers[id]; if (ls && needed[ls.emoji] && needed[ls.emoji] > 0) available.push({ id: id, sticker: ls, type: 'limited' }) } for (var id in collectibleStickers) { var cs = collectibleStickers[id]; if (cs && needed[cs.emoji] && needed[cs.emoji] > 0) available.push({ id: id, sticker: cs, type: 'collectible' }) } if (available.length === 0) { toast('Нет нужных стикеров!', '#f44'); return } var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; var title = document.createElement('div'); title.style.cssText = 'color:white;font-size:20px;margin-bottom:10px;'; title.textContent = 'Выберите стикер для ' + craft.result; overlay.appendChild(title); var neededList = []; for (var e in needed) { if (needed[e] > 0) neededList.push(e + '(' + needed[e] + ')') } var neededDiv = document.createElement('div'); neededDiv.style.cssText = 'color:#ff9800;font-size:14px;margin-bottom:15px;'; neededDiv.textContent = 'Осталось: ' + (neededList.length > 0 ? neededList.join(', ') : 'всё собрано!'); overlay.appendChild(neededDiv); var grid = document.createElement('div'); grid.className = 'inv-grid'; var selectedItems = []; var usedColors = []; available.forEach(function (item) { if (!needed[item.sticker.emoji] || needed[item.sticker.emoji] <= 0) return; var el = document.createElement('div'); el.className = 'inv-item limited'; el.style.background = getGradient(item.sticker.color.bg); el.style.borderColor = item.sticker.color.border; el.innerHTML = item.sticker.emoji + '<br><span class="inv-count" style="color:white">' + item.sticker.color.name + '</span>'; el.onclick = function () { if (item.type === 'limited') { if (!limitedStickers[item.id]) return } else { if (!collectibleStickers[item.id]) return } if (!needed[item.sticker.emoji] || needed[item.sticker.emoji] <= 0) return; needed[item.sticker.emoji]--; usedColors.push(item.sticker.color); selectedItems.push(item); if (item.type === 'limited') { delete limitedStickers[item.id] } else { delete collectibleStickers[item.id] } var allDone = true; for (var e in needed) { if (needed[e] > 0) { allDone = false; break } } overlay.remove(); if (allDone) { showCraftAnimation(craft.result, usedColors, craft.basePrice); actionCounters.crafts++; } else { openCraftInventoryWithNeeded(collectionName, craftIndex, needed, usedColors, selectedItems) } }; grid.appendChild(el) }); overlay.appendChild(grid); var cancelBtn = document.createElement('button'); cancelBtn.textContent = '❌ Отменить'; cancelBtn.style.cssText = 'margin-top:15px;padding:10px 20px;border-radius:10px;cursor:pointer;background:#f44;color:white;border:none;'; cancelBtn.onclick = function () { for (var i = 0; i < selectedItems.length; i++) { var item = selectedItems[i]; if (item.type === 'limited') { limitedStickers[item.id] = item.sticker } else { collectibleStickers[item.id] = item.sticker } } overlay.remove(); updateUI(); renderCrafts(); toast('Крафт отменён, стикеры возвращены', '#ff8800') }; overlay.appendChild(cancelBtn); document.body.appendChild(overlay) }
-function openCraftInventoryWithNeeded(collectionName, craftIndex, needed, usedColors, selectedItems) { if (!selectedItems) selectedItems = []; var craft = CRAFT_COLLECTIONS[collectionName][craftIndex]; var available = []; for (var id in limitedStickers) { var ls = limitedStickers[id]; if (ls && needed[ls.emoji] && needed[ls.emoji] > 0) available.push({ id: id, sticker: ls, type: 'limited' }) } for (var id in collectibleStickers) { var cs = collectibleStickers[id]; if (cs && needed[cs.emoji] && needed[cs.emoji] > 0) available.push({ id: id, sticker: cs, type: 'collectible' }) } if (available.length === 0) { for (var i = 0; i < selectedItems.length; i++) { var item = selectedItems[i]; if (item.type === 'limited') { limitedStickers[item.id] = item.sticker } else { collectibleStickers[item.id] = item.sticker } } updateUI(); renderCrafts(); toast('Нет нужных стикеров! Стикеры возвращены.', '#f44'); return } var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; var title = document.createElement('div'); title.style.cssText = 'color:white;font-size:20px;margin-bottom:10px;'; title.textContent = 'Выберите стикер для ' + craft.result + ' (' + usedColors.length + '/' + craft.recipe.length + ')'; overlay.appendChild(title); var neededList = []; for (var e in needed) { if (needed[e] > 0) neededList.push(e) } var neededDiv = document.createElement('div'); neededDiv.style.cssText = 'color:#ff9800;font-size:14px;margin-bottom:15px;'; neededDiv.textContent = 'Осталось: ' + neededList.join(', '); overlay.appendChild(neededDiv); var grid = document.createElement('div'); grid.className = 'inv-grid'; available.forEach(function (item) { if (!needed[item.sticker.emoji] || needed[item.sticker.emoji] <= 0) return; var el = document.createElement('div'); el.className = 'inv-item limited'; el.style.background = getGradient(item.sticker.color.bg); el.style.borderColor = item.sticker.color.border; el.innerHTML = item.sticker.emoji + '<br><span class="inv-count" style="color:white">' + item.sticker.color.name + '</span>'; el.onclick = function () { if (item.type === 'limited') { if (!limitedStickers[item.id]) return } else { if (!collectibleStickers[item.id]) return } needed[item.sticker.emoji]--; usedColors.push(item.sticker.color); selectedItems.push(item); if (item.type === 'limited') { delete limitedStickers[item.id] } else { delete collectibleStickers[item.id] } var allDone = true; for (var e in needed) { if (needed[e] > 0) { allDone = false; break } } overlay.remove(); if (allDone) { showCraftAnimation(craft.result, usedColors, craft.basePrice); actionCounters.crafts++; } else { openCraftInventoryWithNeeded(collectionName, craftIndex, needed, usedColors, selectedItems) } }; grid.appendChild(el) }); overlay.appendChild(grid); var cancelBtn = document.createElement('button'); cancelBtn.textContent = '❌ Отменить (вернуть стикеры)'; cancelBtn.style.cssText = 'margin-top:15px;padding:10px 20px;border-radius:10px;cursor:pointer;background:#f44;color:white;border:none;'; cancelBtn.onclick = function () { for (var i = 0; i < selectedItems.length; i++) { var item = selectedItems[i]; if (item.type === 'limited') { limitedStickers[item.id] = item.sticker } else { collectibleStickers[item.id] = item.sticker } } overlay.remove(); updateUI(); renderCrafts(); toast('Крафт отменён, стикеры возвращены', '#ff8800') }; overlay.appendChild(cancelBtn); document.body.appendChild(overlay) }
-function showCraftAnimation(resultEmoji, usedColors, basePrice) { var finalColor = usedColors[Math.floor(Math.random() * usedColors.length)]; var id = 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); collectibleStickers[id] = { emoji: resultEmoji, color: finalColor, basePrice: basePrice || 1, price: basePrice || 1, created: Date.now(), isCollectible: true }; localStorage.setItem('clicker_collectible_stickers', JSON.stringify(collectibleStickers)); updateUI(); renderCrafts(); var overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;'; var stickerEl = document.createElement('div'); stickerEl.style.cssText = 'font-size:80px;padding:20px;border-radius:20px;border:4px solid #7c4dff;background:#1a1a2e;animation:popIn 0.5s ease;'; stickerEl.textContent = resultEmoji; overlay.appendChild(stickerEl); var statusEl = document.createElement('div'); statusEl.style.cssText = 'color:white;font-size:18px;margin-top:20px;'; statusEl.textContent = 'Выбираем фон...'; overlay.appendChild(statusEl); document.body.appendChild(overlay); setTimeout(function () { var colorIndex = 0; var spinInterval = setInterval(function () { var color = usedColors[colorIndex % usedColors.length]; stickerEl.style.background = getGradient(color.bg); stickerEl.style.borderColor = color.border; colorIndex++ }, 100); setTimeout(function () { clearInterval(spinInterval); stickerEl.style.background = getGradient(finalColor.bg); stickerEl.style.borderColor = finalColor.border; stickerEl.style.animation = 'glowPulse 0.5s ease-in-out 3'; statusEl.textContent = finalColor.name + '!'; setTimeout(function () { overlay.remove(); toast('✅ Скрафчено: ' + resultEmoji + ' (' + finalColor.name + ')!') }, 1500) }, 2000) }, 1500); overlay.addEventListener('click', function () { overlay.remove() }) }
+    // ========== ФЬЮЗ ==========
+    function saveFuseSlots() { var saveData = fuseSlots.map(function (slot) { return slot ? { emoji: slot.emoji, points: slot.points } : null }); localStorage.setItem('clicker_fuse_slots', JSON.stringify(saveData)) }
+    function loadFuseSlots() { try { var saved = JSON.parse(localStorage.getItem('clicker_fuse_slots') || '[]'); fuseSlots = []; for (var i = 0; i < saved.length; i++) { if (saved[i] && saved[i].emoji) { fuseSlots.push({ emoji: saved[i].emoji, points: saved[i].points || 1 }) } } } catch (e) { fuseSlots = [] } }
+    function renderFuseInventory() { var container = document.getElementById('fuseInventory'); if (!container) return; var html = ''; for (var t in stickers) { if (stickers[t] > 0) { var tp = TYPES[t]; var points = tp ? tp.p : 1; html += '<div class="inv-item" onclick="addToFuse(\'' + t + '\')" style="cursor:pointer;">' + t + ' <span class="inv-count">×' + stickers[t] + ' (' + points + 'очк)</span></div>' } } container.innerHTML = html || '<div style="color:#666;font-size:12px;">Нет обычных стикеров</div>' }
+    function addToFuse(emoji) { if (!stickers[emoji] || stickers[emoji] <= 0) return; stickers[emoji]--; if (stickers[emoji] <= 0) delete stickers[emoji]; var tp = TYPES[emoji]; fuseSlots.push({ emoji: emoji, points: tp ? tp.p : 1 }); saveFuseSlots(); updateFuseUI(); renderFuseInventory(); updateUI() }
+    function removeFromFuse(index) { var item = fuseSlots[index]; if (!item) return; stickers[item.emoji] = (stickers[item.emoji] || 0) + 1; fuseSlots.splice(index, 1); saveFuseSlots(); updateFuseUI(); renderFuseInventory(); updateUI() }
+    function clearFuse() { for (var i = 0; i < fuseSlots.length; i++) { if (fuseSlots[i]) { stickers[fuseSlots[i].emoji] = (stickers[fuseSlots[i].emoji] || 0) + 1 } } fuseSlots = []; saveFuseSlots(); updateFuseUI(); renderFuseInventory(); updateUI() }
+    function updateFuseUI() { var container = document.getElementById('fuseSlots'); if (!container) return; var totalPoints = 0; container.innerHTML = ''; for (var i = 0; i < fuseSlots.length; i++) { if (fuseSlots[i]) { totalPoints += fuseSlots[i].points || 0; var slot = document.createElement('div'); slot.className = 'fuse-slot filled'; slot.style.cursor = 'pointer'; slot.style.background = 'rgba(76,175,80,0.3)'; slot.style.borderColor = '#4caf50'; slot.innerHTML = fuseSlots[i].emoji + '<div style="font-size:8px;color:#aaa;">' + (fuseSlots[i].points || 0) + 'очк</div>'; slot.onclick = (function (index) { return function () { removeFromFuse(index) } })(i); container.appendChild(slot) } } document.getElementById('fusePoints').textContent = totalPoints; document.getElementById('fuseFill').style.width = Math.min(100, (totalPoints / FUSE_POINTS_NEEDED) * 100) + '%'; document.getElementById('fuseBtn').disabled = totalPoints < FUSE_POINTS_NEEDED || fuseSlots.length === 0; document.getElementById('fuseRewards').innerHTML = FUSE_REWARDS.map(function (r) { return '<div>' + r.emoji + ' ' + r.chance + '% (💷' + r.basePrice + ')</div>' }).join('') }
+    function doFuse() { var totalPoints = 0; for (var i = 0; i < fuseSlots.length; i++) { totalPoints += fuseSlots[i].points || 0 } if (totalPoints < FUSE_POINTS_NEEDED) return; var total = FUSE_REWARDS.reduce(function (s, r) { return s + r.chance }, 0); var rand = Math.random() * total; var reward = FUSE_REWARDS[0]; for (var r of FUSE_REWARDS) { rand -= r.chance; if (rand <= 0) { reward = r; break } } var color = randomLimitedColor(); var id = 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); collectibleStickers[id] = { emoji: reward.emoji, color: color, basePrice: reward.basePrice, price: reward.basePrice, created: Date.now(), isCollectible: true }; actionCounters.fuses++; fuseSlots = []; saveFuseSlots(); localStorage.setItem('clicker_collectible_stickers', JSON.stringify(collectibleStickers)); updateFuseUI(); renderFuseInventory(); updateUI(); saveClickerData(); toast('⚡ Фьюз! ' + reward.emoji + ' (' + color.name + ')!', '#ffd700') }
 
-// ========== ФЬЮЗ ==========
-function saveFuseSlots() { var saveData = fuseSlots.map(function (slot) { return slot ? { emoji: slot.emoji, points: slot.points } : null }); localStorage.setItem('clicker_fuse_slots', JSON.stringify(saveData)) }
-function loadFuseSlots() { try { var saved = JSON.parse(localStorage.getItem('clicker_fuse_slots') || '[]'); fuseSlots = []; for (var i = 0; i < saved.length; i++) { if (saved[i] && saved[i].emoji) { fuseSlots.push({ emoji: saved[i].emoji, points: saved[i].points || 1 }) } } } catch (e) { fuseSlots = [] } }
-function renderFuseInventory() { var container = document.getElementById('fuseInventory'); if (!container) return; var html = ''; for (var t in stickers) { if (stickers[t] > 0) { var tp = TYPES[t]; var points = tp ? tp.p : 1; html += '<div class="inv-item" onclick="addToFuse(\'' + t + '\')" style="cursor:pointer;">' + t + ' <span class="inv-count">×' + stickers[t] + ' (' + points + 'очк)</span></div>' } } container.innerHTML = html || '<div style="color:#666;font-size:12px;">Нет обычных стикеров</div>' }
-function addToFuse(emoji) { if (!stickers[emoji] || stickers[emoji] <= 0) return; stickers[emoji]--; if (stickers[emoji] <= 0) delete stickers[emoji]; var tp = TYPES[emoji]; fuseSlots.push({ emoji: emoji, points: tp ? tp.p : 1 }); saveFuseSlots(); updateFuseUI(); renderFuseInventory(); updateUI() }
-function removeFromFuse(index) { var item = fuseSlots[index]; if (!item) return; stickers[item.emoji] = (stickers[item.emoji] || 0) + 1; fuseSlots.splice(index, 1); saveFuseSlots(); updateFuseUI(); renderFuseInventory(); updateUI() }
-function clearFuse() { for (var i = 0; i < fuseSlots.length; i++) { if (fuseSlots[i]) { stickers[fuseSlots[i].emoji] = (stickers[fuseSlots[i].emoji] || 0) + 1 } } fuseSlots = []; saveFuseSlots(); updateFuseUI(); renderFuseInventory(); updateUI() }
-function updateFuseUI() { var container = document.getElementById('fuseSlots'); if (!container) return; var totalPoints = 0; container.innerHTML = ''; for (var i = 0; i < fuseSlots.length; i++) { if (fuseSlots[i]) { totalPoints += fuseSlots[i].points || 0; var slot = document.createElement('div'); slot.className = 'fuse-slot filled'; slot.style.cursor = 'pointer'; slot.style.background = 'rgba(76,175,80,0.3)'; slot.style.borderColor = '#4caf50'; slot.innerHTML = fuseSlots[i].emoji + '<div style="font-size:8px;color:#aaa;">' + (fuseSlots[i].points || 0) + 'очк</div>'; slot.onclick = (function (index) { return function () { removeFromFuse(index) } })(i); container.appendChild(slot) } } document.getElementById('fusePoints').textContent = totalPoints; document.getElementById('fuseFill').style.width = Math.min(100, (totalPoints / FUSE_POINTS_NEEDED) * 100) + '%'; document.getElementById('fuseBtn').disabled = totalPoints < FUSE_POINTS_NEEDED || fuseSlots.length === 0; document.getElementById('fuseRewards').innerHTML = FUSE_REWARDS.map(function (r) { return '<div>' + r.emoji + ' ' + r.chance + '% (💷' + r.basePrice + ')</div>' }).join('') }
-function doFuse() { var totalPoints = 0; for (var i = 0; i < fuseSlots.length; i++) { totalPoints += fuseSlots[i].points || 0 } if (totalPoints < FUSE_POINTS_NEEDED) return; var total = FUSE_REWARDS.reduce(function (s, r) { return s + r.chance }, 0); var rand = Math.random() * total; var reward = FUSE_REWARDS[0]; for (var r of FUSE_REWARDS) { rand -= r.chance; if (rand <= 0) { reward = r; break } } var color = randomLimitedColor(); var id = 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); collectibleStickers[id] = { emoji: reward.emoji, color: color, basePrice: reward.basePrice, price: reward.basePrice, created: Date.now(), isCollectible: true }; actionCounters.fuses++; fuseSlots = []; saveFuseSlots(); localStorage.setItem('clicker_collectible_stickers', JSON.stringify(collectibleStickers)); updateFuseUI(); renderFuseInventory(); updateUI(); saveClickerData(); toast('⚡ Фьюз! ' + reward.emoji + ' (' + color.name + ')!', '#ffd700') }
+    // ========== ОТРИСОВКА ==========
+    function updateUI() { var rm = getRebMult(); var el; el = document.getElementById('bal'); if (el) el.textContent = formatMoney(balance); el = document.getElementById('clicks'); if (el) el.textContent = Math.floor(totalClicks).toLocaleString(); el = document.getElementById('cps'); if (el) el.textContent = cps; el = document.getElementById('boostVal'); if (el) el.textContent = boostPct + '%'; el = document.getElementById('clvl'); if (el) el.textContent = clickPower; el = document.getElementById('cpr'); if (el) el.textContent = formatMoney(price(10, 1.5, clickPower - 1)); el = document.getElementById('alvl'); if (el) el.textContent = autoClicker; el = document.getElementById('apr'); if (el) el.textContent = formatMoney(price(50, 1.8, autoClicker)); el = document.getElementById('mlvl'); if (el) el.textContent = multiplier; el = document.getElementById('mpr'); if (el) el.textContent = formatMoney(price(500, 3, multiplier)); el = document.getElementById('rebLvl'); if (el) el.textContent = rebirths; el = document.getElementById('rebMult'); if (el) el.textContent = rm; el = document.getElementById('rebBtn'); if (el) el.textContent = rebirths >= 4 ? 'Максимум!' : 'Переродиться (' + formatMoney(REBIRTH_COSTS[rebirths]) + ')'; el = document.getElementById('craftCnt'); if (el) el.textContent = craftCnt; el = document.getElementById('craftTargetName'); if (el) el.textContent = TYPES[craftTarget] ? TYPES[craftTarget].emoji + ' ' + TYPES[craftTarget].n : 'Не выбрана'; var md = document.getElementById('myStickers'); if (md) { md.innerHTML = ''; var total = 0; for (var t in stickers) { var c = stickers[t]; if (c <= 0) continue; total += c; var tp = TYPES[t]; if (!tp) continue; var d = document.createElement('div'); d.className = 'sticker' + (favorites[t] ? ' fav' : ''); d.style.cursor = 'pointer'; d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#999;">' + formatMoney(tp.v) + '</div>'; d.onclick = (function (emoji) { return function () { addToCraft(emoji) } })(t); if (c >= 5) { d.style.border = '2px solid #ff9800'; d.style.background = '#fff3e0'; var mb = document.createElement('div'); mb.style.cssText = 'font-size:8px;color:#ff6600;cursor:pointer;margin-top:2px;font-weight:bold'; mb.textContent = '🔄 Слить 5'; mb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); mergeStickers(emoji) } })(t); d.appendChild(mb) } var fb = document.createElement('div'); fb.style.cssText = 'font-size:8px;cursor:pointer;margin-top:1px'; fb.textContent = favorites[t] ? '⭐' : '☆'; fb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); toggleFavorite(emoji) } })(t); d.appendChild(fb); md.appendChild(d) } for (var id in limitedStickers) { var ls = limitedStickers[id]; if (!ls) continue; total++; var stickerAge = (Date.now() - (ls.created || Date.now())) / 1000; var canSell = stickerAge >= 10; var d = document.createElement('div'); d.className = 'sticker'; d.style.background = getGradient(ls.color.bg); d.style.border = '3px solid ' + ls.color.border; d.style.boxShadow = '0 0 10px ' + ls.color.border; d.title = ls.color.name + ' | ' + formatMoney(ls.price || 0); d.innerHTML = '<div class="sticker-emoji">' + ls.emoji + '</div>'; if (!canSell) { d.innerHTML += '<div style="font-size:9px;color:#ff6600">⏳ ' + (10 - stickerAge).toFixed(1) + 'с</div>' } else { d.innerHTML += '<div style="font-size:9px;color:#333">' + formatMoney(ls.price || 0) + '</div>' } if (canSell) { var sb = document.createElement('div'); sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; sb.textContent = '💎' + getLimitedCoinValue(ls); sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellLimitedForCoins(id) } })(id); d.appendChild(sb) } var isPinned = pinned.some(function (p) { return p.id === id }); var pb = document.createElement('div'); pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; pb.textContent = isPinned ? '📌✅' : '📌'; pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); d.appendChild(pb); md.appendChild(d) } for (var id in collectibleStickers) { var cs = collectibleStickers[id]; if (!cs) continue; total++; var d = document.createElement('div'); d.className = 'sticker collectible'; d.style.background = getGradient(cs.color.bg); d.style.border = '3px solid ' + cs.color.border; d.innerHTML = '<div class="sticker-emoji">' + cs.emoji + '</div><div style="font-size:9px;color:#7c4dff;margin-top:2px;">💷' + (cs.price || cs.basePrice || 0).toFixed(1) + '</div>'; var sb = document.createElement('div'); sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; var sellPrice = cs.price || cs.basePrice || 0; sb.textContent = '💷+' + sellPrice.toFixed(1); sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellCollectible(id) } })(id); d.appendChild(sb); var isPinned = pinned.some(function (p) { return p.id === id }); var pb = document.createElement('div'); pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; pb.textContent = isPinned ? '📌✅' : '📌'; pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); d.appendChild(pb); md.appendChild(d) } if (total === 0) md.innerHTML = '<div style="color:#999;font-size:12px;">Нет стикеров</div>'; el = document.getElementById('stCnt'); if (el) el.textContent = total } var cd = document.getElementById('craftSlots'); if (cd) { cd.innerHTML = ''; var pts = 0; for (var t in craftSel) { var c = craftSel[t]; if (c <= 0) continue; var tp = TYPES[t]; if (!tp) continue; pts += tp.p * c; var d = document.createElement('div'); d.className = 'sticker sel'; d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#4caf50">' + (tp.p * c) + 'очк</div>'; d.onclick = (function (emoji) { return function () { removeFromCraft(emoji) } })(t); cd.appendChild(d) } var info = document.getElementById('craftInfo'), btn = document.getElementById('craftBtn'); if (craftTarget && pts > 0) { var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3); if (info) info.textContent = 'Нужно: ' + need + ' | Есть: ' + pts + ' | Шанс: ' + Math.min(100, (pts / need) * 100).toFixed(0) + '%'; if (btn) btn.disabled = false } else if (!craftTarget && pts > 0) { if (info) info.textContent = 'Выберите цель'; if (btn) btn.disabled = true } else { if (cd.children.length === 0 && cd) cd.innerHTML = '<div style="color:#999;font-size:12px;">Нажимайте на стикеры</div>'; if (info) info.textContent = ''; if (btn) btn.disabled = true } } if (boostActive) document.getElementById('safe').classList.add('boosting'); else document.getElementById('safe').classList.remove('boosting'); var packDiv = document.getElementById('packShop'); if (packDiv) { packDiv.innerHTML = STICKER_PACKS.map(function (pack) { return '<button class="btn btn-gold" onclick="openPack(\'' + pack.id + '\')" style="flex-shrink:0;width:auto;padding:8px 14px;font-size:11px;white-space:nowrap;">🎁 ' + pack.name + ' 💎' + pack.price + '</button>' }).join('') } updateUnpinButton() }
 
-// ========== ОТРИСОВКА ==========
-function updateUI() { var rm = getRebMult(); var el; el = document.getElementById('bal'); if (el) el.textContent = formatMoney(balance); el = document.getElementById('clicks'); if (el) el.textContent = Math.floor(totalClicks).toLocaleString(); el = document.getElementById('cps'); if (el) el.textContent = cps; el = document.getElementById('boostVal'); if (el) el.textContent = boostPct + '%'; el = document.getElementById('clvl'); if (el) el.textContent = clickPower; el = document.getElementById('cpr'); if (el) el.textContent = formatMoney(price(10, 1.5, clickPower - 1)); el = document.getElementById('alvl'); if (el) el.textContent = autoClicker; el = document.getElementById('apr'); if (el) el.textContent = formatMoney(price(50, 1.8, autoClicker)); el = document.getElementById('mlvl'); if (el) el.textContent = multiplier; el = document.getElementById('mpr'); if (el) el.textContent = formatMoney(price(500, 3, multiplier)); el = document.getElementById('rebLvl'); if (el) el.textContent = rebirths; el = document.getElementById('rebMult'); if (el) el.textContent = rm; el = document.getElementById('rebBtn'); if (el) el.textContent = rebirths >= 4 ? 'Максимум!' : 'Переродиться (' + formatMoney(REBIRTH_COSTS[rebirths]) + ')'; el = document.getElementById('craftCnt'); if (el) el.textContent = craftCnt; el = document.getElementById('craftTargetName'); if (el) el.textContent = TYPES[craftTarget] ? TYPES[craftTarget].emoji + ' ' + TYPES[craftTarget].n : 'Не выбрана'; var md = document.getElementById('myStickers'); if (md) { md.innerHTML = ''; var total = 0; for (var t in stickers) { var c = stickers[t]; if (c <= 0) continue; total += c; var tp = TYPES[t]; if (!tp) continue; var d = document.createElement('div'); d.className = 'sticker' + (favorites[t] ? ' fav' : ''); d.style.cursor = 'pointer'; d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#999;">' + formatMoney(tp.v) + '</div>'; d.onclick = (function (emoji) { return function () { addToCraft(emoji) } })(t); if (c >= 5) { d.style.border = '2px solid #ff9800'; d.style.background = '#fff3e0'; var mb = document.createElement('div'); mb.style.cssText = 'font-size:8px;color:#ff6600;cursor:pointer;margin-top:2px;font-weight:bold'; mb.textContent = '🔄 Слить 5'; mb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); mergeStickers(emoji) } })(t); d.appendChild(mb) } var fb = document.createElement('div'); fb.style.cssText = 'font-size:8px;cursor:pointer;margin-top:1px'; fb.textContent = favorites[t] ? '⭐' : '☆'; fb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); toggleFavorite(emoji) } })(t); d.appendChild(fb); md.appendChild(d) } for (var id in limitedStickers) { var ls = limitedStickers[id]; if (!ls) continue; total++; var stickerAge = (Date.now() - (ls.created || Date.now())) / 1000; var canSell = stickerAge >= 10; var d = document.createElement('div'); d.className = 'sticker'; d.style.background = getGradient(ls.color.bg); d.style.border = '3px solid ' + ls.color.border; d.style.boxShadow = '0 0 10px ' + ls.color.border; d.title = ls.color.name + ' | ' + formatMoney(ls.price || 0); d.innerHTML = '<div class="sticker-emoji">' + ls.emoji + '</div>'; if (!canSell) { d.innerHTML += '<div style="font-size:9px;color:#ff6600">⏳ ' + (10 - stickerAge).toFixed(1) + 'с</div>' } else { d.innerHTML += '<div style="font-size:9px;color:#333">' + formatMoney(ls.price || 0) + '</div>' } if (canSell) { var sb = document.createElement('div'); sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; sb.textContent = '💎' + getLimitedCoinValue(ls); sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellLimitedForCoins(id) } })(id); d.appendChild(sb) } var isPinned = pinned.some(function (p) { return p.id === id }); var pb = document.createElement('div'); pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; pb.textContent = isPinned ? '📌✅' : '📌'; pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); d.appendChild(pb); md.appendChild(d) } for (var id in collectibleStickers) { var cs = collectibleStickers[id]; if (!cs) continue; total++; var d = document.createElement('div'); d.className = 'sticker collectible'; d.style.background = getGradient(cs.color.bg); d.style.border = '3px solid ' + cs.color.border; d.innerHTML = '<div class="sticker-emoji">' + cs.emoji + '</div><div style="font-size:9px;color:#7c4dff;margin-top:2px;">💷' + (cs.price || cs.basePrice || 0).toFixed(1) + '</div>'; var sb = document.createElement('div'); sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; var sellPrice = cs.price || cs.basePrice || 0; sb.textContent = '💷+' + sellPrice.toFixed(1); sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellCollectible(id) } })(id); d.appendChild(sb); var isPinned = pinned.some(function (p) { return p.id === id }); var pb = document.createElement('div'); pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; pb.textContent = isPinned ? '📌✅' : '📌'; pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); d.appendChild(pb); md.appendChild(d) } if (total === 0) md.innerHTML = '<div style="color:#999;font-size:12px;">Нет стикеров</div>'; el = document.getElementById('stCnt'); if (el) el.textContent = total } var cd = document.getElementById('craftSlots'); if (cd) { cd.innerHTML = ''; var pts = 0; for (var t in craftSel) { var c = craftSel[t]; if (c <= 0) continue; var tp = TYPES[t]; if (!tp) continue; pts += tp.p * c; var d = document.createElement('div'); d.className = 'sticker sel'; d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#4caf50">' + (tp.p * c) + 'очк</div>'; d.onclick = (function (emoji) { return function () { removeFromCraft(emoji) } })(t); cd.appendChild(d) } var info = document.getElementById('craftInfo'), btn = document.getElementById('craftBtn'); if (craftTarget && pts > 0) { var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3); if (info) info.textContent = 'Нужно: ' + need + ' | Есть: ' + pts + ' | Шанс: ' + Math.min(100, (pts / need) * 100).toFixed(0) + '%'; if (btn) btn.disabled = false } else if (!craftTarget && pts > 0) { if (info) info.textContent = 'Выберите цель'; if (btn) btn.disabled = true } else { if (cd.children.length === 0 && cd) cd.innerHTML = '<div style="color:#999;font-size:12px;">Нажимайте на стикеры</div>'; if (info) info.textContent = ''; if (btn) btn.disabled = true } } if (boostActive) document.getElementById('safe').classList.add('boosting'); else document.getElementById('safe').classList.remove('boosting'); var packDiv = document.getElementById('packShop'); if (packDiv) { packDiv.innerHTML = STICKER_PACKS.map(function (pack) { return '<button class="btn btn-gold" onclick="openPack(\'' + pack.id + '\')" style="flex-shrink:0;width:auto;padding:8px 14px;font-size:11px;white-space:nowrap;">🎁 ' + pack.name + ' 💎' + pack.price + '</button>' }).join('') } updateUnpinButton() }
+    // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
+    function toggleFavorite(emoji) { favorites[emoji] = !favorites[emoji]; if (!favorites[emoji]) delete favorites[emoji]; saveExtra(); updateUI() }
+    function openCraftModal() { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalShop').style.display = 'none'; document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalCraft').style.display = 'block'; var list = document.getElementById('craftList'); list.innerHTML = ''; var tn = ['', 'Обычный', 'Необычный', 'Редкий', 'Эпический', 'Легендарный', 'Мифический']; for (var tier = 1; tier <= 6; tier++) { var items = Object.entries(TYPES).filter(function (e) { return e[1].t === tier }); if (items.length === 0) continue; var td = document.createElement('div'); td.style.cssText = 'font-weight:bold;margin:10px 0 5px;color:#0077b6;text-align:left'; td.textContent = tn[tier]; list.appendChild(td); items.forEach(function (entry) { var emoji = entry[0], st = entry[1]; var div = document.createElement('div'); div.className = 'craft-option'; if (craftTarget === emoji) div.classList.add('selected'); div.innerHTML = '<span style="font-size:30px">' + emoji + '</span><span style="flex:1;text-align:left"><b>' + st.n + '</b><br><span style="font-size:11px;color:#666">Очков: ' + Math.ceil(st.p * 1.3) + ' | ' + formatMoney(st.v) + '</span></span>'; div.onclick = (function (emoji) { return function (e) { e.stopPropagation(); craftTarget = emoji; closeCraftModal(); updateUI(); saveClickerData() } })(emoji); list.appendChild(div) }) } }
+    function activateBooster() { if (boostActive) return; boostActive = true; boostPct = Math.min(boostPct + 50, 500); document.getElementById('safe').classList.add('boosting'); toast('💥 БУСТЕР +50%!', '#ff6600'); setTimeout(function () { boostActive = false; boostPct = Math.max(0, boostPct - 50); updateUI() }, 10000) }
+    function getClickBonus() { var r = Math.random() * 100; if (r < 0.1) return 100; if (r < 1.1) return 10; if (r < 11.1) return 2; return 1 }
+    function showBonusPopup(mult) { var w = document.getElementById('safeWrap'), p = document.createElement('div'); p.className = 'bonus-popup'; p.textContent = '🔥 ×' + mult + '!'; w.appendChild(p); setTimeout(function () { p.remove() }, 1500) }
 
-// ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
-function toggleFavorite(emoji) { favorites[emoji] = !favorites[emoji]; if (!favorites[emoji]) delete favorites[emoji]; saveExtra(); updateUI() }
-function openCraftModal() { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalShop').style.display = 'none'; document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalCraft').style.display = 'block'; var list = document.getElementById('craftList'); list.innerHTML = ''; var tn = ['', 'Обычный', 'Необычный', 'Редкий', 'Эпический', 'Легендарный', 'Мифический']; for (var tier = 1; tier <= 6; tier++) { var items = Object.entries(TYPES).filter(function (e) { return e[1].t === tier }); if (items.length === 0) continue; var td = document.createElement('div'); td.style.cssText = 'font-weight:bold;margin:10px 0 5px;color:#0077b6;text-align:left'; td.textContent = tn[tier]; list.appendChild(td); items.forEach(function (entry) { var emoji = entry[0], st = entry[1]; var div = document.createElement('div'); div.className = 'craft-option'; if (craftTarget === emoji) div.classList.add('selected'); div.innerHTML = '<span style="font-size:30px">' + emoji + '</span><span style="flex:1;text-align:left"><b>' + st.n + '</b><br><span style="font-size:11px;color:#666">Очков: ' + Math.ceil(st.p * 1.3) + ' | ' + formatMoney(st.v) + '</span></span>'; div.onclick = (function (emoji) { return function (e) { e.stopPropagation(); craftTarget = emoji; closeCraftModal(); updateUI(); saveClickerData() } })(emoji); list.appendChild(div) }) } }
-function activateBooster() { if (boostActive) return; boostActive = true; boostPct = Math.min(boostPct + 50, 500); document.getElementById('safe').classList.add('boosting'); toast('💥 БУСТЕР +50%!', '#ff6600'); setTimeout(function () { boostActive = false; boostPct = Math.max(0, boostPct - 50); updateUI() }, 10000) }
-function getClickBonus() { var r = Math.random() * 100; if (r < 0.1) return 100; if (r < 1.1) return 10; if (r < 11.1) return 2; return 1 }
-function showBonusPopup(mult) { var w = document.getElementById('safeWrap'), p = document.createElement('div'); p.className = 'bonus-popup'; p.textContent = '🔥 ×' + mult + '!'; w.appendChild(p); setTimeout(function () { p.remove() }, 1500) }
+    // ========== КЛИК ==========
+    document.getElementById('safeWrap').onclick = function (e) { var now = Date.now(); if (now - clickTime > 1000) cps = 0; clickTime = now; if (cps >= 25) return; cps++; if (!boostActive && Math.random() < 0.02 && boostPct < 500) activateBooster(); var cb = getClickBonus(); if (cb > 1) showBonusPopup(cb); var earn = clickPower * Math.pow(2, Math.min(multiplier, 50)) * getRebMult() * cb * (1 + boostPct / 100); if (!isFinite(earn)) earn = clickPower; balance += earn; totalClicks++; actionCounters.clicks++; if (Math.random() < 0.05) { var s = randomSticker(); stickers[s] = (stickers[s] || 0) + 1 } var safe = document.getElementById('safe'), rect = safe.getBoundingClientRect(); var p = document.createElement('div'); p.className = 'floating-text'; p.textContent = '+' + formatMoney(earn); p.style.left = Math.max(0, e.clientX - rect.left - 20) + 'px'; p.style.top = Math.max(0, e.clientY - rect.top - 10) + 'px'; safe.appendChild(p); setTimeout(function () { p.remove() }, 700); safe.style.transform = 'scale(0.94)'; setTimeout(function () { safe.style.transform = 'scale(1)' }, 150); updateUI(); saveClickerData() };
+    function getTotalBalance() { return balance + (prestigeLevel * 1e12) }
+    function spendMoney(amount) { var neededFromDollars = Math.floor(amount / 1e12); if (neededFromDollars > prestigeLevel) neededFromDollars = prestigeLevel; if (neededFromDollars > 0) { prestigeLevel -= neededFromDollars; balance += neededFromDollars * 1e12; localStorage.setItem('clicker_prestige', prestigeLevel); checkPrestigeDisplay() } if (balance >= amount) { balance -= amount } else { if (prestigeLevel > 0) { prestigeLevel--; balance += 1e12; localStorage.setItem('clicker_prestige', prestigeLevel); checkPrestigeDisplay(); balance -= amount } } }
+    function buyUpgrade(type) { var ml; if (type === 'clickPower') ml = getMaxLvl('click'); else if (type === 'autoClicker') ml = getMaxLvl('auto'); else if (type === 'multiplier') ml = getMaxLvl('multi'); var totalBal = balance + (prestigeLevel * 1e12); if (type === 'clickPower') { if (clickPower >= ml) { toast('Макс!', '#f44'); return } var p = price(10, 1.5, clickPower - 1); if (totalBal >= p) { spendMoney(p); clickPower++ } else { toast('Мало! Нужно ' + formatMoney(p), '#f44'); return } } else if (type === 'autoClicker') { if (autoClicker >= ml) { toast('Макс!', '#f44'); return } var p = price(50, 1.8, autoClicker); if (totalBal >= p) { spendMoney(p); autoClicker++ } else { toast('Мало! Нужно ' + formatMoney(p), '#f44'); return } } else if (type === 'multiplier') { if (multiplier >= ml || multiplier >= 50) { toast('Макс!', '#f44'); return } var p = price(500, 3, multiplier); if (totalBal >= p) { spendMoney(p); multiplier++ } else { toast('Мало! Нужно ' + formatMoney(p), '#f44'); return } } updateUI(); saveClickerData() }
+    function rebirth() { if (rebirths >= 4) { toast('Макс!', '#f44'); return } var totalBal = balance + (prestigeLevel * 1e12); var cost = REBIRTH_COSTS[rebirths]; if (totalBal < cost) { toast('Нужно ' + formatMoney(cost), '#f44'); return } if (!confirm('Перерождение ' + (rebirths + 1) + '?')) return; spendMoney(cost); totalClicks = 0; clickPower = 1; autoClicker = 0; multiplier = 0; rebirths++; updateUI(); saveClickerData(); toast('🌟 Перерождение ' + rebirths + '!', '#ffd700') }
+    function addToCraft(t) { if (!stickers[t]) return; if (favorites[t]) { toast('⭐ В избранном!', '#f44'); return } stickers[t]--; if (stickers[t] <= 0) delete stickers[t]; craftSel[t] = (craftSel[t] || 0) + 1; updateUI() }
+    function removeFromCraft(t) { if (!craftSel[t]) return; craftSel[t]--; if (craftSel[t] <= 0) delete craftSel[t]; stickers[t] = (stickers[t] || 0) + 1; updateUI() }
+    function clearCraft() { for (var t in craftSel) { stickers[t] = (stickers[t] || 0) + craftSel[t] } craftSel = {}; updateUI() }
+    function doCraft() { if (!craftTarget) { toast('Выберите цель!', '#f44'); return } if (TYPES[craftTarget] && TYPES[craftTarget].secret) { toast('❌ Секретные нельзя!', '#f44'); return } var pts = 0; for (var t in craftSel) { var tp = TYPES[t]; if (!tp) continue; pts += tp.p * craftSel[t] } if (pts <= 0) { toast('Выберите стикеры!', '#f44'); return } var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3), chance = Math.min(100, (pts / need) * 100); craftSel = {}; if (Math.random() * 100 < chance) { stickers[craftTarget] = (stickers[craftTarget] || 0) + 1; craftCnt++; toast('✅ ' + ct.emoji + ' ' + ct.n + '!', '#4caf50') } else toast('❌ Неудача', '#f44'); updateUI(); saveClickerData() }
+    function sellStickers() { var total = 0, ts = []; for (var t in stickers) { if (favorites[t]) continue; var tp = TYPES[t]; if (tp) total += tp.v * stickers[t]; ts.push(t) } if (total === 0) { toast('Нет стикеров!', '#f44'); return } if (!confirm('Продать за ' + formatMoney(total) + '?')) return; balance += total; ts.forEach(function (t) { delete stickers[t] }); updateUI(); saveClickerData(); toast('💸 +' + formatMoney(total), '#ffd700') }
 
-// ========== КЛИК ==========
-document.getElementById('safeWrap').onclick = function (e) { var now = Date.now(); if (now - clickTime > 1000) cps = 0; clickTime = now; if (cps >= 25) return; cps++; if (!boostActive && Math.random() < 0.02 && boostPct < 500) activateBooster(); var cb = getClickBonus(); if (cb > 1) showBonusPopup(cb); var earn = clickPower * Math.pow(2, Math.min(multiplier, 50)) * getRebMult() * cb * (1 + boostPct / 100); if (!isFinite(earn)) earn = clickPower; balance += earn; totalClicks++; actionCounters.clicks++; if (Math.random() < 0.05) { var s = randomSticker(); stickers[s] = (stickers[s] || 0) + 1 } var safe = document.getElementById('safe'), rect = safe.getBoundingClientRect(); var p = document.createElement('div'); p.className = 'floating-text'; p.textContent = '+' + formatMoney(earn); p.style.left = Math.max(0, e.clientX - rect.left - 20) + 'px'; p.style.top = Math.max(0, e.clientY - rect.top - 10) + 'px'; safe.appendChild(p); setTimeout(function () { p.remove() }, 700); safe.style.transform = 'scale(0.94)'; setTimeout(function () { safe.style.transform = 'scale(1)' }, 150); updateUI(); saveClickerData() };
-function getTotalBalance() { return balance + (prestigeLevel * 1e12) }
-function spendMoney(amount) { var neededFromDollars = Math.floor(amount / 1e12); if (neededFromDollars > prestigeLevel) neededFromDollars = prestigeLevel; if (neededFromDollars > 0) { prestigeLevel -= neededFromDollars; balance += neededFromDollars * 1e12; localStorage.setItem('clicker_prestige', prestigeLevel); checkPrestigeDisplay() } if (balance >= amount) { balance -= amount } else { if (prestigeLevel > 0) { prestigeLevel--; balance += 1e12; localStorage.setItem('clicker_prestige', prestigeLevel); checkPrestigeDisplay(); balance -= amount } } }
-function buyUpgrade(type) { var ml; if (type === 'clickPower') ml = getMaxLvl('click'); else if (type === 'autoClicker') ml = getMaxLvl('auto'); else if (type === 'multiplier') ml = getMaxLvl('multi'); var totalBal = balance + (prestigeLevel * 1e12); if (type === 'clickPower') { if (clickPower >= ml) { toast('Макс!', '#f44'); return } var p = price(10, 1.5, clickPower - 1); if (totalBal >= p) { spendMoney(p); clickPower++ } else { toast('Мало! Нужно ' + formatMoney(p), '#f44'); return } } else if (type === 'autoClicker') { if (autoClicker >= ml) { toast('Макс!', '#f44'); return } var p = price(50, 1.8, autoClicker); if (totalBal >= p) { spendMoney(p); autoClicker++ } else { toast('Мало! Нужно ' + formatMoney(p), '#f44'); return } } else if (type === 'multiplier') { if (multiplier >= ml || multiplier >= 50) { toast('Макс!', '#f44'); return } var p = price(500, 3, multiplier); if (totalBal >= p) { spendMoney(p); multiplier++ } else { toast('Мало! Нужно ' + formatMoney(p), '#f44'); return } } updateUI(); saveClickerData() }
-function rebirth() { if (rebirths >= 4) { toast('Макс!', '#f44'); return } var totalBal = balance + (prestigeLevel * 1e12); var cost = REBIRTH_COSTS[rebirths]; if (totalBal < cost) { toast('Нужно ' + formatMoney(cost), '#f44'); return } if (!confirm('Перерождение ' + (rebirths + 1) + '?')) return; spendMoney(cost); totalClicks = 0; clickPower = 1; autoClicker = 0; multiplier = 0; rebirths++; updateUI(); saveClickerData(); toast('🌟 Перерождение ' + rebirths + '!', '#ffd700') }
-function addToCraft(t) { if (!stickers[t]) return; if (favorites[t]) { toast('⭐ В избранном!', '#f44'); return } stickers[t]--; if (stickers[t] <= 0) delete stickers[t]; craftSel[t] = (craftSel[t] || 0) + 1; updateUI() }
-function removeFromCraft(t) { if (!craftSel[t]) return; craftSel[t]--; if (craftSel[t] <= 0) delete craftSel[t]; stickers[t] = (stickers[t] || 0) + 1; updateUI() }
-function clearCraft() { for (var t in craftSel) { stickers[t] = (stickers[t] || 0) + craftSel[t] } craftSel = {}; updateUI() }
-function doCraft() { if (!craftTarget) { toast('Выберите цель!', '#f44'); return } if (TYPES[craftTarget] && TYPES[craftTarget].secret) { toast('❌ Секретные нельзя!', '#f44'); return } var pts = 0; for (var t in craftSel) { var tp = TYPES[t]; if (!tp) continue; pts += tp.p * craftSel[t] } if (pts <= 0) { toast('Выберите стикеры!', '#f44'); return } var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3), chance = Math.min(100, (pts / need) * 100); craftSel = {}; if (Math.random() * 100 < chance) { stickers[craftTarget] = (stickers[craftTarget] || 0) + 1; craftCnt++; toast('✅ ' + ct.emoji + ' ' + ct.n + '!', '#4caf50') } else toast('❌ Неудача', '#f44'); updateUI(); saveClickerData() }
-function sellStickers() { var total = 0, ts = []; for (var t in stickers) { if (favorites[t]) continue; var tp = TYPES[t]; if (tp) total += tp.v * stickers[t]; ts.push(t) } if (total === 0) { toast('Нет стикеров!', '#f44'); return } if (!confirm('Продать за ' + formatMoney(total) + '?')) return; balance += total; ts.forEach(function (t) { delete stickers[t] }); updateUI(); saveClickerData(); toast('💸 +' + formatMoney(total), '#ffd700') }
-
-// ========== СОХРАНЕНИЕ ЧЕРЕЗ EDGE FUNCTION ==========
-async function saveToSupabase() {
-    if (!currentUser || !sb) return;
-    
-    try {
-        const { error } = await sb.rpc('save_clicker_data', {
-            p_username: currentUser.username,
-            p_balance: Math.floor(balance),
-            p_total_clicks: Math.floor(totalClicks),
-            p_click_power: clickPower,
-            p_auto_clicker: autoClicker,
-            p_multiplier: multiplier,
-            p_rebirths: rebirths,
-            p_coins: coins,
-            p_collectible_tokens: collectibleTokens,
-            p_prestige_level: prestigeLevel,
-            p_stickers: JSON.stringify(stickers),
-            p_limited_stickers: JSON.stringify(limitedStickers),
-            p_collectible_stickers: JSON.stringify(collectibleStickers),
-            p_favorites: JSON.stringify(favorites),
-            p_pinned: JSON.stringify(pinned)
-        });
-        
-        if (error) console.log('❌ Ошибка:', error.message);
-        else console.log('✅ Сохранено в Supabase');
-    } catch(e) {
-        console.log('⚠️ Оффлайн');
+    // ========== СОХРАНЕНИЕ В SUPABASE ==========
+    async function saveToSupabase() {
+        if (!currentUser || !sb) return;
+        try {
+            const { error } = await sb.rpc('save_clicker_data', {
+                p_username: currentUser.username,
+                p_balance: Math.floor(balance),
+                p_total_clicks: Math.floor(totalClicks),
+                p_click_power: clickPower,
+                p_auto_clicker: autoClicker,
+                p_multiplier: multiplier,
+                p_rebirths: rebirths,
+                p_coins: coins,
+                p_collectible_tokens: collectibleTokens,
+                p_prestige_level: prestigeLevel,
+                p_stickers: stickers,
+                p_limited_stickers: limitedStickers,
+                p_collectible_stickers: collectibleStickers,
+                p_favorites: favorites,
+                p_pinned: pinned
+            });
+        } catch (e) { }
     }
-}
 
-// ========== АВТОСОХРАНЕНИЕ ==========
-setInterval(function () { saveClickerData(); saveToSupabase(); }, 5000);
+    // ========== АВТОСОХРАНЕНИЕ ==========
+    setInterval(function () { saveClickerData(); saveToSupabase(); }, 5000);
 
-// ========== ЛИДЕРБОРД ==========
-async function updateStickerLB() { var listEl = document.getElementById('stickerLB'); if (!listEl) return; var bestStickers = {}, medals = ['🥇', '🥈', '🥉']; function addSticker(username, sticker) { if (!sticker || !sticker.price || !sticker.emoji) return; if (!bestStickers[username] || sticker.price > bestStickers[username].price) { bestStickers[username] = { username: username, emoji: sticker.emoji, colorName: sticker.color?.name || '?', colorBg: sticker.color?.bg || '#ccc', price: sticker.price } } } var un = currentUser ? currentUser.username : 'Гость'; for (var id in limitedStickers) { if (limitedStickers[id]) addSticker(un, limitedStickers[id]) } for (var id in collectibleStickers) { if (collectibleStickers[id]) addSticker(un, collectibleStickers[id]) } if (sb) { try { var { data } = await sb.from('clicker_data').select('username,limited_stickers,collectible_stickers'); if (data) { for (var row of data) { var stickers = row.limited_stickers; if (typeof stickers === 'string') { try { stickers = JSON.parse(stickers) } catch (e) { continue } } if (stickers) for (var id in stickers) { if (stickers[id]) addSticker(row.username, stickers[id]) } var cstickers = row.collectible_stickers; if (typeof cstickers === 'string') { try { cstickers = JSON.parse(cstickers) } catch (e) { continue } } if (cstickers) for (var id in cstickers) { if (cstickers[id]) addSticker(row.username, cstickers[id]) } } } } catch (e) { } } var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price); listEl.innerHTML = sorted.slice(0, 10).map(function (s, i) { return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span> ' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> ' + formatMoney(s.price || 0) + '</span></li>' }).join('') || '<li>Нет стикеров</li>' }
+    // ========== ЛИДЕРБОРД ==========
+    async function updateStickerLB() { var listEl = document.getElementById('stickerLB'); if (!listEl) return; var bestStickers = {}, medals = ['🥇', '🥈', '🥉']; function addSticker(username, sticker) { if (!sticker || !sticker.price || !sticker.emoji) return; if (!bestStickers[username] || sticker.price > bestStickers[username].price) { bestStickers[username] = { username: username, emoji: sticker.emoji, colorName: sticker.color?.name || '?', colorBg: sticker.color?.bg || '#ccc', price: sticker.price } } } var un = currentUser ? currentUser.username : 'Гость'; for (var id in limitedStickers) { if (limitedStickers[id]) addSticker(un, limitedStickers[id]) } for (var id in collectibleStickers) { if (collectibleStickers[id]) addSticker(un, collectibleStickers[id]) } if (sb) { try { var { data } = await sb.from('clicker_data').select('username,limited_stickers,collectible_stickers'); if (data) { for (var row of data) { var stickers = row.limited_stickers; if (typeof stickers === 'string') { try { stickers = JSON.parse(stickers) } catch (e) { continue } } if (stickers) for (var id in stickers) { if (stickers[id]) addSticker(row.username, stickers[id]) } var cstickers = row.collectible_stickers; if (typeof cstickers === 'string') { try { cstickers = JSON.parse(cstickers) } catch (e) { continue } } if (cstickers) for (var id in cstickers) { if (cstickers[id]) addSticker(row.username, cstickers[id]) } } } } catch (e) { } } var sorted = Object.values(bestStickers).sort((a, b) => b.price - a.price); listEl.innerHTML = sorted.slice(0, 10).map(function (s, i) { return '<li><span><span class="lb-rank">' + (medals[i] || (i + 1)) + '</span> ' + s.username + '</span><span>' + s.emoji + ' <span class="lb-color" style="background:' + s.colorBg + '"></span> ' + formatMoney(s.price || 0) + '</span></li>' }).join('') || '<li>Нет стикеров</li>' }
 
-// ========== АВТО-ДОХОД ==========
-setInterval(function () { if (autoClicker > 0) { var earn = autoClicker * Math.pow(2, Math.min(multiplier, 50)) * getRebMult() * (1 + boostPct / 100); balance += earn; totalClicks += autoClicker; updateUI(); saveClickerData() } }, 1000);
-setInterval(function () { cps = 0 }, 1000);
-window.addEventListener('beforeunload', function () { saveClickerData(); saveToSupabase(); });
+    // ========== АВТО-ДОХОД ==========
+    setInterval(function () { if (autoClicker > 0) { var earn = autoClicker * Math.pow(2, Math.min(multiplier, 50)) * getRebMult() * (1 + boostPct / 100); balance += earn; totalClicks += autoClicker; updateUI(); saveClickerData() } }, 1000);
+    setInterval(function () { cps = 0 }, 1000);
+    window.addEventListener('beforeunload', function () { saveClickerData(); saveToSupabase(); });
 
-// ========== ЗАПУСК ==========
-updateProfileUI(); updateUI(); updatePinned(); updateStickerLB(); updateTokenBal(); checkPrestigeDisplay();
+    // ========== ЗАПУСК ==========
+    updateProfileUI(); updateUI(); updatePinned(); updateStickerLB(); updateTokenBal(); checkPrestigeDisplay();
 </script>
 </body>
 
