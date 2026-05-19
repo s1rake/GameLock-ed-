@@ -1595,11 +1595,12 @@ async function saveClickerData() {
     };
     saveUsers(users);
     
-    // ✅ Сохраняем в Supabase
     if (currentUser && sb) {
         try {
-            // Пробуем обновить
-            const { error: updateError } = await sb
+            // ✅ Преобразуем объекты в JSON строки, pinned в массив
+            const safePinned = Array.isArray(pinned) ? pinned : [];
+            
+            await sb
                 .from('clicker_data')
                 .update({
                     balance: Math.floor(balance),
@@ -1608,24 +1609,18 @@ async function saveClickerData() {
                     auto_clicker: autoClicker,
                     multiplier: multiplier,
                     rebirths: rebirths,
-                    stickers: JSON.stringify(stickers),
-                    limited_stickers: JSON.stringify(limitedStickers),
-                    collectible_stickers: JSON.stringify(collectibleStickers),
+                    stickers: stickers,
+                    limited_stickers: limitedStickers,
+                    collectible_stickers: collectibleStickers,
                     collectible_tokens: collectibleTokens,
                     prestige_level: prestigeLevel,
                     coins: coins,
-                    favorites: JSON.stringify(favorites),
-                    pinned: JSON.stringify(pinned),
+                    favorites: favorites,
+                    pinned: safePinned,
                     updated_at: new Date().toISOString()
                 })
                 .eq('username', currentUser.username);
-            
-            if (updateError) {
-                console.log('⚠️ Ошибка обновления:', updateError.message);
-            }
-        } catch(e) {
-            console.log('⚠️ Сохранено локально');
-        }
+        } catch(e) {}
     }
 }
     function loadClickerData() {
