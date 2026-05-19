@@ -1516,7 +1516,6 @@
 async function saveToSupabase() {
     if (!currentUser || !sb) return;
     try {
-        // 1. Проверка сессии + сохранение баланса/монет
         var safeStickers = {};
         for (var id in limitedStickers) { 
             if (!limitedStickers[id]) continue; 
