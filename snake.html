@@ -1322,17 +1322,42 @@
             if (changed) { saveAchLocal(ach); renderAchievements(); }
         }
 
-        function claimAchievement(id) {
-            const ach = getAchData(); if (ach[id] !== 'completed') return;
-            const a = ACHIEVEMENTS.find(x => x.id === id); if (!a) return;
-            ach[id] = 'claimed'; saveAchLocal(ach);
-            const s = getStats(); const sp = getSparks();
-            if (a.reward.type === 'apples') s.applesEaten += a.reward.amount;
-            if (a.reward.type === 'goldApples') s.goldApplesEaten += a.reward.amount;
-            if (a.reward.type === 'spark') { sp[a.reward.sparkType] = (sp[a.reward.sparkType] || 0) + a.reward.amount; saveSparksLocal(sp); updateSparkButtons(); }
-            saveStatsLocal(s); renderAchievements(); updateStatsDisplay(); updateSparkBalance();
-            toast('✅ ' + formatReward(a.reward));
-        }
+       function claimAchievement(id) {
+    const ach = getAchData();
+    if (ach[id] !== 'completed') return;
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    if (!a) return;
+    
+    ach[id] = 'claimed';
+    saveAchLocal(ach);
+    
+    const s = getStats();
+    const sp = getSparks();
+    
+    if (a.reward.type === 'apples') s.applesEaten = (s.applesEaten || 0) + a.reward.amount;
+    if (a.reward.type === 'goldApples') s.goldApplesEaten = (s.goldApplesEaten || 0) + a.reward.amount;
+    if (a.reward.type === 'spark') {
+        sp[a.reward.sparkType] = (sp[a.reward.sparkType] || 0) + a.reward.amount;
+        saveSparksLocal(sp);
+        updateSparkButtons();
+    }
+    
+    saveStatsLocal(s);
+    updateStatsDisplay();
+    updateSparkBalance();
+    renderAchievements();
+    
+    // ✅ Сохраняем в Supabase
+    if (currentUser && sb) {
+        sb.from('players').update({
+            achievements: ach,
+            stats: s,
+            sparks: sp
+        }).eq('username', currentUser.username).then(() => {});
+    }
+    
+    toast('✅ ' + formatReward(a.reward));
+}
 
         function showAchToast(a) {
             const t = document.createElement('div'); t.className = 'achievement-toast';
@@ -1521,41 +1546,42 @@
         // ================================================================
         // КОНЕЦ ИГРЫ
         // ================================================================
-        async function endGame() {
-            if (isGameOver) return;
-            isGameOver = true;
-            const sessionDuration = Date.now() - gameStartTime;
-
-            if (currentUser && sb) {
-                try {
-                    const { data, error } = await sb.rpc('validate_snake_score', {
-                        p_username: currentUser.username,
-                        p_score: score,
-                        p_game_duration_ms: sessionDuration
-                    });
-                    if (error) console.log('❌ Ошибка:', error.message);
-                    else if (data && data.status === 'rollback') { console.warn('🛡️ Сервер отклонил:', data.message); toast('🛡️ ' + data.message, '#ff4444'); }
-                    else { console.log('✅ Рекорд сохранён:', score); loadLeaderboard(); }
-                } catch (e) { console.log('⚠️ Оффлайн'); }
-            }
-
-            const s = getStats();
-            s.deaths = (s.deaths || 0) + 1;
-            if (score > (s.record || 0)) s.record = score;
-            s.applesEaten = (s.applesEaten || 0) + sessionApples;
-            s.goldApplesEaten = (s.goldApplesEaten || 0) + sessionGoldApples;
-            s.totalEvents = (s.totalEvents || 0) + sessionEvents;
-            saveStatsLocal(s);
-
-            document.getElementById('gameOverScreen').style.display = 'flex';
-            document.getElementById('finalScore').textContent = 'Счёт: ' + score;
-            const el = document.getElementById('highScore');
-            if (el) el.textContent = 'Рекорд: ' + (s.record || 0);
-
-            updateStatsDisplay(); updateSparkBalance();
-            endEvent();
-            if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
-            checkAchievements(); deathType = null;
+async function endGame() {
+    if (isGameOver) return;
+    isGameOver = true;
+    
+    if (gameLoopInterval) { clearInterval(gameLoopInterval); gameLoopInterval = null; }
+    
+    const sessionDuration = Date.now() - gameStartTime;
+    
+    if (currentUser && sb && score > 0) {
+        try {
+            const { data } = await sb.rpc('validate_snake_score', {
+                p_username: currentUser.username,
+                p_score: score,
+                p_game_duration_ms: sessionDuration
+            });
+            if (data && data.status === 'rollback') toast('🛡️ ' + data.message, '#ff4444');
+            else loadLeaderboard();
+        } catch(e) {}
+    }
+    
+    const s = getStats();
+    s.deaths = (s.deaths || 0) + 1;
+    if (score > (s.record || 0)) s.record = score;
+    s.applesEaten = (s.applesEaten || 0) + sessionApples;
+    s.goldApplesEaten = (s.goldApplesEaten || 0) + sessionGoldApples;
+    s.totalEvents = (s.totalEvents || 0) + sessionEvents;
+    saveStatsLocal(s);
+    
+    document.getElementById('gameOverScreen').style.display = 'flex';
+    document.getElementById('finalScore').textContent = 'Счёт: ' + score;
+    document.getElementById('highScore').textContent = 'Рекорд: ' + (s.record || 0);
+    
+    updateStatsDisplay(); updateSparkBalance();
+    endEvent();
+    checkAchievements();
+    deathType = null;
         }
 
         function restartGame() {
