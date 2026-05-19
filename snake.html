@@ -1569,50 +1569,33 @@ async function endGame() {
     
     const sessionDuration = Date.now() - gameStartTime;
     
-    await logAction('die_' + (deathType || 'unknown'), { points: 0 });
-    
-    if (currentUser && sb && currentSessionId) {
+    // ✅ ПРОСТАЯ ОТПРАВКА
+    if (currentUser && sb) {
         try {
-            const { data, error } = await sb.rpc('end_snake_session', {
+            const { data, error } = await sb.rpc('validate_snake_score', {
                 p_username: currentUser.username,
-                p_session_id: currentSessionId,
-                p_client_score: score,
-                p_client_gold: sessionGoldApples,
-                p_client_apples: sessionApples,
-                p_death_type: deathType,
+                p_score: score,
                 p_game_duration_ms: sessionDuration
             });
             
             if (error) {
-                console.error('❌ Ошибка сервера:', error.message);
+                console.log('❌ Ошибка:', error.message);
             } else if (data && data.status === 'rollback') {
-                console.warn('🛡️ ЧИТ ОБНАРУЖЕН!', data.reasons);
-                toast('🛡️ Подозрительная активность! Данные восстановлены.', '#ff4444');
-                await loadUserDataFromSupabase();
-                updateStatsDisplay();
-                updateSparkBalance();
-                updateSparkButtons();
-                renderAchievements();
-                loadLeaderboard();
+                console.warn('🛡️ Сервер отклонил:', data.message);
+                toast('🛡️ ' + data.message, '#ff4444');
             } else {
-                console.log('✅ Сессия чистая. Счёт:', data.score || score);
+                console.log('✅ Рекорд сохранён:', score);
                 loadLeaderboard();
             }
         } catch(e) {
-            console.log('⚠️ Оффлайн — сверка пропущена');
+            console.log('⚠️ Оффлайн');
         }
     }
     
+    // Локальное сохранение
     const s = getStats();
     s.deaths = (s.deaths || 0) + 1;
     if (score > (s.record || 0)) s.record = score;
-    s.totalScore = (s.totalScore || 0) + score;
-    s.totalGoldApples = (s.totalGoldApples || 0) + sessionGoldApples;
-    s.totalEvents = (s.totalEvents || 0) + sessionEvents;
-    s.applesEaten = (s.applesEaten || 0) + sessionApples;
-    s.goldApplesEaten = (s.goldApplesEaten || 0) + sessionGoldApples;
-    if (deathType === 'self') s.selfDeaths = (s.selfDeaths || 0) + 1;
-    if (deathType === 'wall') s.wallDeaths = (s.wallDeaths || 0) + 1;
     saveStatsLocal(s);
     updateStatsDisplay();
     updateSparkBalance();
