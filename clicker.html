@@ -1581,8 +1581,45 @@ function getClickerData() {
     }
     return users[u].clicker;
 }
-    function saveClickerData() { const users = getAllUsers(); const u = currentUser ? currentUser.username : 'guest'; if (!users[u]) users[u] = {}; users[u].clicker = { balance: Math.floor(balance), totalClicks: Math.floor(totalClicks), clickPower, autoClicker, multiplier, rebirths, stickers, craftSel, craftCnt, craftTarget, limitedStickers, collectibleStickers, collectibleTokens, prestigeLevel }; saveUsers(users) }
-function loadClickerData() {
+async function saveClickerData() {
+    const users = getAllUsers();
+    const u = currentUser ? currentUser.username : 'guest';
+    if (!users[u]) users[u] = {};
+    users[u].clicker = {
+        balance: Math.floor(balance),
+        totalClicks: Math.floor(totalClicks),
+        clickPower, autoClicker, multiplier, rebirths,
+        stickers, craftSel, craftCnt, craftTarget,
+        limitedStickers, collectibleStickers,
+        collectibleTokens, prestigeLevel
+    };
+    saveUsers(users);
+    
+    // ✅ Сохраняем в Supabase
+    if (currentUser && sb) {
+        try {
+            await sb.from('clicker_data').upsert({
+                username: currentUser.username,
+                balance: Math.floor(balance),
+                total_clicks: Math.floor(totalClicks),
+                click_power: clickPower,
+                auto_clicker: autoClicker,
+                multiplier: multiplier,
+                rebirths: rebirths,
+                stickers: stickers,
+                limited_stickers: limitedStickers,
+                collectible_stickers: collectibleStickers,
+                collectible_tokens: collectibleTokens,
+                prestige_level: prestigeLevel,
+                coins: coins,
+                favorites: favorites,
+                pinned: pinned,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'username' });
+        } catch(e) {}
+    }
+}
+    function loadClickerData() {
     const d = getClickerData();
     if (!d) return;
     
