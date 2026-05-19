@@ -1721,15 +1721,16 @@ async function saveToSupabase() {
         for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), price: Math.min(collectibleStickers[id].price || 0, 9000000), created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
         
         var { data, error } = await sb.rpc('save_with_validation', {
-            data: {
-                username: currentUser.username,
-                balance: Math.min(Math.floor(balance), 9000000000000),
-                coins: Math.min(Math.floor(coins), 9000000000),
-                collectible_tokens: Math.min(collectibleTokens, 9000000),
-                prestige_level: Math.min(prestigeLevel, 9000000),
-                limited_stickers: safeStickers,
-                collectible_stickers: safeCollectible
-            }
+data: {
+    username: currentUser.username,
+    balance: Math.min(Math.floor(balance), 9000000000000),
+    coins: Math.min(Math.floor(coins), 9000000000),
+    collectible_tokens: Math.min(collectibleTokens, 9000000),
+    prestige_level: Math.min(prestigeLevel, 9000000),
+    stickers: stickers,
+    limited_stickers: safeStickers,
+    collectible_stickers: safeCollectible
+}
         });
         
         if (error) {
