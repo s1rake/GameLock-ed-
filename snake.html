@@ -1686,32 +1686,68 @@ async function claimAchievement(id) {
                 }
             }, 300);
         }
-
-        function startAttackEvent() {
-            attackBalls = [];
-            for (let i = 0; i < 5; i++) {
-                const p = { x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount) };
-                attackBalls.push({ x: p.x, y: p.y, dx: 0, dy: 0, active: true });
-                if (Math.random() > 0.5) attackBalls[i].dx = Math.random() > 0.5 ? 1 : -1;
-                else attackBalls[i].dy = Math.random() > 0.5 ? 1 : -1;
-                if (attackBalls[i].dx === 0 && attackBalls[i].dy === 0) attackBalls[i].dx = 1;
-            }
-            attackInterval = setInterval(() => {
-                if (!eventActive || eventType !== 'attack') { attackBalls.forEach(b => { b.dx = 0; b.dy = 0; }); return; }
-                for (let b of attackBalls) {
-                    if (!b.active) continue;
-                    const h = snake[0];
-                    if (Math.abs(h.x - b.x) > Math.abs(h.y - b.y)) { b.dx = h.x > b.x ? 1 : -1; b.dy = 0; }
-                    else { b.dx = 0; b.dy = h.y > b.y ? 1 : -1; }
-                    if (Math.random() < 0.2) { if (b.dx !== 0) { b.dx = 0; b.dy = Math.random() > 0.5 ? 1 : -1; } else { b.dy = 0; b.dx = Math.random() > 0.5 ? 1 : -1; } }
-                    let nx = b.x + b.dx, ny = b.y + b.dy;
-                    if (nx < 0 || nx >= tileCount) b.dx *= -1;
-                    if (ny < 0 || ny >= tileCount) b.dy *= -1;
-                    b.x = Math.max(0, Math.min(tileCount - 1, b.x + b.dx));
-                    b.y = Math.max(0, Math.min(tileCount - 1, b.y + b.dy));
-                }
-            }, 200);
+        
+function startAttackEvent() {
+    attackBalls = [];
+    for (let i = 0; i < 5; i++) {
+        let p;
+        let attempts = 0;
+        do {
+            p = {
+                x: Math.floor(Math.random() * tileCount), 
+                y: Math.floor(Math.random() * tileCount)
+            };
+            attempts++;
+            if (attempts > 100) break;
+        } while (isTooCloseToSnake(p));
+        
+        attackBalls.push({x: p.x, y: p.y, dx: 0, dy: 0, active: true});
+        if (Math.random() > 0.5) attackBalls[i].dx = Math.random() > 0.5 ? 1 : -1;
+        else attackBalls[i].dy = Math.random() > 0.5 ? 1 : -1;
+        if (attackBalls[i].dx === 0 && attackBalls[i].dy === 0) attackBalls[i].dx = 1;
+    }
+    attackInterval = setInterval(() => {
+        if (!eventActive || eventType !== 'attack') { 
+            attackBalls.forEach(b => { b.dx = 0; b.dy = 0; }); 
+            return; 
         }
+        for (let b of attackBalls) {
+            if (!b.active) continue;
+            const h = snake[0];
+            if (Math.abs(h.x - b.x) > Math.abs(h.y - b.y)) { 
+                b.dx = h.x > b.x ? 1 : -1; 
+                b.dy = 0; 
+            } else { 
+                b.dx = 0; 
+                b.dy = h.y > b.y ? 1 : -1; 
+            }
+            if (Math.random() < 0.2) { 
+                if (b.dx !== 0) { 
+                    b.dx = 0; 
+                    b.dy = Math.random() > 0.5 ? 1 : -1; 
+                } else { 
+                    b.dy = 0; 
+                    b.dx = Math.random() > 0.5 ? 1 : -1; 
+                } 
+            }
+            let nx = b.x + b.dx, ny = b.y + b.dy;
+            if (nx < 0 || nx >= tileCount) b.dx *= -1;
+            if (ny < 0 || ny >= tileCount) b.dy *= -1;
+            b.x = Math.max(0, Math.min(tileCount - 1, b.x + b.dx));
+            b.y = Math.max(0, Math.min(tileCount - 1, b.y + b.dy));
+        }
+    }, 200);
+}
+
+function isTooCloseToSnake(p) {
+    const minDist = 4;
+    for (let segment of snake) {
+        const dist = Math.abs(p.x - segment.x) + Math.abs(p.y - segment.y);
+        if (dist < minDist) return true;
+    }
+    if (Math.abs(p.x - food.x) + Math.abs(p.y - food.y) < 2) return true;
+    return false;
+}
 
         // ================================================================
         // КОНЕЦ ИГРЫ
