@@ -1556,10 +1556,58 @@ function toast(msg, c) { const t = document.createElement('div'); t.className = 
 function formatMoney(num) { if (num >= 1e12) { var dollars = Math.floor(num / 1e12); var remainder = num % 1e12; if (remainder === 0) return dollars + '💲'; return dollars + '💲' + Math.floor(remainder).toLocaleString() } return Math.floor(num).toLocaleString() + '💰' }
 
 // ========== ДАННЫЕ ==========
-function getClickerData() { const users = getAllUsers(); const u = currentUser ? currentUser.username : 'guest'; if (!users[u]) users[u] = { clicker: { balance: 0, totalClicks: 0, clickPower: 1, autoClicker: 0, multiplier: 0, rebirths: 0, stickers: {}, craftCnt: 0, craftTarget: null, limitedStickers: {}, collectibleStickers: {}, collectibleTokens: 0, prestigeLevel: 0 } }; return users[u].clicker }
-function saveClickerData() { const users = getAllUsers(); const u = currentUser ? currentUser.username : 'guest'; if (!users[u]) users[u] = {}; users[u].clicker = { balance: Math.floor(balance), totalClicks: Math.floor(totalClicks), clickPower, autoClicker, multiplier, rebirths, stickers, craftSel, craftCnt, craftTarget, limitedStickers, collectibleStickers, collectibleTokens, prestigeLevel }; saveUsers(users) }
-function loadClickerData() { const d = getClickerData(); balance = d.balance || 0; totalClicks = d.totalClicks || 0; clickPower = d.clickPower || 1; autoClicker = d.autoClicker || 0; multiplier = d.multiplier || 0; rebirths = d.rebirths || 0; stickers = d.stickers || {}; craftSel = d.craftSel || {}; craftCnt = d.craftCnt || 0; craftTarget = d.craftTarget || null; limitedStickers = d.limitedStickers || {}; collectibleStickers = d.collectibleStickers || {}; collectibleTokens = d.collectibleTokens || 0; prestigeLevel = d.prestigeLevel || 0; boostPct = 0; boostActive = false; loadFuseSlots(); updateUI(); checkPrestigeDisplay(); updateTokenBal() }
-function loadExtra() { const e = JSON.parse(localStorage.getItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest')) || '{}'); coins = e.coins || 0; favorites = e.favorites || {}; pinned = e.pinned || []; updateCoins(); setTimeout(function () { applyPinnedBackground(); updatePinned(); updateUnpinButton() }, 100) }
+function getClickerData() {
+    const users = getAllUsers();
+    const u = currentUser ? currentUser.username : 'guest';
+    if (!users[u]) {
+        users[u] = { 
+            clicker: { 
+                balance: 0, totalClicks: 0, clickPower: 1, 
+                autoClicker: 0, multiplier: 0, rebirths: 0, 
+                stickers: {}, craftCnt: 0, craftTarget: null, 
+                limitedStickers: {}, collectibleStickers: {}, 
+                collectibleTokens: 0, prestigeLevel: 0 
+            } 
+        };
+    }
+    if (!users[u].clicker) {
+        users[u].clicker = { 
+            balance: 0, totalClicks: 0, clickPower: 1, 
+            autoClicker: 0, multiplier: 0, rebirths: 0, 
+            stickers: {}, craftCnt: 0, craftTarget: null, 
+            limitedStickers: {}, collectibleStickers: {}, 
+            collectibleTokens: 0, prestigeLevel: 0 
+        };
+    }
+    return users[u].clicker;
+}
+    function saveClickerData() { const users = getAllUsers(); const u = currentUser ? currentUser.username : 'guest'; if (!users[u]) users[u] = {}; users[u].clicker = { balance: Math.floor(balance), totalClicks: Math.floor(totalClicks), clickPower, autoClicker, multiplier, rebirths, stickers, craftSel, craftCnt, craftTarget, limitedStickers, collectibleStickers, collectibleTokens, prestigeLevel }; saveUsers(users) }
+function loadClickerData() {
+    const d = getClickerData();
+    if (!d) return;
+    
+    balance = d.balance || 0;
+    totalClicks = d.totalClicks || 0;
+    clickPower = d.clickPower || 1;
+    autoClicker = d.autoClicker || 0;
+    multiplier = d.multiplier || 0;
+    rebirths = d.rebirths || 0;
+    stickers = d.stickers || {};
+    craftSel = d.craftSel || {};
+    craftCnt = d.craftCnt || 0;
+    craftTarget = d.craftTarget || null;
+    limitedStickers = d.limitedStickers || {};
+    collectibleStickers = d.collectibleStickers || {};
+    collectibleTokens = d.collectibleTokens || 0;
+    prestigeLevel = d.prestigeLevel || 0;
+    boostPct = 0;
+    boostActive = false;
+    loadFuseSlots();
+    updateUI();
+    checkPrestigeDisplay();
+    updateTokenBal();
+}
+    function loadExtra() { const e = JSON.parse(localStorage.getItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest')) || '{}'); coins = e.coins || 0; favorites = e.favorites || {}; pinned = e.pinned || []; updateCoins(); setTimeout(function () { applyPinnedBackground(); updatePinned(); updateUnpinButton() }, 100) }
 function saveExtra() { localStorage.setItem('clicker_extra_' + (currentUser ? currentUser.username : 'guest'), JSON.stringify({ coins, favorites, pinned })); updateCoins() }
 function updateCoins() { document.getElementById('coinsDisplay').textContent = coins }
 
