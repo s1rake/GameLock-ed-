@@ -1991,9 +1991,9 @@ async function saveToSupabase() {
             p_collectible_tokens: collectibleTokens,
             p_prestige_level: prestigeLevel,
             p_total_clicks: Math.floor(totalClicks),
-            p_stickers: stickers,
-            p_limited_stickers: limitedStickers,
-            p_collectible_stickers: collectibleStickers,
+            p_stickers: _stickers || stickers,
+            p_limited_stickers: _limitedStickers || limitedStickers,
+            p_collectible_stickers: _collectibleStickers || collectibleStickers,
             p_favorites: favorites,
             p_pinned: pinned,
             p_client_time: clientTime,
@@ -2002,23 +2002,25 @@ async function saveToSupabase() {
         
         if (error) { console.log('❌', error.message); return; }
         
+        // ✅ ВСЕГДА применяем данные с сервера
         if (data) {
-            if (data.status === 'rejected') {
-                console.warn('🛡️ Сервер отклонил:', data.reason);
-            }
-            // ✅ ВСЕГДА синхронизируем с сервером (отклонено или нет)
-            balance = data.balance || balance;
-            coins = data.coins || coins;
-            collectibleTokens = data.tokens || collectibleTokens;
-            prestigeLevel = data.prestige || prestigeLevel;
-            if (data.stickers) _stickers = data.stickers;
-            if (data.limited_stickers) _limitedStickers = data.limited_stickers;
-            if (data.collectible_stickers) _collectibleStickers = data.collectible_stickers;
+            balance = data.balance;
+            coins = data.coins;
+            collectibleTokens = data.tokens;
+            prestigeLevel = data.prestige;
+            
+            if (data.stickers) { _stickers = data.stickers; }
+            if (data.limited_stickers) { _limitedStickers = data.limited_stickers; }
+            if (data.collectible_stickers) { _collectibleStickers = data.collectible_stickers; }
+            
             updateUI();
             updateCoins();
             updateTokenBal();
             checkPrestigeDisplay();
-            console.log('✅ Синхронизировано');
+            
+            if (data.status === 'rejected') {
+                console.warn('🛡️ Отклонено:', data.reason);
+            }
         }
     } catch(e) {}
 }
