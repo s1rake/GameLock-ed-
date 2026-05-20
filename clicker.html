@@ -1739,7 +1739,7 @@ async function saveToSupabase() {
             clientTime: clientTime
         });
         
-        const { error } = await sb.rpc('save_clicker_signed', {
+        const { data, error } = await sb.rpc('save_clicker_signed', {
             p_username: currentUser.username,
             p_balance: Math.floor(balance),
             p_coins: coins,
@@ -1755,7 +1755,23 @@ async function saveToSupabase() {
             p_signature: signature
         });
         
-        if (error) console.log('❌', error.message);
+        if (error) { console.log('❌', error.message); return; }
+        
+        // ✅ Применяем проверенные сервером данные
+        if (data) {
+            if (data.status === 'rejected') {
+                console.warn('🛡️ Сервер отклонил:', data.reason);
+                balance = data.balance;
+                coins = data.coins;
+                collectibleTokens = data.tokens;
+                prestigeLevel = data.prestige;
+                updateUI();
+                updateCoins();
+                updateTokenBal();
+                checkPrestigeDisplay();
+            }
+            console.log('✅ Сохранено');
+        }
     } catch(e) {}
 }
 // ========== АВТОСОХРАНЕНИЕ ==========
