@@ -1197,6 +1197,7 @@
             <span class="profile-avatar">👤</span>
             <span class="profile-name" id="profileName">Гость</span>
             <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
+            <button class="menu-btn" onclick="openPromoModal()">🎁 Промокод</button>
         </div>
     </div>
 
@@ -1542,7 +1543,69 @@ function showPackAnimation(packName, stickers, tiers, colors) { var overlay = do
 
 // ========== МАГАЗИН ==========
 function openShopModal() { document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalShop').style.display = 'block'; document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalCraft').style.display = 'none'; document.getElementById('shopTokenBal').textContent = collectibleTokens.toFixed(1); if (dailyDealsData.length === 0 || Date.now() - lastDealRefresh > 86400000) refreshDailyDeals(); else renderDailyDeals(); renderCrafts(); renderFuseInventory(); updateFuseUI() }
-async function refreshDailyDeals() { if (!currentUser || !sb) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } lastDealRefresh = Date.now(); renderDailyDeals(); return } try { var { data } = await sb.from('daily_deals').select('*').eq('username', currentUser.username).single(); var now = Date.now(); var needRefresh = true; if (data && data.last_refresh) { var serverTime = new Date(data.last_refresh).getTime(); var hoursSinceRefresh = (now - serverTime) / 3600000; if (hoursSinceRefresh < 24) needRefresh = false } if (needRefresh) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } await sb.from('daily_deals').upsert({ username: currentUser.username, deals: JSON.stringify(dailyDealsData), last_refresh: new Date().toISOString() }); lastDealRefresh = now } else { dailyDealsData = JSON.parse(data.deals || '[]'); lastDealRefresh = new Date(data.last_refresh).getTime() } renderDailyDeals() } catch (e) { } }
+function openPromoModal() {
+    document.getElementById('modalOverlay').style.display = 'flex';
+    document.getElementById('modalLogin').style.display = 'none';
+    document.getElementById('modalRegister').style.display = 'none';
+    document.getElementById('modalSkins').style.display = 'none';
+    document.getElementById('modalSettings').style.display = 'none';
+    document.getElementById('modalShop').style.display = 'none';
+    document.getElementById('modalCraft').style.display = 'none';
+    document.getElementById('modalPromo').style.display = 'block';
+    document.getElementById('promoResult').textContent = '';
+    document.getElementById('promoCode').value = '';
+}
+
+async function activatePromo() {
+    const code = document.getElementById('promoCode').value.trim().toUpperCase();
+    if (!code) return;
+    if (!currentUser || !sb) return alert('Войдите в аккаунт!');
+    
+    const { data, error } = await sb.rpc('activate_promocode', {
+        p_username: currentUser.username,
+        p_code: code
+    });
+    
+    const resultEl = document.getElementById('promoResult');
+    
+    if (error) {
+        resultEl.textContent = '❌ Ошибка: ' + error.message;
+        resultEl.style.color = '#ff4444';
+        return;
+    }
+    
+    if (data.status === 'error') {
+        resultEl.textContent = '❌ ' + data.message;
+        resultEl.style.color = '#ff4444';
+        return;
+    }
+    
+    const reward = data.reward;
+    resultEl.textContent = '✅ Промокод активирован!';
+    resultEl.style.color = '#4caf50';
+    
+    if (reward.type === 'sticker_pack') {
+        await loadFromSupabase();
+        updateUI();
+        setTimeout(() => {
+            closeModal();
+            openPack(reward.pack_id);
+        }, 1000);
+    } else if (reward.type === 'limited_sticker') {
+        await loadFromSupabase();
+        updateUI();
+        toast('🎁 Получен лимит-стикер: ' + (reward.emoji || '?'));
+        setTimeout(() => closeModal(), 1500);
+    } else {
+        await loadFromSupabase();
+        updateUI();
+        updateCoins();
+        updateTokenBal();
+        checkPrestigeDisplay();
+        setTimeout(() => closeModal(), 1500);
+    }
+}
+    async function refreshDailyDeals() { if (!currentUser || !sb) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } lastDealRefresh = Date.now(); renderDailyDeals(); return } try { var { data } = await sb.from('daily_deals').select('*').eq('username', currentUser.username).single(); var now = Date.now(); var needRefresh = true; if (data && data.last_refresh) { var serverTime = new Date(data.last_refresh).getTime(); var hoursSinceRefresh = (now - serverTime) / 3600000; if (hoursSinceRefresh < 24) needRefresh = false } if (needRefresh) { dailyDealsData = []; for (let i = 0; i < 3; i++) { const tiers = Object.entries(TYPES).filter(e => !e[1].secret); const sticker = tiers[Math.floor(Math.random() * tiers.length)]; const color = randomLimitedColor(); const tier = sticker[1].t; let price = TIER_TOKEN_PRICES[tier] || 1; if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name]; price = Math.round(price * 10) / 10; dailyDealsData.push({ emoji: sticker[0], tier, color, price }) } await sb.from('daily_deals').upsert({ username: currentUser.username, deals: JSON.stringify(dailyDealsData), last_refresh: new Date().toISOString() }); lastDealRefresh = now } else { dailyDealsData = JSON.parse(data.deals || '[]'); lastDealRefresh = new Date(data.last_refresh).getTime() } renderDailyDeals() } catch (e) { } }
 function renderDailyDeals() { var container = document.getElementById('dailyDeals'); if (!container) return; container.innerHTML = dailyDealsData.map(function (deal, i) { var gradient = getGradient(deal.color.bg); return '<div class="daily-deal" onclick="buyDeal(' + i + ')" style="background:' + gradient + ';border-color:' + deal.color.border + '"><div class="deal-emoji">' + deal.emoji + '</div><div class="deal-name">' + (TYPES[deal.emoji]?.n || deal.emoji) + '</div><div class="deal-price">💷 ' + deal.price + '</div></div>' }).join(''); updateDealTimer() }
 function updateDealTimer() { var el = document.getElementById('dealTimer'); if (!el) return; var remaining = 86400000 - (Date.now() - lastDealRefresh); var hours = Math.floor(remaining / 3600000); var mins = Math.floor((remaining % 3600000) / 60000); el.textContent = hours + 'ч ' + mins + 'м' }
 async function buyDeal(index) { 
