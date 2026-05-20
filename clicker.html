@@ -1711,51 +1711,53 @@ function clearCraft() { for (var t in craftSel) { stickers[t] = (stickers[t] || 
 function doCraft() { if (!craftTarget) { toast('Выберите цель!', '#f44'); return } if (TYPES[craftTarget] && TYPES[craftTarget].secret) { toast('❌ Секретные нельзя!', '#f44'); return } var pts = 0; for (var t in craftSel) { var tp = TYPES[t]; if (!tp) continue; pts += tp.p * craftSel[t] } if (pts <= 0) { toast('Выберите стикеры!', '#f44'); return } var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3), chance = Math.min(100, (pts / need) * 100); craftSel = {}; if (Math.random() * 100 < chance) { stickers[craftTarget] = (stickers[craftTarget] || 0) + 1; craftCnt++; toast('✅ ' + ct.emoji + ' ' + ct.n + '!', '#4caf50') } else toast('❌ Неудача', '#f44'); updateUI(); saveClickerData() }
 function sellStickers() { var total = 0, ts = []; for (var t in stickers) { if (favorites[t]) continue; var tp = TYPES[t]; if (tp) total += tp.v * stickers[t]; ts.push(t) } if (total === 0) { toast('Нет стикеров!', '#f44'); return } if (!confirm('Продать за ' + formatMoney(total) + '?')) return; balance += total; ts.forEach(function (t) { delete stickers[t] }); updateUI(); saveClickerData(); toast('💸 +' + formatMoney(total), '#ffd700') }
 
-// ========== СОХРАНЕНИЕ ЧЕРЕЗ EDGE FUNCTION ==========
-async function saveToSupabase() {
-    if (!currentUser || !sb) return;
-    try {
-        var safeStickers = {};
-        for (var id in limitedStickers) { if (!limitedStickers[id]) continue; safeStickers[id] = { emoji: limitedStickers[id].emoji, color: limitedStickers[id].color, basePrice: Math.min(limitedStickers[id].basePrice || 0, 9000000000000), price: Math.min(limitedStickers[id].price || 0, 9000000000000), created: limitedStickers[id].created || Date.now() }; }
-        var safeCollectible = {};
-        for (var id in collectibleStickers) { if (!collectibleStickers[id]) continue; safeCollectible[id] = { emoji: collectibleStickers[id].emoji, color: collectibleStickers[id].color, basePrice: Math.min(collectibleStickers[id].basePrice || 0, 9000000), price: Math.min(collectibleStickers[id].price || 0, 9000000), created: collectibleStickers[id].created || Date.now(), isCollectible: true }; }
-        
-        var { data, error } = await sb.rpc('save_with_validation', {
-data: {
-    username: currentUser.username,
-    balance: Math.min(Math.floor(balance), 9000000000000),
-    coins: Math.min(Math.floor(coins), 9000000000),
-    collectible_tokens: Math.min(collectibleTokens, 9000000),
-    prestige_level: Math.min(prestigeLevel, 9000000),
-    stickers: stickers,
-    limited_stickers: safeStickers,
-    collectible_stickers: safeCollectible
-}
-        });
-        
-        if (error) {
-            console.error('❌ Ошибка сервера:', error.message);
-        } else if (data && data.status === 'rollback') {
-            console.warn('🛡️ Сервер отклонил сохранение!');
-            var { data: fresh } = await sb.from('clicker_data').select('balance, coins, collectible_tokens, prestige_level').eq('username', currentUser.username).single();
-            if (fresh) {
-                balance = fresh.balance || 0;
-                coins = fresh.coins || 0;
-                collectibleTokens = fresh.collectible_tokens || 0;
-                prestigeLevel = fresh.prestige_level || 0;
-                updateUI();
-                saveClickerData();
-                updateCoins();
-                updateTokenBal();
-                checkPrestigeDisplay();
-                toast('🛡️ Сервер отклонил изменения!', '#ff4444');
-            }
-        }
-    } catch (e) {
-        console.log('⚠️ Оффлайн');
-    }
+// ========== ПОДПИСАННОЕ СОХРАНЕНИЕ ==========
+const CLICKER_SECRET = 'CLICKER_SECRET_KEY_2026_X7k9';
+
+async function generateSignature(data) {
+    const str = data.username + '|' + data.balance + '|' + data.coins + '|' + 
+                data.collectibleTokens + '|' + data.prestigeLevel + '|' + 
+                data.clientTime + '|' + CLICKER_SECRET;
+    
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(str));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function saveToSupabase() {
+    if (!currentUser || !sb) return;
+    
+    try {
+        const clientTime = Date.now();
+        const signature = await generateSignature({
+            username: currentUser.username,
+            balance: Math.floor(balance),
+            coins: coins,
+            collectibleTokens: collectibleTokens,
+            prestigeLevel: prestigeLevel,
+            clientTime: clientTime
+        });
+        
+        const { error } = await sb.rpc('save_clicker_signed', {
+            p_username: currentUser.username,
+            p_balance: Math.floor(balance),
+            p_coins: coins,
+            p_collectible_tokens: collectibleTokens,
+            p_prestige_level: prestigeLevel,
+            p_total_clicks: Math.floor(totalClicks),
+            p_stickers: stickers,
+            p_limited_stickers: limitedStickers,
+            p_collectible_stickers: collectibleStickers,
+            p_favorites: favorites,
+            p_pinned: pinned,
+            p_client_time: clientTime,
+            p_signature: signature
+        });
+        
+        if (error) console.log('❌', error.message);
+    } catch(e) {}
+}
 // ========== АВТОСОХРАНЕНИЕ ==========
 setInterval(function () { saveClickerData(); saveToSupabase(); }, 10000);
 
