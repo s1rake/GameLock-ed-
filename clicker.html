@@ -1323,38 +1323,7 @@ let sb = null; try { sb = window.supabase.createClient(SB_URL, SB_KEY) } catch (
     localStorage.clear = function() { console.warn('🛡️ Очистка заблокирована!'); };
 })();
 
-// ========== ЗАЩИТА ОТ ПРЯМЫХ FETCH ==========
-(function() {
-    var _realFetch = window.fetch;
-    var _allowedStack = false;
-    
-    // Разрешаем запросы из игрового цикла
-    setInterval(function() { _allowedStack = true; }, 100);
-    
-    window.fetch = function(url, options) {
-        var urlStr = typeof url === 'string' ? url : url.url;
-        
-        if (urlStr && urlStr.includes('supabase.co')) {
-            var stack = new Error().stack || '';
-            
-            // Разрешаем если вызвано из игровых функций
-            if (stack.includes('saveToSupabase') || stack.includes('logClickerAction') || 
-                stack.includes('loadFromSupabase') || stack.includes('startClickerSession') ||
-                stack.includes('register') || stack.includes('login') ||
-                stack.includes('updateStickerLB') || stack.includes('refreshDailyDeals') ||
-                stack.includes('buyDeal') || _allowedStack) {
-                return _realFetch.apply(this, arguments);
-            }
-            
-            if (stack.includes('<anonymous>') || stack.includes('eval') || stack.includes('VM')) {
-                console.warn('🛡️ Прямой запрос заблокирован!');
-                return Promise.reject(new Error('Blocked'));
-            }
-        }
-        
-        return _realFetch.apply(this, arguments);
-    };
-})();
+
 
 // ========== ТЕМА ==========
 let darkTheme = localStorage.getItem('snakeDarkTheme') === 'true'; if (darkTheme) document.body.classList.add('dark-theme');
