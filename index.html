@@ -341,8 +341,6 @@
         <button class="modal-btn btn-primary" onclick="register()">Зарегистрироваться</button>
         <span class="modal-switch" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
     </div>
-
-
 </div>
 
 <div class="top-panel">
@@ -350,6 +348,7 @@
     <button class="menu-btn" onclick="window.location.href='snake.html'">🐍 Змейка</button>
     <button class="menu-btn" onclick="window.location.href='clicker.html'">💰 Кликер</button>
     <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+    
     <div class="profile-section" id="profileSection">
         <span class="profile-avatar">👤</span>
         <span class="profile-name" id="profileName">Гость</span>
@@ -455,13 +454,6 @@ function openAuthModal() {
     document.getElementById('registerPasswordConfirm').value = '';
 }
 
-function openSocialModal() {
-    document.getElementById('modalOverlay').style.display = 'flex';
-    document.getElementById('modalLogin').style.display = 'none';
-    document.getElementById('modalRegister').style.display = 'none';
-    document.getElementById('modalSocial').style.display = 'block';
-}
-    
 function closeModal() {
     document.getElementById('modalOverlay').style.display = 'none';
 }
