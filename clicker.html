@@ -2005,20 +2005,20 @@ async function saveToSupabase() {
         if (data) {
             if (data.status === 'rejected') {
                 console.warn('🛡️ Сервер отклонил:', data.reason);
-                balance = data.balance;
-                coins = data.coins;
-                collectibleTokens = data.tokens;
-                prestigeLevel = data.prestige;
-                updateUI();
-                updateCoins();
-                updateTokenBal();
-                checkPrestigeDisplay();
             }
-            // ✅ Синхронизируем стикеры с сервером
+            // ✅ ВСЕГДА синхронизируем с сервером (отклонено или нет)
+            balance = data.balance || balance;
+            coins = data.coins || coins;
+            collectibleTokens = data.tokens || collectibleTokens;
+            prestigeLevel = data.prestige || prestigeLevel;
             if (data.stickers) _stickers = data.stickers;
             if (data.limited_stickers) _limitedStickers = data.limited_stickers;
             if (data.collectible_stickers) _collectibleStickers = data.collectible_stickers;
-            console.log('✅ Сохранено');
+            updateUI();
+            updateCoins();
+            updateTokenBal();
+            checkPrestigeDisplay();
+            console.log('✅ Синхронизировано');
         }
     } catch(e) {}
 }
