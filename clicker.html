@@ -2002,16 +2002,25 @@ async function saveToSupabase() {
         
         if (error) { console.log('❌', error.message); return; }
         
-        // ✅ ВСЕГДА применяем данные с сервера
         if (data) {
+            // Всегда применяем проверенные данные с сервера
             balance = data.balance;
             coins = data.coins;
             collectibleTokens = data.tokens;
             prestigeLevel = data.prestige;
             
-            if (data.stickers) { _stickers = data.stickers; }
-            if (data.limited_stickers) { _limitedStickers = data.limited_stickers; }
-            if (data.collectible_stickers) { _collectibleStickers = data.collectible_stickers; }
+            if (data.stickers) { 
+                _stickers = data.stickers; 
+                stickers = data.stickers; 
+            }
+            if (data.limited_stickers) { 
+                _limitedStickers = data.limited_stickers; 
+                limitedStickers = data.limited_stickers; 
+            }
+            if (data.collectible_stickers) { 
+                _collectibleStickers = data.collectible_stickers; 
+                collectibleStickers = data.collectible_stickers; 
+            }
             
             updateUI();
             updateCoins();
@@ -2019,7 +2028,9 @@ async function saveToSupabase() {
             checkPrestigeDisplay();
             
             if (data.status === 'rejected') {
-                console.warn('🛡️ Отклонено:', data.reason);
+                console.warn('🛡️ Сервер отклонил:', data.reason);
+            } else {
+                console.log('✅ Сохранено');
             }
         }
     } catch(e) {}
