@@ -1615,6 +1615,51 @@ function updateCoins() { document.getElementById('coinsDisplay').textContent = c
 let balance = 0, totalClicks = 0, clickPower = 1, autoClicker = 0, multiplier = 0, rebirths = 0, stickers = {}, craftSel = {}, boostPct = 0, boostActive = false, craftCnt = 0, craftTarget = null, cps = 0, clickTime = 0, limitedStickers = {};
 let coins = 0, favorites = {}, pinned = [];
 let collectibleTokens = 0, prestigeLevel = 0, collectibleStickers = {};
+    // Защита от изменения переменных из консоли
+(function() {
+    var _stickers = {};
+    var _limitedStickers = {};
+    var _collectibleStickers = {};
+    
+    Object.defineProperty(window, 'stickers', {
+        get: function() { return _stickers; },
+        set: function(v) {
+            var stack = new Error().stack || '';
+            if (stack.includes('<anonymous>') || stack.includes('VM')) {
+                console.warn('🛡️ Изменение стикеров заблокировано!');
+                return;
+            }
+            _stickers = v;
+        },
+        configurable: false
+    });
+    
+    Object.defineProperty(window, 'limitedStickers', {
+        get: function() { return _limitedStickers; },
+        set: function(v) {
+            var stack = new Error().stack || '';
+            if (stack.includes('<anonymous>') || stack.includes('VM')) {
+                console.warn('🛡️ Изменение лимит-стикеров заблокировано!');
+                return;
+            }
+            _limitedStickers = v;
+        },
+        configurable: false
+    });
+    
+    Object.defineProperty(window, 'collectibleStickers', {
+        get: function() { return _collectibleStickers; },
+        set: function(v) {
+            var stack = new Error().stack || '';
+            if (stack.includes('<anonymous>') || stack.includes('VM')) {
+                console.warn('🛡️ Изменение коллекционных заблокировано!');
+                return;
+            }
+            _collectibleStickers = v;
+        },
+        configurable: false
+    });
+})();
 let dailyDealsData = [], lastDealRefresh = parseInt(localStorage.getItem('clicker_last_deal_refresh') || '0');
 let fuseSlots = [];
 let actionCounters = { clicks: 0, sells: 0, packs: 0, crafts: 0, fuses: 0 };
