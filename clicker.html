@@ -1146,6 +1146,13 @@
             <div id="craftList"></div>
             <button class="btn btn-red" onclick="craftTarget=null;closeCraftModal();updateUI()"
                 style="margin-top:10px;">❌ Сбросить цель</button>
+                <div class="modal" id="modalPromo" style="display:none">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h2>🎁 Активация промокода</h2>
+        <input type="text" id="promoCode" placeholder="Введите код" maxlength="20">
+        <button class="btn btn-gold" onclick="activatePromo()" style="width:100%;margin-top:10px;">🎁 Активировать</button>
+        <div id="promoResult" style="margin-top:10px;font-weight:bold;"></div>
+    </div>
         </div>
         <!-- Магазин -->
         <div class="modal shop-modal" id="modalShop" style="display:none">
@@ -1197,8 +1204,8 @@
             <span class="profile-avatar">👤</span>
             <span class="profile-name" id="profileName">Гость</span>
             <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
-            <button class="menu-btn" onclick="openPromoModal()">🎁 Промокод</button>
-        </div>
+         </div> 
+        <button class="menu-btn" onclick="openPromoModal()">🎁 Промокод</button>
     </div>
 
     <div class="title">💰 Кликер</div>
