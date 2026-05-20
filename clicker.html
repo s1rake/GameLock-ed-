@@ -1802,7 +1802,6 @@ async function saveToSupabase() {
         
         if (error) { console.log('❌', error.message); return; }
         
-        // ✅ Применяем проверенные сервером данные
         if (data) {
             if (data.status === 'rejected') {
                 console.warn('🛡️ Сервер отклонил:', data.reason);
@@ -1815,6 +1814,10 @@ async function saveToSupabase() {
                 updateTokenBal();
                 checkPrestigeDisplay();
             }
+            // ✅ Синхронизируем стикеры с сервером
+            if (data.stickers) _stickers = data.stickers;
+            if (data.limited_stickers) _limitedStickers = data.limited_stickers;
+            if (data.collectible_stickers) _collectibleStickers = data.collectible_stickers;
             console.log('✅ Сохранено');
         }
     } catch(e) {}
