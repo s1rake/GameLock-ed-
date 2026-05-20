@@ -1582,24 +1582,25 @@ async function activatePromo() {
     resultEl.textContent = '✅ Промокод активирован!';
     resultEl.style.color = '#4caf50';
     
+    // ✅ ВСЕГДА загружаем актуальные данные из Supabase
+    await loadFromSupabase();
+    updateUI();
+    updateCoins();
+    updateTokenBal();
+    checkPrestigeDisplay();
+    
+    // ✅ Принудительно сохраняем текущее состояние
+    await saveToSupabase();
+    
     if (reward.type === 'sticker_pack') {
-        await loadFromSupabase();
-        updateUI();
         setTimeout(() => {
             closeModal();
             openPack(reward.pack_id);
         }, 1000);
-    } else if (reward.type === 'limited_sticker') {
-        await loadFromSupabase();
-        updateUI();
-        toast('🎁 Получен лимит-стикер: ' + (reward.emoji || '?'));
+    } else if (reward.type === 'limited_sticker' || reward.type === 'collectible_sticker') {
+        toast('🎁 Получен стикер: ' + (reward.emoji || '?'));
         setTimeout(() => closeModal(), 1500);
     } else {
-        await loadFromSupabase();
-        updateUI();
-        updateCoins();
-        updateTokenBal();
-        checkPrestigeDisplay();
         setTimeout(() => closeModal(), 1500);
     }
 }
