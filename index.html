@@ -422,16 +422,22 @@ let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
 
     // ========== СИСТЕМА БАНОВ ==========
 function showBanModal(reason, type, expires) {
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;display:flex;align-items:center;justify-content:center;';
-    var modal = document.createElement('div');
-    modal.style.cssText = 'background:#1a1a2e;color:#eee;padding:40px;border-radius:20px;text-align:center;max-width:400px;border:3px solid #ff4444;';
-    modal.innerHTML = '<div style="font-size:60px;">🚫</div>' +
-        '<h2 style="color:#ff4444;">' + (type === 'account' ? 'Аккаунт заблокирован' : 'Доступ ограничен') + '</h2>' +
-        '<p>Причина: ' + reason + '</p>' +
-        (expires ? '<p style="color:#ffaa00;">До: ' + new Date(expires).toLocaleString() + '</p>' : '');
-    document.body.appendChild(overlay);
+    var old = document.querySelector('.ban-overlay');
+    if (old) old.remove();
+    var overlay = document.createElement('div'); overlay.className = 'ban-overlay';
+    var modal = document.createElement('div'); modal.className = 'ban-modal';
+    modal.innerHTML = 
+        '<div class="ban-icon">🚫</div>' +
+        '<div class="ban-title">' + (type === 'account' ? '⛔ Аккаунт заблокирован' : '🌐 Доступ ограничен') + '</div>' +
+        '<div class="ban-reason"><b>Причина:</b> ' + reason + '</div>' +
+        '<div class="ban-expires">' + (expires ? 'Бан истекает: ' + new Date(expires).toLocaleString() : 'Бан навсегда') + '</div>' +
+        '<div class="ban-footer">Если вы считаете, что бан ошибочен — свяжитесь с администрацией</div>' +
+        '<div style="margin-top:15px;display:flex;gap:10px;justify-content:center;">' +
+            '<a href="https://t.me/Gamelock_ed_Games" target="_blank" style="background:#0088cc;color:white;padding:10px 20px;border-radius:10px;text-decoration:none;font-size:14px;">✈️ Обжаловать в Telegram</a>' +
+        '</div>';
     overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
 }
 
 async function checkBan() {
@@ -554,12 +560,26 @@ async function hashPassword(password) {
     return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function logout() {
-    if (confirm('Выйти из аккаунта?')) {
-        currentUser = null;
-        localStorage.removeItem('snakeCurrentUser');
-        updateProfileUI();
+function logout() { 
+    // Проверяем, не забанен ли перед выходом
+    if (currentUser && sb) {
+        checkBan().then(function(canPlay) {
+            if (!canPlay) {
+                // Забанен — не даём выйти, показываем предупреждение
+                showBanModal('Вы заблокированы. Выход из аккаунта невозможен.', 'account', null);
+                return;
+            }
+            // Не забанен — выходим
+            currentUser = null;
+            localStorage.removeItem('snakeCurrentUser');
+            updateProfileUI();
+        });
+        return;
     }
+    // Гость — просто выходим
+    currentUser = null;
+    localStorage.removeItem('snakeCurrentUser');
+    updateProfileUI();
 }
 
 // Закрытие модального окна по клику на фон
