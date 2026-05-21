@@ -341,7 +341,6 @@
     <meta charset="UTF-8">
     <title>Главное меню</title> 
     <link rel="shortcut icon" href="img/clicker.png" type="image/x-icon">
-    <!-- CSS -->
 </head>
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal" id="modalLogin">
@@ -433,6 +432,14 @@ function updateThemeButton() {
     document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙';
 }
 
+function toast(msg, c) {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:15px;font-weight:bold;font-size:15px;z-index:200;color:#fff;background:' + (c || '#4caf50') + ';box-shadow:0 5px 20px rgba(0,0,0,0.3);';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function() { t.remove(); }, 2500);
+}
+    
 // ========== СИСТЕМА АККАУНТОВ ==========
 var _currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
 Object.defineProperty(window, 'currentUser', {
