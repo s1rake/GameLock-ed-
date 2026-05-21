@@ -426,6 +426,18 @@ function updateProfileUI() {
         document.getElementById('profileBtn').textContent = 'Выйти';
         document.getElementById('profileBtn').onclick = logout;
         document.getElementById('profileSection').querySelector('.profile-avatar').textContent = '🎮';
+        
+        // ✅ Проверяем бан
+        checkBan().then(function(canPlay) {
+            if (!canPlay) {
+                // Если забанен — показываем окно бана и разлогиниваем
+                setTimeout(function() {
+                    currentUser = null;
+                    localStorage.removeItem('snakeCurrentUser');
+                    updateProfileUI();
+                }, 100);
+            }
+        });
     } else {
         document.getElementById('profileName').textContent = 'Гость';
         document.getElementById('profileBtn').textContent = 'Войти';
