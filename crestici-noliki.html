@@ -685,7 +685,47 @@
         }
 
         // ========== ЕСА ==========
-        let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
+var _currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
+Object.defineProperty(window, 'currentUser', {
+    get: function() { return _currentUser; },
+    set: function(v) {
+        var stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+            console.warn('🛡️ Сброс аккаунта заблокирован!');
+            return;
+        }
+        _currentUser = v;
+    },
+    configurable: false
+});
+
+// ========== ЗАЩИТА LOCALSTORAGE ==========
+(function() {
+    var _origSetItem = localStorage.setItem.bind(localStorage);
+    var _origGetItem = localStorage.getItem.bind(localStorage);
+    var _origRemoveItem = localStorage.removeItem.bind(localStorage);
+    
+    localStorage.setItem = function(key, value) {
+        var allowed = ['snakeUsers', 'snakeCurrentUser', 'snakeDarkTheme'];
+        if (!allowed.some(function(k) { return key.startsWith(k); })) { console.warn('🛡️ Блокировано:', key); return; }
+        return _origSetItem(key, value);
+    };
+    
+    localStorage.removeItem = function(key) {
+        if (key === 'snakeCurrentUser') {
+            var stack = new Error().stack || '';
+            if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+                console.warn('🛡️ Удаление аккаунта заблокировано!');
+                return;
+            }
+        }
+        if (!key.startsWith('snake')) { console.warn('🛡️ Удаление блокировано:', key); return; }
+        return _origRemoveItem(key);
+    };
+    
+    localStorage.clear = function() { console.warn('🛡️ Очистка заблокирована!'); };
+})();
+        
         function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
         function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)); }
 
