@@ -803,7 +803,7 @@
 
 <body>
 
-    <div class="top-panel">
+     <div class="top-panel">
         <a href="index.html" class="menu-btn">🏠 Меню</a>
         <button class="menu-btn" onclick="openSkinShop()">🎨 Скины</button>
         <button class="menu-btn" onclick="openSettings()">⚙️ Настройки</button>
@@ -826,18 +826,10 @@
                 <button class="leaders-tab" onclick="switchLeaderTab('events')">🎪 Ивенты</button>
                 <button class="leaders-tab" onclick="switchLeaderTab('deaths')">💀 Смерти</button>
             </div>
-            <div class="leader-category active" id="leaderCatScore">
-                <ul class="leader-list" id="leaderScore"></ul>
-            </div>
-            <div class="leader-category" id="leaderCatGoldApples">
-                <ul class="leader-list" id="leaderGoldApples"></ul>
-            </div>
-            <div class="leader-category" id="leaderCatEvents">
-                <ul class="leader-list" id="leaderEvents"></ul>
-            </div>
-            <div class="leader-category" id="leaderCatDeaths">
-                <ul class="leader-list" id="leaderDeaths"></ul>
-            </div>
+            <div class="leader-category active" id="leaderCatScore"><ul class="leader-list" id="leaderScore"></ul></div>
+            <div class="leader-category" id="leaderCatGoldApples"><ul class="leader-list" id="leaderGoldApples"></ul></div>
+            <div class="leader-category" id="leaderCatEvents"><ul class="leader-list" id="leaderEvents"></ul></div>
+            <div class="leader-category" id="leaderCatDeaths"><ul class="leader-list" id="leaderDeaths"></ul></div>
         </div>
 
         <div class="game-center">
@@ -863,30 +855,18 @@
         <div class="shop-panel">
             <div class="shop-title">🕯️ Огоньки</div>
             <div class="balance">💰 Баланс: <span id="sparkBalance">0</span>🍎</div>
-            <div class="spark-item" id="sparkGolden">
-                <div class="spark-name">⭐ Золотая еда (0 шт.)</div><button class="spark-use-btn">Купить 💰</button>
-            </div>
-            <div class="spark-item" id="sparkRainbow">
-                <div class="spark-name">🌈 Радужный дождь (0 шт.)</div><button class="spark-use-btn">Купить 💰</button>
-            </div>
-            <div class="spark-item" id="sparkBonus">
-                <div class="spark-name">🎁 Бонусная еда (0 шт.)</div><button class="spark-use-btn">Купить 💰</button>
-            </div>
-            <div class="spark-item" id="sparkRandom">
-                <div class="spark-name">🎲 Рандом (0 шт.)</div><button class="spark-use-btn">Купить 💰</button>
-            </div>
+            <div class="spark-item" id="sparkGolden"><div class="spark-name">⭐ Золотая еда (0 шт.)</div><button class="spark-use-btn">Купить 💰</button></div>
+            <div class="spark-item" id="sparkRainbow"><div class="spark-name">🌈 Радужный дождь (0 шт.)</div><button class="spark-use-btn">Купить 💰</button></div>
+            <div class="spark-item" id="sparkBonus"><div class="spark-name">🎁 Бонусная еда (0 шт.)</div><button class="spark-use-btn">Купить 💰</button></div>
+            <div class="spark-item" id="sparkRandom"><div class="spark-name">🎲 Рандом (0 шт.)</div><button class="spark-use-btn">Купить 💰</button></div>
         </div>
 
         <div class="stats-panel">
             <div class="stats-title">📊 Статистика</div>
-            <div class="stat-item"><span class="stat-icon">💀</span><span class="stat-label">Смертей</span><span
-                    class="stat-value" id="statDeaths">0</span></div>
-            <div class="stat-item"><span class="stat-icon">👑</span><span class="stat-label">Рекорд</span><span
-                    class="stat-value" id="statRecord">0</span></div>
-            <div class="stat-item"><span class="stat-icon">🍎</span><span class="stat-label">Яблок</span><span
-                    class="stat-value" id="statApples">0</span></div>
-            <div class="stat-item"><span class="stat-icon">⭐</span><span class="stat-label">Золотых</span><span
-                    class="stat-value" id="statGoldApples">0</span></div>
+            <div class="stat-item"><span class="stat-icon">💀</span><span class="stat-label">Смертей</span><span class="stat-value" id="statDeaths">0</span></div>
+            <div class="stat-item"><span class="stat-icon">👑</span><span class="stat-label">Рекорд</span><span class="stat-value" id="statRecord">0</span></div>
+            <div class="stat-item"><span class="stat-icon">🍎</span><span class="stat-label">Яблок</span><span class="stat-value" id="statApples">0</span></div>
+            <div class="stat-item"><span class="stat-icon">⭐</span><span class="stat-label">Золотых</span><span class="stat-value" id="statGoldApples">0</span></div>
         </div>
     </div>
 
@@ -919,17 +899,21 @@
             <h2>⚙️ Настройки управления</h2>
             <div class="settings-section">
                 <h3>🎮 Клавиши (WASD)</h3>
-                <div class="bind-row"><span class="bind-label">Вверх</span><input class="bind-input" id="bindUp"
-                        maxlength="1"></div>
-                <div class="bind-row"><span class="bind-label">Вниз</span><input class="bind-input" id="bindDown"
-                        maxlength="1"></div>
-                <div class="bind-row"><span class="bind-label">Влево</span><input class="bind-input" id="bindLeft"
-                        maxlength="1"></div>
-                <div class="bind-row"><span class="bind-label">Вправо</span><input class="bind-input" id="bindRight"
-                        maxlength="1"></div>
+                <div class="bind-row"><span class="bind-label">Вверх</span><input class="bind-input" id="bindUp" maxlength="1"></div>
+                <div class="bind-row"><span class="bind-label">Вниз</span><input class="bind-input" id="bindDown" maxlength="1"></div>
+                <div class="bind-row"><span class="bind-label">Влево</span><input class="bind-input" id="bindLeft" maxlength="1"></div>
+                <div class="bind-row"><span class="bind-label">Вправо</span><input class="bind-input" id="bindRight" maxlength="1"></div>
             </div>
             <button class="modal-btn btn-primary" onclick="saveSettings()">✅ Сохранить</button>
             <button class="modal-btn btn-danger" onclick="resetSettings()">🔄 Сбросить</button>
+        </div>
+        <!-- ✅ Модальное окно для промокодов -->
+        <div class="modal" id="modalPromo" style="display:none">
+            <span class="modal-close" onclick="closeModal()">✕</span>
+            <h2>🎁 Активация промокода</h2>
+            <input type="text" id="promoCode" placeholder="Введите код" maxlength="20">
+            <button class="btn btn-gold" onclick="activatePromo()" style="width:100%;margin-top:10px;">🎁 Активировать</button>
+            <div id="promoResult" style="margin-top:10px;font-weight:bold;"></div>
         </div>
     </div>
 
