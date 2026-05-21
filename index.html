@@ -320,24 +320,30 @@
 <body>
 
 <!-- Модальное окно входа/регистрации -->
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Главное меню</title> 
+    <link rel="shortcut icon" href="img/clicker.png" type="image/x-icon">
+    <!-- CSS -->
+</head>
+<body>
+
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal" id="modalLogin">
         <span class="modal-close" onclick="closeModal()">✕</span>
         <h2>🔐 Вход</h2>
         <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
         <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
-        <div class="modal-error" id="loginError">Неверное имя или пароль</div>
         <button class="modal-btn btn-primary" onclick="login()">Войти</button>
         <span class="modal-switch" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
     </div>
-
     <div class="modal" id="modalRegister">
         <span class="modal-close" onclick="closeModal()">✕</span>
         <h2>📝 Регистрация</h2>
         <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
         <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
         <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
-        <div class="modal-error" id="registerError">Ошибка регистрации</div>
         <button class="modal-btn btn-primary" onclick="register()">Зарегистрироваться</button>
         <span class="modal-switch" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
     </div>
@@ -358,17 +364,10 @@
     </div>
 </div>
 
-<div class="title">
-    🎮 Gamelock(ed)
-</div>
-
-<div class="subtitle">
-    Выбери игру и начни играть прямо сейчас!(Для комфортной игры моежет потробоватся ускоритель!)
-</div>
+<div class="title">🎮 Gamelock(ed)</div>
+<div class="subtitle">Выбери игру и начни играть прямо сейчас!</div>
 
 <div class="games-container">
-
-    <!-- Крестики-нолики -->
     <div class="game-card" onclick="window.location.href='crestici-noliki.html'">
         <img class="game-image" src="img/crestici-noliki.png" alt="Крестики-нолики">
         <div class="game-info">
@@ -377,8 +376,6 @@
             <span class="game-badge">🎯 2 игрока</span>
         </div>
     </div>
-
-    <!-- Змейка -->
     <div class="game-card" onclick="window.location.href='snake.html'">
         <img class="game-image" src="img/snake.png" alt="Змейка">
         <div class="game-info">
@@ -387,8 +384,6 @@
             <span class="game-badge">🔥 Хит</span>
         </div>
     </div>
-
-    <!-- Кликер -->
     <div class="game-card" onclick="window.location.href='clicker.html'">
         <img class="game-image" src="img/clicker.png" alt="Кликер">
         <div class="game-info">
@@ -397,7 +392,6 @@
             <span class="game-badge">🖱️ Кликай</span>
         </div>
     </div>
-
 </div>
     
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
