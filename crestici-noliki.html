@@ -588,14 +588,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-
-        if (currentUser && sb) {
-    checkBan().then(function(canPlay) {
-        if (!canPlay) {
-            document.querySelector('.game-container').style.display = 'none';
-        }
-    });
-}
+        
         // ========== ЗАЩИТА КОДА ==========
         (function () {
             const PROTECTED_CODE = 'ttt_protected_v2';
@@ -661,8 +654,16 @@
         }
 
         // ========== ЕСА ==========
-        let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
-        function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
+let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
+
+// ✅ Проверка бана при загрузке
+if (currentUser && sb) {
+    checkBan().then(function(canPlay) {
+        if (!canPlay) {
+            document.querySelector('.game-container').style.display = 'none';
+        }
+    });
+}        function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
         function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)); }
 
 async function hashPassword(password) {
@@ -672,6 +673,33 @@ async function hashPassword(password) {
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// ========== СИСТЕМА БАНОВ ==========
+function showBanModal(reason, type, expires) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;display:flex;align-items:center;justify-content:center;';
+    var modal = document.createElement('div');
+    modal.style.cssText = 'background:#1a1a2e;color:#eee;padding:40px;border-radius:20px;text-align:center;max-width:400px;border:3px solid #ff4444;';
+    modal.innerHTML = '<div style="font-size:60px;">🚫</div>' +
+        '<h2 style="color:#ff4444;">' + (type === 'account' ? 'Аккаунт заблокирован' : 'Доступ ограничен') + '</h2>' +
+        '<p>Причина: ' + reason + '</p>' +
+        (expires ? '<p style="color:#ffaa00;">До: ' + new Date(expires).toLocaleString() + '</p>' : '');
+    document.body.appendChild(overlay);
+    overlay.appendChild(modal);
+}
+
+async function checkBan() {
+    if (!currentUser || !sb) return true;
+    var ip = 'unknown';
+    try { var res = await fetch('https://api.ipify.org?format=json'); var data = await res.json(); ip = data.ip; } catch(e) {}
+    var { data } = await sb.rpc('check_ban', { p_username: currentUser.username, p_ip: ip });
+    if (data && data.status === 'banned') { showBanModal(data.reason, data.type, data.expires); return false; }
+    return true;
+}
+
+function updateProfileUI() {
+    // ... существующий код
+}
+        
         function updateProfileUI() {
             if (currentUser) { document.getElementById('profileName').textContent = currentUser.username; document.getElementById('profileBtn').textContent = 'Выйти'; document.getElementById('profileBtn').onclick = logout; }
             else { document.getElementById('profileName').textContent = 'Гость'; document.getElementById('profileBtn').textContent = 'Войти'; document.getElementById('profileBtn').onclick = openAuthModal; }
