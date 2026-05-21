@@ -420,6 +420,29 @@ function updateThemeButton() {
 // ========== СИСТЕМА АККАУНТОВ ==========
 let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
 
+    // ========== СИСТЕМА БАНОВ ==========
+function showBanModal(reason, type, expires) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;display:flex;align-items:center;justify-content:center;';
+    var modal = document.createElement('div');
+    modal.style.cssText = 'background:#1a1a2e;color:#eee;padding:40px;border-radius:20px;text-align:center;max-width:400px;border:3px solid #ff4444;';
+    modal.innerHTML = '<div style="font-size:60px;">🚫</div>' +
+        '<h2 style="color:#ff4444;">' + (type === 'account' ? 'Аккаунт заблокирован' : 'Доступ ограничен') + '</h2>' +
+        '<p>Причина: ' + reason + '</p>' +
+        (expires ? '<p style="color:#ffaa00;">До: ' + new Date(expires).toLocaleString() + '</p>' : '');
+    document.body.appendChild(overlay);
+    overlay.appendChild(modal);
+}
+
+async function checkBan() {
+    if (!currentUser || !sb) return true;
+    var ip = 'unknown';
+    try { var res = await fetch('https://api.ipify.org?format=json'); var data = await res.json(); ip = data.ip; } catch(e) {}
+    var { data } = await sb.rpc('check_ban', { p_username: currentUser.username, p_ip: ip });
+    if (data && data.status === 'banned') { showBanModal(data.reason, data.type, data.expires); return false; }
+    return true;
+}
+    
 function updateProfileUI() {
     if (currentUser) {
         document.getElementById('profileName').textContent = currentUser.username;
