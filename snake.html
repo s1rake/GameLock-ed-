@@ -1086,19 +1086,22 @@ const saveUsers = (function() {
             } catch (e) { }
         }
 
-        function updateProfileUI() {
-            if (currentUser) {
-                document.getElementById('profileName').textContent = currentUser.username;
-                document.getElementById('profileBtn').textContent = 'Выйти';
-                document.getElementById('profileBtn').onclick = logout;
-            } else {
-                document.getElementById('profileName').textContent = 'Гость';
-                document.getElementById('profileBtn').textContent = 'Войти';
-                document.getElementById('profileBtn').onclick = openAuthModal;
-            }
-            updateStatsDisplay(); updateSparkBalance(); updateSparkButtons(); renderAchievements(); checkAchievements(); loadLeaderboard();
-        }
-
+function updateProfileUI() {
+    if (currentUser) {
+        document.getElementById('profileName').textContent = currentUser.username;
+        document.getElementById('profileBtn').textContent = 'Выйти';
+        document.getElementById('profileBtn').onclick = logout;
+        document.getElementById('profileSection').querySelector('.profile-avatar').textContent = '🎮';
+        
+        // Проверяем бан, но НЕ разлогиниваем
+        checkBan();
+    } else {
+        document.getElementById('profileName').textContent = 'Гость';
+        document.getElementById('profileBtn').textContent = 'Войти';
+        document.getElementById('profileBtn').onclick = openAuthModal;
+        document.getElementById('profileSection').querySelector('.profile-avatar').textContent = '👤';
+    }
+}
         function openAuthModal() { if (currentUser) { logout(); return; } document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalLogin').style.display = 'block'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalSkins').style.display = 'none'; document.getElementById('modalSettings').style.display = 'none'; }
         function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
         function switchModal(type) { document.getElementById('modalLogin').style.display = type === 'register' ? 'none' : 'block'; document.getElementById('modalRegister').style.display = type === 'register' ? 'block' : 'none'; }
