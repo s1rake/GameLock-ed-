@@ -344,11 +344,13 @@
 </div>
 
 <div class="top-panel">
-    <button class="menu-btn" onclick="window.location.href='main.html'">🏠 Главное меню</button>
+    <button class="menu-btn" onclick="window.location.href='index.html'">🏠 Главное меню</button>
     <button class="menu-btn" onclick="window.location.href='snake.html'">🐍 Змейка</button>
     <button class="menu-btn" onclick="window.location.href='clicker.html'">💰 Кликер</button>
     <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
-    
+    <a href="https://www.youtube.com/channel/UCtDcnBDo2iS54bH0_2UmTwA" target="_blank" class="menu-btn" style="text-decoration:none;background:#ff0000;color:white;">📺 YouTube</a>
+    <a href="https://www.tiktok.com/@gamelock_ed_games" target="_blank" class="menu-btn" style="text-decoration:none;background:#000;color:white;">🎵 TikTok</a>
+    <a href="https://t.me/Gamelock_ed_Games" target="_blank" class="menu-btn" style="text-decoration:none;background:#0088cc;color:white;">✈️ Telegram</a>
     <div class="profile-section" id="profileSection">
         <span class="profile-avatar">👤</span>
         <span class="profile-name" id="profileName">Гость</span>
@@ -453,7 +455,7 @@ function openAuthModal() {
     document.getElementById('registerPassword').value = '';
     document.getElementById('registerPasswordConfirm').value = '';
 }
-
+    
 function closeModal() {
     document.getElementById('modalOverlay').style.display = 'none';
 }
@@ -475,13 +477,10 @@ function getAllUsers() {
 }
 
 function saveUsers(users) {
-    // Сначала получаем ТЕКУЩИЕ данные из localStorage
     const currentUsers = JSON.parse(localStorage.getItem('snakeUsers') || '{}');
-    // Объединяем с новыми данными (новые перезаписывают старые)
     const merged = Object.assign({}, currentUsers, users);
     localStorage.setItem('snakeUsers', JSON.stringify(merged));
 }
-
 
 async function register() {
     const u = document.getElementById('registerUsername').value.trim();
@@ -527,6 +526,7 @@ async function hashPassword(password) {
     const h = await crypto.subtle.digest('SHA-256', d);
     return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
 function logout() {
     if (confirm('Выйти из аккаунта?')) {
         currentUser = null;
