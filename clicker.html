@@ -1468,13 +1468,11 @@ async function saveToSupabase() {
         if (data) {
             console.log('📥 Ответ сервера:', data.status, data.reason || '');
             
-            // ✅ ВСЕГДА применяем данные с сервера
             balance = data.balance;
             coins = data.coins;
             collectibleTokens = data.tokens;
             prestigeLevel = data.prestige;
             
-            // ✅ Стикеры — принудительно
             if (data.stickers !== undefined) {
                 stickers = data.stickers;
                 console.log('🔄 Обычные стикеры синхронизированы:', Object.keys(stickers).length, 'шт');
