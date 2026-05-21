@@ -532,75 +532,59 @@
 
 <body>
 
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal" id="modalLogin">
-            <span class="modal-close" onclick="closeModal()">✕</span>
-            <h2>🔐 Вход</h2>
-            <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
-            <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
-            <div class="modal-error" id="loginError">Неверное имя или пароль</div>
-            <button class="modal-btn btn-primary" onclick="login()">Войти</button>
-            <span class="modal-switch" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
-        </div>
-        <div class="modal" id="modalRegister">
-            <span class="modal-close" onclick="closeModal()">✕</span>
-            <h2>📝 Регистрация</h2>
-            <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
-            <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
-            <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
-            <div class="modal-error" id="registerError">Ошибка регистрации</div>
-            <button class="modal-btn btn-primary" onclick="register()">Зарегистрироваться</button>
-            <span class="modal-switch" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
-        </div>
+<div class="top-panel">
+    <a href="index.html" class="menu-btn">🏠 Меню</a>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+    <div class="profile-section">
+        <span class="profile-avatar">👤</span>
+        <span class="profile-name" id="profileName">Гость</span>
+        <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
     </div>
+</div>
 
-    <div class="top-panel">
-        <button class="menu-btn" onclick="window.location.href='index.html'">🏠 Главное меню</button>
-        <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
-        <div class="profile-section" id="profileSection">
-            <span class="profile-avatar">👤</span>
-            <span class="profile-name" id="profileName">Гость</span>
-            <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
-        </div>
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalLogin" style="display:none">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h2>🔐 Вход</h2>
+        <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
+        <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
+        <button class="modal-btn btn-primary" onclick="login()">Войти</button>
+        <span class="modal-switch" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
     </div>
-
-    <div class="title">❌ Крестики-Нолики ⭕</div>
-
-    <div class="mode-selector">
-        <button class="mode-btn active" onclick="setBoardMode('3x3')">🎯 3×3 (3 в ряд)</button>
-        <button class="mode-btn" onclick="setBoardMode('10x10')">🔟 10×10 (4 в ряд)</button>
+    <div class="modal" id="modalRegister" style="display:none">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h2>📝 Регистрация</h2>
+        <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
+        <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
+        <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
+        <button class="modal-btn btn-primary" onclick="register()">Зарегистрироваться</button>
+        <span class="modal-switch" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
     </div>
+</div>
 
-    <div class="game-mode-select">
-        <button class="active" onclick="setGameMode('pvp')">👥 2 игрока</button>
-        <button onclick="setGameMode('bot')">🤖 Против бота</button>
-    </div>
+<div class="title">❌ Крестики-нолики ⭕</div>
 
-    <div class="score-panel">
-        <div class="score-item"><img src="img/crestic.png" alt="X"> Побед: <span id="scoreX">0</span></div>
-        <div class="score-item">🤝 Ничьи: <span id="scoreDraw">0</span></div>
-        <div class="score-item"><img src="img/nolik.png" alt="O"> Поражений: <span id="scoreO">0</span></div>
-    </div>
-
-    <div id="boardContainer"></div>
-
-    <div id="status"></div>
-
-    <button class="restart-btn" onclick="restartGame()">Рестарт 🔄</button>
-
-    <div class="lb-panel">
-        <div class="shop-title">🏆 Победы над ботом</div>
-        <div class="leaders-tabs">
-            <button class="leaders-tab active" onclick="switchBotLB('3x3')">🎯 3×3</button>
-            <button class="leaders-tab" onclick="switchBotLB('10x10')">🔟 10×10</button>
-        </div>
-        <div class="leader-category active" id="lbBot3x3">
-            <ul class="lb-list" id="lbBot3x3List"></ul>
-        </div>
-        <div class="leader-category" id="lbBot10x10">
-            <ul class="lb-list" id="lbBot10x10List"></ul>
+<div class="game-container">
+    <div class="game-info">
+        <div class="player-turn" id="playerTurn">Ход игрока: ❌</div>
+        <div class="score-board">
+            <div class="score-item"><span>❌</span> <span id="scoreX">0</span></div>
+            <div class="score-item"><span>Ничья</span> <span id="scoreDraw">0</span></div>
+            <div class="score-item"><span>⭕</span> <span id="scoreO">0</span></div>
         </div>
     </div>
+    <div class="board" id="board">
+        <div class="cell" onclick="makeMove(0)"></div>
+        <div class="cell" onclick="makeMove(1)"></div>
+        <div class="cell" onclick="makeMove(2)"></div>
+        <div class="cell" onclick="makeMove(3)"></div>
+        <div class="cell" onclick="makeMove(4)"></div>
+        <div class="cell" onclick="makeMove(5)"></div>
+        <div class="cell" onclick="makeMove(6)"></div>
+        <div class="cell" onclick="makeMove(7)"></div>
+        <div class="cell" onclick="makeMove(8)"></div>
+    </div>
+    <button class="restart-btn" onclick="resetGame()">🔄 Новая игра</button>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
