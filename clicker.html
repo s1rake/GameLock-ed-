@@ -1465,39 +1465,39 @@ async function saveToSupabase() {
         
         if (error) { console.log('❌', error.message); return; }
         
-if (data) {
-    console.log('📥 Ответ сервера:', data.status, data.reason || '');
-    
-    // ✅ ВСЕГДА применяем данные с сервера, даже при ok
-    balance = data.balance;
-    coins = data.coins;
-    collectibleTokens = data.tokens;
-    prestigeLevel = data.prestige;
-    
-    // ✅ Стикеры — принудительно заменяем на серверные
-    if (data.stickers !== undefined) {
-        stickers = data.stickers;
-        console.log('🔄 Стикеры синхронизированы:', Object.keys(stickers).length);
-    }
-    if (data.limited_stickers !== undefined) {
-        limitedStickers = data.limited_stickers;
-        console.log('🔄 Лимит-стикеры синхронизированы:', Object.keys(limitedStickers).length);
-    }
-    if (data.collectible_stickers !== undefined) {
-        collectibleStickers = data.collectible_stickers;
-        console.log('🔄 Коллекционные синхронизированы:', Object.keys(collectibleStickers).length);
-    }
-    
-    updateUI();
-    updateCoins();
-    updateTokenBal();
-    checkPrestigeDisplay();
-    
+        if (data) {
+            console.log('📥 Ответ сервера:', data.status, data.reason || '');
+            
+            // ✅ ВСЕГДА применяем данные с сервера
+            balance = data.balance;
+            coins = data.coins;
+            collectibleTokens = data.tokens;
+            prestigeLevel = data.prestige;
+            
+            // ✅ Стикеры — принудительно
+            if (data.stickers !== undefined) {
+                stickers = data.stickers;
+                console.log('🔄 Обычные стикеры синхронизированы:', Object.keys(stickers).length, 'шт');
+            }
+            if (data.limited_stickers !== undefined) {
+                limitedStickers = data.limited_stickers;
+                console.log('🔄 Лимит-стикеры синхронизированы:', Object.keys(limitedStickers).length, 'шт');
+            }
+            if (data.collectible_stickers !== undefined) {
+                collectibleStickers = data.collectible_stickers;
+                console.log('🔄 Коллекционные синхронизированы:', Object.keys(collectibleStickers).length, 'шт');
+            }
+            
+            updateUI();
+            updateCoins();
+            updateTokenBal();
+            checkPrestigeDisplay();
+            
             if (data.status === 'rejected') {
                 console.warn('🛡️ Отклонено:', data.reason);
             }
         }
-     catch(e) {}
+    } catch(e) {}
 }
 // ========== ФОРМАТИРОВАНИЕ ==========
 function formatMoney(num) { if (num >= 1e12) { var dollars = Math.floor(num / 1e12); var remainder = num % 1e12; if (remainder === 0) return dollars + '💲'; return dollars + '💲' + Math.floor(remainder).toLocaleString() } return Math.floor(num).toLocaleString() + '💰' }
