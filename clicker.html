@@ -1493,12 +1493,11 @@ if (data) {
     updateTokenBal();
     checkPrestigeDisplay();
     
-    if (data.status === 'rejected') {
-        console.warn('🛡️ Отклонено:', data.reason);
-    }
-}
+            if (data.status === 'rejected') {
+                console.warn('🛡️ Отклонено:', data.reason);
+            }
         }
-    } catch(e) {}
+     catch(e) {}
 }
 // ========== ФОРМАТИРОВАНИЕ ==========
 function formatMoney(num) { if (num >= 1e12) { var dollars = Math.floor(num / 1e12); var remainder = num % 1e12; if (remainder === 0) return dollars + '💲'; return dollars + '💲' + Math.floor(remainder).toLocaleString() } return Math.floor(num).toLocaleString() + '💰' }
