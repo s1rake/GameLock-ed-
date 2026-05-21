@@ -1778,6 +1778,11 @@ async function endGame() {
     s.applesEaten = (s.applesEaten || 0) + sessionApples;
     s.goldApplesEaten = (s.goldApplesEaten || 0) + sessionGoldApples;
     s.totalEvents = (s.totalEvents || 0) + sessionEvents;
+    
+    // ✅ Обновляем счётчики смертей
+    if (deathType === 'self') s.selfDeaths = (s.selfDeaths || 0) + 1;
+    if (deathType === 'wall') s.wallDeaths = (s.wallDeaths || 0) + 1;
+    
     saveStatsLocal(s);
     
     document.getElementById('gameOverScreen').style.display = 'flex';
@@ -1786,9 +1791,12 @@ async function endGame() {
     
     updateStatsDisplay(); updateSparkBalance();
     endEvent();
+    
+    // ✅ Проверяем ачивки ПОСЛЕ обновления счётчиков
     checkAchievements();
+    
     deathType = null;
-        }
+}
 
         function restartGame() {
             if (gameLoopInterval) clearInterval(gameLoopInterval);
