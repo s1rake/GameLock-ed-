@@ -434,7 +434,19 @@ function updateThemeButton() {
 }
 
 // ========== СИСТЕМА АККАУНТОВ ==========
-let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
+var _currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
+Object.defineProperty(window, 'currentUser', {
+    get: function() { return _currentUser; },
+    set: function(v) {
+        var stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+            console.warn('🛡️ Сброс аккаунта заблокирован!');
+            return;
+        }
+        _currentUser = v;
+    },
+    configurable: false
+});
 
     // ========== СИСТЕМА БАНОВ ==========
 function showBanModal(reason, type, expires) {
