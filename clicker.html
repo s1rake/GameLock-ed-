@@ -1122,156 +1122,157 @@
 
 <body>
 
-      <div class="modal-overlay" id="modalOverlay">
-        <div class="modal" id="modalLogin">
-            <span class="modal-close" onclick="closeModal()">✕</span>
-            <h2>🔐 Вход</h2>
-            <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
-            <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
-            <button class="btn btn-gold" onclick="login()" style="width:100%">Войти</button>
-            <span class="modal-link" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
+     <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalLogin">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h2>🔐 Вход</h2>
+        <input type="text" id="loginUsername" placeholder="Имя пользователя" maxlength="20">
+        <input type="password" id="loginPassword" placeholder="Пароль" maxlength="30">
+        <button class="btn btn-gold" onclick="login()" style="width:100%">Войти</button>
+        <span class="modal-link" onclick="switchModal('register')">Нет аккаунта? Зарегистрироваться</span>
+    </div>
+    <div class="modal" id="modalRegister">
+        <span class="modal-close" onclick="closeModal()">✕</span>
+        <h2>📝 Регистрация</h2>
+        <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
+        <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
+        <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
+        <button class="btn btn-gold" onclick="register()" style="width:100%">Зарегистрироваться</button>
+        <span class="modal-link" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
+    </div>
+    <div class="modal" id="modalCraft" style="display:none">
+        <span class="modal-close" onclick="closeCraftModal()">✕</span>
+        <h2>🎯 Выберите что крафтить</h2>
+        <div id="craftList"></div>
+        <button class="btn btn-red" onclick="craftTarget=null;closeCraftModal();updateUI()" style="margin-top:10px;">❌ Сбросить цель</button>
+    </div>
+    <div class="modal shop-modal" id="modalShop" style="display:none">
+        <span class="modal-close" onclick="closeShopModal()">✕</span>
+        <h2>🛒 Магазин</h2>
+        <div style="font-weight:bold;margin-bottom:8px;">💷 Токены: <span id="shopTokenBal">0</span></div>
+        <div class="shop-section">
+            <h3>🔥 Акции дня (обновятся через <span id="dealTimer">--</span>)</h3>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;" id="dailyDeals"></div>
         </div>
-        <div class="modal" id="modalRegister">
-            <span class="modal-close" onclick="closeModal()">✕</span>
-            <h2>📝 Регистрация</h2>
-            <input type="text" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
-            <input type="password" id="registerPassword" placeholder="Пароль" maxlength="30">
-            <input type="password" id="registerPasswordConfirm" placeholder="Подтвердите пароль" maxlength="30">
-            <button class="btn btn-gold" onclick="register()" style="width:100%">Зарегистрироваться</button>
-            <span class="modal-link" onclick="switchModal('login')">Уже есть аккаунт? Войти</span>
+        <hr>
+        <div class="shop-section">
+            <h3>🔨 Крафты</h3>
+            <div id="craftList2"></div>
         </div>
-        <div class="modal" id="modalCraft" style="display:none">
-            <span class="modal-close" onclick="closeCraftModal()">✕</span>
-            <h2>🎯 Выберите что крафтить</h2>
-            <div id="craftList"></div>
-            <button class="btn btn-red" onclick="craftTarget=null;closeCraftModal();updateUI()" style="margin-top:10px;">❌ Сбросить цель</button>
-        </div>
-        <div class="modal shop-modal" id="modalShop" style="display:none">
-            <span class="modal-close" onclick="closeShopModal()">✕</span>
-            <h2>🛒 Магазин</h2>
-            <div style="font-weight:bold;margin-bottom:8px;">💷 Токены: <span id="shopTokenBal">0</span></div>
-            <div class="shop-section">
-                <h3>🔥 Акции дня (обновятся через <span id="dealTimer">--</span>)</h3>
-                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;" id="dailyDeals"></div>
-            </div>
-            <hr>
-            <div class="shop-section">
-                <h3>🔨 Крафты</h3>
-                <div id="craftList2"></div>
-            </div>
-            <hr>
-            <div class="fuse-section">
-                <h3>⚡ Music-фьюз</h3>
-                <div style="display:flex;gap:15px;flex-wrap:wrap;justify-content:center;">
-                    <div style="flex:1;min-width:180px;">
-                        <div style="color:#aaa;font-size:12px;margin-bottom:5px;">📦 Обычные стикеры</div>
-                        <div class="inv-grid" id="fuseInventory" style="max-height:250px;"></div>
-                    </div>
-                    <div style="flex:1;min-width:180px;">
-                        <div style="color:#aaa;font-size:12px;margin-bottom:5px;">🎯 Выбранные</div>
-                        <div class="fuse-slots" id="fuseSlots"></div>
-                        <div style="margin:8px 0;">Очки: <span id="fusePoints">0</span> / <span id="fusePointsNeeded">500</span></div>
-                        <div class="fuse-progress"><div class="fuse-fill" id="fuseFill" style="width:0%"></div></div>
-                    </div>
-                    <div style="flex:0 0 130px;text-align:center;">
-                        <div style="color:#aaa;font-size:12px;margin-bottom:5px;">🎰 Шансы</div>
-                        <div id="fuseRewards" style="font-size:12px;color:#ccc;"></div>
-                    </div>
+        <hr>
+        <div class="fuse-section">
+            <h3>⚡ Music-фьюз</h3>
+            <div style="display:flex;gap:15px;flex-wrap:wrap;justify-content:center;">
+                <div style="flex:1;min-width:180px;">
+                    <div style="color:#aaa;font-size:12px;margin-bottom:5px;">📦 Обычные стикеры</div>
+                    <div class="inv-grid" id="fuseInventory" style="max-height:250px;"></div>
                 </div>
-                <button class="fuse-btn" id="fuseBtn" onclick="doFuse()" disabled>⚡ Фьюз!</button>
-                <button class="btn btn-red" onclick="clearFuse()" style="margin-top:5px;">🗑️ Очистить</button>
+                <div style="flex:1;min-width:180px;">
+                    <div style="color:#aaa;font-size:12px;margin-bottom:5px;">🎯 Выбранные</div>
+                    <div class="fuse-slots" id="fuseSlots"></div>
+                    <div style="margin:8px 0;">Очки: <span id="fusePoints">0</span> / <span id="fusePointsNeeded">500</span></div>
+                    <div class="fuse-progress"><div class="fuse-fill" id="fuseFill" style="width:0%"></div></div>
+                </div>
+                <div style="flex:0 0 130px;text-align:center;">
+                    <div style="color:#aaa;font-size:12px;margin-bottom:5px;">🎰 Шансы</div>
+                    <div id="fuseRewards" style="font-size:12px;color:#ccc;"></div>
+                </div>
             </div>
-        </div>
-        <div class="modal" id="modalPromo" style="display:none">
-            <span class="modal-close" onclick="closeModal()">✕</span>
-            <h2>🎁 Активация промокода</h2>
-            <input type="text" id="promoCode" placeholder="Введите код" maxlength="20">
-            <button class="btn btn-gold" onclick="activatePromo()" style="width:100%;margin-top:10px;">🎁 Активировать</button>
-            <div id="promoResult" style="margin-top:10px;font-weight:bold;"></div>
+            <button class="fuse-btn" id="fuseBtn" onclick="doFuse()" disabled>⚡ Фьюз!</button>
+            <button class="btn btn-red" onclick="clearFuse()" style="margin-top:5px;">🗑️ Очистить</button>
         </div>
     </div>
+    <div class="modal" id="modalPromo" style="display:none">
+        <span class="modal-close" onclick="closePromoModal()">✕</span>
+        <h2>🎁 Активация промокода</h2>
+        <input type="text" id="promoCode" placeholder="Введите код" maxlength="20">
+        <button class="btn btn-gold" onclick="activatePromo()" style="width:100%;margin-top:10px;">🎁 Активировать</button>
+        <div id="promoResult" style="margin-top:10px;font-weight:bold;"></div>
+    </div>
+</div>
 
-    <div class="top-panel">
-        <button class="menu-btn" onclick="location.href='index.html'">🏠 Главное меню</button>
-        <button class="menu-btn" onclick="location.href='snake.html'">🐍 Змейка</button>
-        <button class="menu-btn" onclick="openPromoModal()">🎁 Промокод</button>
-        <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
-        <div class="profile-section">
-            <span class="profile-avatar">👤</span>
-            <span class="profile-name" id="profileName">Гость</span>
-            <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
-        </div>
+<div class="top-panel">
+    <button class="menu-btn" onclick="location.href='index.html'">🏠 Главное меню</button>
+    <button class="menu-btn" onclick="location.href='snake.html'">🐍 Змейка</button>
+    <button class="menu-btn" onclick="openPromoModal()">🎁 Промокод</button>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+    <div class="profile-section">
+        <span class="profile-avatar">👤</span>
+        <span class="profile-name" id="profileName">Гость</span>
+        <button class="profile-btn" id="profileBtn" onclick="openAuthModal()">Войти</button>
     </div>
+</div>
 
-    <div class="title">💰 Кликер</div>
-    <div class="balance">
-        💰 <span id="bal">0</span>
-        <span class="coins">💎 <span id="coinsDisplay">0</span></span>
-        <span class="prestige-badge" id="prestigeBadge" style="display:none">💲<span id="prestigeCount">0</span></span>
-        <button class="token-btn" onclick="openShopModal()">💷 <span id="tokenBal">0</span></button>
-    </div>
+<div class="title">💰 Кликер</div>
 
-    <div class="main-grid">
-        <div class="shop-left">
-            <div class="shop-title">🛒 Улучшения</div>
-            <div class="upg" onclick="buyUpgrade('clickPower')">
-                <div class="upg-icon">💪</div><div class="upg-info"><div class="upg-name">Сила клика</div><div>Ур: <span id="clvl">1</span></div></div>
-                <div class="upg-price">💰 <span id="cpr">10</span></div>
-            </div>
-            <div class="upg" onclick="buyUpgrade('autoClicker')">
-                <div class="upg-icon">🤖</div><div class="upg-info"><div class="upg-name">Автокликер</div><div>Ур: <span id="alvl">0</span></div></div>
-                <div class="upg-price">💰 <span id="apr">50</span></div>
-            </div>
-            <div class="upg" onclick="buyUpgrade('multiplier')">
-                <div class="upg-icon">✨</div><div class="upg-info"><div class="upg-name">Множитель</div><div>Ур: <span id="mlvl">0</span></div></div>
-                <div class="upg-price">💰 <span id="mpr">500</span></div>
-            </div>
-            <div class="rebirth-box">
-                <div>🌟 Перерождение <span id="rebLvl">0</span>/4</div>
-                <div>Доход: ×<span id="rebMult">1</span></div>
-                <button class="btn btn-green" onclick="rebirth()">🌟 <span id="rebBtn">Переродиться</span></button>
-            </div>
-        </div>
-        <div class="game-center">
-            <div class="safe-wrap" id="safeWrap"><div class="safe" id="safe">🔒</div></div>
-        </div>
-        <div class="stats-right">
-            <div class="shop-title">📊 Статистика</div>
-            <div class="stat-item">👆 Кликов<div class="stat-val"><span id="clicks">0</span></div></div>
-            <div class="stat-item">⚡ Кл/сек<div class="stat-val"><span id="cps">0</span></div></div>
-            <div class="stat-item">💥 Бустер<div class="stat-val"><span id="boostVal">0%</span></div></div>
-            <div class="stat-item">🏷️ Стикеров<div class="stat-val"><span id="stCnt">0</span></div></div>
-            <div class="stat-item">🔨 Крафтов<div class="stat-val"><span id="craftCnt">0</span></div></div>
-        </div>
-    </div>
+<div class="balance">
+    💰 <span id="bal">0</span>
+    <span class="coins">💎 <span id="coinsDisplay">0</span></span>
+    <span class="prestige-badge" id="prestigeBadge" style="display:none">💲<span id="prestigeCount">0</span></span>
+    <button class="token-btn" onclick="openShopModal()">💷 <span id="tokenBal">0</span></button>
+</div>
 
-    <div class="shop-left" style="width:100%;max-width:1000px;margin:0 auto 20px;padding:15px;">
-        <div class="shop-title">🎁 Стикерпаки (💎)</div>
-        <div id="packShop"></div>
-    </div>
-
-    <div class="bottom-row">
-        <div class="sticker-panel">
-            <div class="shop-title">🏷️ Мои стикеры</div>
-            <div class="sticker-grid" id="myStickers">Нет стикеров</div>
+<div class="main-grid">
+    <div class="shop-left">
+        <div class="shop-title">🛒 Улучшения</div>
+        <div class="upg" onclick="buyUpgrade('clickPower')">
+            <div class="upg-icon">💪</div><div class="upg-info"><div class="upg-name">Сила клика</div><div>Ур: <span id="clvl">1</span></div></div>
+            <div class="upg-price">💰 <span id="cpr">10</span></div>
         </div>
-        <div class="sticker-panel">
-            <div class="shop-title">🔨 Крафт</div>
-            <div class="craft-target" onclick="openCraftModal()">🎯 Цель: <span id="craftTargetName">Не выбрана</span></div>
-            <div class="sticker-grid" id="craftSlots">Выберите стикеры</div>
-            <div id="craftInfo" style="font-size:12px;color:#666;margin:4px 0"></div>
-            <button class="btn btn-green" onclick="doCraft()" id="craftBtn" disabled>🔨 Скрафтить</button>
-            <button class="btn btn-red" onclick="clearCraft()">🗑️ Очистить</button>
-            <button class="btn btn-gold" onclick="sellStickers()">💸 Продать все</button>
+        <div class="upg" onclick="buyUpgrade('autoClicker')">
+            <div class="upg-icon">🤖</div><div class="upg-info"><div class="upg-name">Автокликер</div><div>Ур: <span id="alvl">0</span></div></div>
+            <div class="upg-price">💰 <span id="apr">50</span></div>
+        </div>
+        <div class="upg" onclick="buyUpgrade('multiplier')">
+            <div class="upg-icon">✨</div><div class="upg-info"><div class="upg-name">Множитель</div><div>Ур: <span id="mlvl">0</span></div></div>
+            <div class="upg-price">💰 <span id="mpr">500</span></div>
+        </div>
+        <div class="rebirth-box">
+            <div>🌟 Перерождение <span id="rebLvl">0</span>/4</div>
+            <div>Доход: ×<span id="rebMult">1</span></div>
+            <button class="btn btn-green" onclick="rebirth()">🌟 <span id="rebBtn">Переродиться</span></button>
         </div>
     </div>
-
-    <div class="lb-panel">
-        <div class="shop-title">🏆 Самые дорогие стикеры</div>
-        <ul class="lb-list" id="stickerLB"></ul>
-        <button class="btn btn-red" onclick="unpinSticker(0)" id="unpinBtn" style="display:none;margin-top:8px;">🔓 Открепить</button>
+    <div class="game-center">
+        <div class="safe-wrap" id="safeWrap"><div class="safe" id="safe">🔒</div></div>
     </div>
-    <div class="pinned-area" id="pinnedArea"></div>
+    <div class="stats-right">
+        <div class="shop-title">📊 Статистика</div>
+        <div class="stat-item">👆 Кликов<div class="stat-val"><span id="clicks">0</span></div></div>
+        <div class="stat-item">⚡ Кл/сек<div class="stat-val"><span id="cps">0</span></div></div>
+        <div class="stat-item">💥 Бустер<div class="stat-val"><span id="boostVal">0%</span></div></div>
+        <div class="stat-item">🏷️ Стикеров<div class="stat-val"><span id="stCnt">0</span></div></div>
+        <div class="stat-item">🔨 Крафтов<div class="stat-val"><span id="craftCnt">0</span></div></div>
+    </div>
+</div>
+
+<div class="shop-left" style="width:100%;max-width:1000px;margin:0 auto 20px;padding:15px;">
+    <div class="shop-title">🎁 Стикерпаки (💎)</div>
+    <div id="packShop"></div>
+</div>
+
+<div class="bottom-row">
+    <div class="sticker-panel">
+        <div class="shop-title">🏷️ Мои стикеры</div>
+        <div class="sticker-grid" id="myStickers">Нет стикеров</div>
+    </div>
+    <div class="sticker-panel">
+        <div class="shop-title">🔨 Крафт</div>
+        <div class="craft-target" onclick="openCraftModal()">🎯 Цель: <span id="craftTargetName">Не выбрана</span></div>
+        <div class="sticker-grid" id="craftSlots">Выберите стикеры</div>
+        <div id="craftInfo" style="font-size:12px;color:#666;margin:4px 0"></div>
+        <button class="btn btn-green" onclick="doCraft()" id="craftBtn" disabled>🔨 Скрафтить</button>
+        <button class="btn btn-red" onclick="clearCraft()">🗑️ Очистить</button>
+        <button class="btn btn-gold" onclick="sellStickers()">💸 Продать все</button>
+    </div>
+</div>
+
+<div class="lb-panel">
+    <div class="shop-title">🏆 Самые дорогие стикеры</div>
+    <ul class="lb-list" id="stickerLB"></ul>
+    <button class="btn btn-red" onclick="unpinSticker(0)" id="unpinBtn" style="display:none;margin-top:8px;">🔓 Открепить</button>
+</div>
+<div class="pinned-area" id="pinnedArea"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
