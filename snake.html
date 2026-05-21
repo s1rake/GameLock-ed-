@@ -1822,17 +1822,24 @@ async function endGame() {
         // ================================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ================================================================
-        async function initGame() {
-            gameStartTime = Date.now();
-            loadUserDataFromSupabase();
-            updateProfileUI();
-            updateStatsDisplay();
-            updateSparkBalance();
-            updateSparkButtons();
-            renderAchievements();
-            loadLeaderboard();
-            startGameLoop();
-        }
+async function initGame() {
+    gameStartTime = Date.now();
+    
+    // ✅ Проверяем бан при загрузке
+    if (currentUser) {
+        var canPlay = await checkBan();
+        if (!canPlay) return; // Останавливаем загрузку если забанен
+    }
+    
+    loadUserDataFromSupabase();
+    updateProfileUI();
+    updateStatsDisplay();
+    updateSparkBalance();
+    updateSparkButtons();
+    renderAchievements();
+    loadLeaderboard();
+    startGameLoop();
+}
 
         initGame();
     </script>
