@@ -1651,8 +1651,36 @@ function updatePinned() { var container = document.getElementById('pinnedArea');
 
 // ========== ПРОДАЖА ==========
 function getLimitedCoinValue(ls) { if (!ls) return 0; var tier = TYPES[ls.emoji] ? TYPES[ls.emoji].t : 1; var vals = { 1: 10, 2: 20, 3: 40, 4: 100, 5: 500, 6: 1500, 7: 2250 }; return Math.floor((vals[tier] || 10) * (ls.color ? ls.color.coeff : 1.5)) }
-function sellLimitedForCoins(id) { var ls = limitedStickers[id]; if (!ls) return; var stickerAge = (Date.now() - (ls.created || 0)) / 1000; if (stickerAge < 10) { toast('⏳ ' + (10 - stickerAge).toFixed(0) + ' сек', '#ff8800'); return } var coinVal = getLimitedCoinValue(ls), moneyVal = ls.price || 0; if (confirm('Продать?\n💎 ' + coinVal + '\n' + formatMoney(moneyVal))) { coins += coinVal; balance += moneyVal; delete limitedStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id }); updateUI(); saveClickerData(); saveExtra(); updatePinned(); updateStickerLB(); toast('💎 +' + coinVal + ' | +' + formatMoney(moneyVal)) } }
-function sellCollectible(id) { 
+function sellLimitedForCoins(id) { 
+    var ls = limitedStickers[id]; 
+    if (!ls) return; 
+    var stickerAge = (Date.now() - (ls.created || 0)) / 1000; 
+    if (stickerAge < 10) { toast('⏳ ' + (10 - stickerAge).toFixed(0) + ' сек', '#ff8800'); return; } 
+    var coinVal = getLimitedCoinValue(ls), moneyVal = ls.price || 0; 
+    if (confirm('Продать?\n💎 ' + coinVal + '\n' + formatMoney(moneyVal))) { 
+        coins += coinVal; 
+        balance += moneyVal; 
+        delete limitedStickers[id]; 
+        pinned = pinned.filter(function (p) { return p.id !== id }); 
+        
+        // ✅ Сохраняем стикеры сразу в Supabase
+        if (currentUser && sb) {
+            sb.from('clicker_data').update({ 
+                limited_stickers: limitedStickers,
+                coins: coins,
+                balance: Math.floor(balance)
+            }).eq('username', currentUser.username).then(() => {});
+        }
+        
+        updateUI(); 
+        saveClickerData(); 
+        saveExtra(); 
+        updatePinned(); 
+        updateStickerLB(); 
+        toast('💎 +' + coinVal + ' | +' + formatMoney(moneyVal)); 
+    } 
+}
+    function sellCollectible(id) { 
     var cs = collectibleStickers[id]; 
     if (!cs) return; 
     var tokenVal = Number(cs.price || cs.basePrice || 0); 
@@ -1660,6 +1688,12 @@ function sellCollectible(id) {
     if (confirm('Продать?\n💷 ' + tokenVal.toFixed(1))) { 
         collectibleTokens += tokenVal; 
         delete collectibleStickers[id]; 
+        if (currentUser && sb) {
+    sb.from('clicker_data').update({ 
+        collectible_stickers: collectibleStickers,
+        collectible_tokens: collectibleTokens
+    }).eq('username', currentUser.username).then(() => {});
+}
         pinned = pinned.filter(function (p) { return p.id !== id }); 
         localStorage.setItem('clicker_collectible_tokens', collectibleTokens); 
         updateTokenBal(); 
