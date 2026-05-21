@@ -971,7 +971,20 @@
                 return _origSetItem(key, value);
             };
             localStorage.getItem = function (key) { return _origGetItem(key); };
-            localStorage.removeItem = function (key) { if (!key.startsWith('snake')) { console.warn('🛡️ Удаление блокировано:', key); return; } return _origRemoveItem(key); };
+localStorage.removeItem = function(key) {
+    if (key === 'snakeCurrentUser') {
+        var stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+            console.warn('🛡️ Удаление аккаунта заблокировано!');
+            return;
+        }
+    }
+    if (!key.startsWith('clicker_') && key !== 'snakeUsers' && key !== 'snakeCurrentUser' && !key.startsWith('snakeGuest')) {
+        console.warn('🛡️ Удаление блокировано:', key);
+        return undefined;
+    }
+    return _origRemoveItem(key);
+};
             localStorage.clear = function () { console.warn('🛡️ Очистка заблокирована!'); };
         })();
 
@@ -1054,7 +1067,19 @@ async function checkBan() {
         // ================================================================
         // АККАУНТЫ
         // ================================================================
-        let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
+ var _currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
+Object.defineProperty(window, 'currentUser', {
+    get: function() { return _currentUser; },
+    set: function(v) {
+        var stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+            console.warn('🛡️ Сброс аккаунта заблокирован!');
+            return;
+        }
+        _currentUser = v;
+    },
+    configurable: false
+});
         function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}'); }
 const saveUsers = (function() {
     return function(u) {
