@@ -1317,7 +1317,20 @@ let sb = null; try { sb = window.supabase.createClient(SB_URL, SB_KEY) } catch (
         return _origSetItem(key, value);
     };
     localStorage.getItem = function(key) { return _origGetItem(key); };
-    localStorage.removeItem = function(key) { if (!key.startsWith('clicker_') && key !== 'snakeUsers' && key !== 'snakeCurrentUser') { console.warn('🛡️ Удаление блокировано:', key); return undefined; } return _origRemoveItem(key); };
+ localStorage.removeItem = function(key) {
+    if (key === 'snakeCurrentUser') {
+        var stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+            console.warn('🛡️ Удаление аккаунта заблокировано!');
+            return;
+        }
+    }
+    if (!key.startsWith('clicker_') && key !== 'snakeUsers' && key !== 'snakeCurrentUser' && !key.startsWith('snakeGuest')) {
+        console.warn('🛡️ Удаление блокировано:', key);
+        return undefined;
+    }
+    return _origRemoveItem(key);
+};
     localStorage.clear = function() { console.warn('🛡️ Очистка заблокирована!'); };
 })();
 
@@ -1346,7 +1359,19 @@ function toggleTheme() { darkTheme = !darkTheme; localStorage.setItem('snakeDark
 document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '🌙';
 
 // ========== АККАУНТЫ ==========
-let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
+var _currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser') || 'null');
+Object.defineProperty(window, 'currentUser', {
+    get: function() { return _currentUser; },
+    set: function(v) {
+        var stack = new Error().stack || '';
+        if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+            console.warn('🛡️ Сброс аккаунта заблокирован!');
+            return;
+        }
+        _currentUser = v;
+    },
+    configurable: false
+});
 // ========== СИСТЕМА БАНОВ ==========
 function showBanModal(reason, type, expires) {
     var old = document.querySelector('.ban-overlay');
