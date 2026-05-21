@@ -448,6 +448,27 @@ Object.defineProperty(window, 'currentUser', {
     configurable: false
 });
 
+// ========== ЗАЩИТА LOCALSTORAGE ==========
+(function() {
+    var _origRemoveItem = localStorage.removeItem.bind(localStorage);
+    
+    localStorage.removeItem = function(key) {
+        if (key === 'snakeCurrentUser') {
+            var stack = new Error().stack || '';
+            if (stack.includes('<anonymous>') || stack.includes('VM') || stack.includes('eval')) {
+                console.warn('🛡️ Удаление аккаунта заблокировано!');
+                return undefined;
+            }
+        }
+        return _origRemoveItem(key);
+    };
+    
+    localStorage.clear = function() {
+        console.warn('🛡️ Очистка заблокирована!');
+        return undefined;
+    };
+})();
+    
     // ========== СИСТЕМА БАНОВ ==========
 function showBanModal(reason, type, expires) {
     var old = document.querySelector('.ban-overlay');
@@ -493,6 +514,7 @@ function updateProfileUI() {
         document.getElementById('profileSection').querySelector('.profile-avatar').textContent = '👤';
     }
 }
+
 
 function openAuthModal() {
     if (currentUser) { logout(); return; }
