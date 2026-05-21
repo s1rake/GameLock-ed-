@@ -1347,11 +1347,6 @@ document.getElementById('themeToggle').textContent = darkTheme ? '☀️' : '�
 
 // ========== АККАУНТЫ ==========
 let currentUser = JSON.parse(localStorage.getItem('snakeCurrentUser')) || null;
-function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}') }
-function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)) }
-async function hashPassword(password) { const e = new TextEncoder(); const d = e.encode(password + 'gamelock_salt_2026'); const h = await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('') }
-function toast(msg, c) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.style.background = c || '#4caf50'; document.body.appendChild(t); setTimeout(function () { t.style.opacity = '0'; t.style.transition = '0.5s'; setTimeout(function () { t.remove() }, 500) }, 2500) }
-
 // ========== СИСТЕМА БАНОВ ==========
 function showBanModal(reason, type, expires) {
     var old = document.querySelector('.ban-overlay');
@@ -1380,6 +1375,11 @@ async function checkBan() {
     if (data && data.status === 'banned') { showBanModal(data.reason, data.type, data.expires); return false; }
     return true;
 }
+function getAllUsers() { return JSON.parse(localStorage.getItem('snakeUsers') || '{}') }
+function saveUsers(users) { localStorage.setItem('snakeUsers', JSON.stringify(users)) }
+async function hashPassword(password) { const e = new TextEncoder(); const d = e.encode(password + 'gamelock_salt_2026'); const h = await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('') }
+function toast(msg, c) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.style.background = c || '#4caf50'; document.body.appendChild(t); setTimeout(function () { t.style.opacity = '0'; t.style.transition = '0.5s'; setTimeout(function () { t.remove() }, 500) }, 2500) }
+
     
 function updateProfileUI() { 
     if (currentUser) { 
