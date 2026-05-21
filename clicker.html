@@ -1341,13 +1341,17 @@ function updateProfileUI() {
         document.getElementById('profileName').textContent = currentUser.username; 
         document.getElementById('profileBtn').textContent = 'Выйти'; 
         document.getElementById('profileBtn').onclick = logout;
-        // ✅ Сначала грузим из Supabase, потом локально
-        loadFromSupabase().then(() => {
-            loadClickerData();
-            updateUI();
-            updateCoins();
-            updateTokenBal();
-            checkPrestigeDisplay();
+        
+        // ✅ Проверяем бан
+        checkBan().then(function(canPlay) {
+            if (!canPlay) return;
+            loadFromSupabase().then(() => {
+                loadClickerData();
+                updateUI();
+                updateCoins();
+                updateTokenBal();
+                checkPrestigeDisplay();
+            });
         });
     } else { 
         document.getElementById('profileName').textContent = 'Гость'; 
