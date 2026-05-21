@@ -588,6 +588,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+
+        if (currentUser && sb) {
+    checkBan().then(function(canPlay) {
+        if (!canPlay) {
+            document.querySelector('.game-container').style.display = 'none';
+        }
+    });
+}
         // ========== ЗАЩИТА КОДА ==========
         (function () {
             const PROTECTED_CODE = 'ttt_protected_v2';
@@ -710,6 +718,10 @@ async function login() {
     
     currentUser = { username: u };
     localStorage.setItem('snakeCurrentUser', JSON.stringify(currentUser));
+    
+    // ✅ Проверяем бан
+    var canPlay = await checkBan();
+    if (!canPlay) return;
     
     closeModal();
     updateProfileUI();
