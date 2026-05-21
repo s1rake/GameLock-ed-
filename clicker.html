@@ -1551,8 +1551,25 @@ function updatePinned() { var container = document.getElementById('pinnedArea');
 // ========== ПРОДАЖА ==========
 function getLimitedCoinValue(ls) { if (!ls) return 0; var tier = TYPES[ls.emoji] ? TYPES[ls.emoji].t : 1; var vals = { 1: 10, 2: 20, 3: 40, 4: 100, 5: 500, 6: 1500, 7: 2250 }; return Math.floor((vals[tier] || 10) * (ls.color ? ls.color.coeff : 1.5)) }
 function sellLimitedForCoins(id) { var ls = limitedStickers[id]; if (!ls) return; var stickerAge = (Date.now() - (ls.created || 0)) / 1000; if (stickerAge < 10) { toast('⏳ ' + (10 - stickerAge).toFixed(0) + ' сек', '#ff8800'); return } var coinVal = getLimitedCoinValue(ls), moneyVal = ls.price || 0; if (confirm('Продать?\n💎 ' + coinVal + '\n' + formatMoney(moneyVal))) { coins += coinVal; balance += moneyVal; delete limitedStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id }); updateUI(); saveClickerData(); saveExtra(); updatePinned(); updateStickerLB(); toast('💎 +' + coinVal + ' | +' + formatMoney(moneyVal)) } }
-function sellCollectible(id) { var cs = collectibleStickers[id]; if (!cs) return; var tokenVal = cs.price || cs.basePrice || 0; if (tokenVal <= 0) tokenVal = 1; if (confirm('Продать?\n💷 ' + tokenVal.toFixed(1))) { collectibleTokens += tokenVal; delete collectibleStickers[id]; pinned = pinned.filter(function (p) { return p.id !== id }); localStorage.setItem('clicker_collectible_tokens', collectibleTokens); updateTokenBal(); updateUI(); saveClickerData(); updatePinned(); updateStickerLB(); toast('💷 +' + tokenVal.toFixed(1) + ' токенов!') } }
-
+function sellCollectible(id) { 
+    var cs = collectibleStickers[id]; 
+    if (!cs) return; 
+    var tokenVal = Number(cs.price || cs.basePrice || 0); 
+    if (tokenVal <= 0 || isNaN(tokenVal)) tokenVal = 1; 
+    if (confirm('Продать?\n💷 ' + tokenVal.toFixed(1))) { 
+        collectibleTokens += tokenVal; 
+        delete collectibleStickers[id]; 
+        pinned = pinned.filter(function (p) { return p.id !== id }); 
+        localStorage.setItem('clicker_collectible_tokens', collectibleTokens); 
+        updateTokenBal(); 
+        updateUI(); 
+        saveClickerData(); 
+        updatePinned(); 
+        updateStickerLB(); 
+        toast('💷 +' + tokenVal.toFixed(1) + ' токенов!'); 
+    } 
+}
+    
 // ========== СЛИЯНИЕ ==========
 function mergeStickers(emoji) { if (!stickers[emoji] || stickers[emoji] < 5) return; stickers[emoji] -= 5; if (stickers[emoji] <= 0) delete stickers[emoji]; var color = randomLimitedColor(); var basePrice = Math.floor(Math.min(TYPES[emoji].v, 5000000000) * 5 * color.coeff); var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); limitedStickers[id] = { emoji: emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() }; updateUI(); saveClickerData(); updateStickerLB(); toast('✨ Лимит-стикер! ' + color.name + '!', '#ffd700') }
 
@@ -1665,8 +1682,166 @@ function updateFuseUI() { var container = document.getElementById('fuseSlots'); 
 function doFuse() { var totalPoints = 0; for (var i = 0; i < fuseSlots.length; i++) { totalPoints += fuseSlots[i].points || 0 } if (totalPoints < FUSE_POINTS_NEEDED) return; var total = FUSE_REWARDS.reduce(function (s, r) { return s + r.chance }, 0); var rand = Math.random() * total; var reward = FUSE_REWARDS[0]; for (var r of FUSE_REWARDS) { rand -= r.chance; if (rand <= 0) { reward = r; break } } var color = randomLimitedColor(); var id = 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); collectibleStickers[id] = { emoji: reward.emoji, color: color, basePrice: reward.basePrice, price: reward.basePrice, created: Date.now(), isCollectible: true }; fuseSlots = []; saveFuseSlots(); localStorage.setItem('clicker_collectible_stickers', JSON.stringify(collectibleStickers)); updateFuseUI(); renderFuseInventory(); updateUI(); saveClickerData(); toast('⚡ Фьюз! ' + reward.emoji + ' (' + color.name + ')!', '#ffd700') }
 
 // ========== ОТРИСОВКА ==========
-function updateUI() { var rm = getRebMult(); var el; el = document.getElementById('bal'); if (el) el.textContent = formatMoney(balance); el = document.getElementById('clicks'); if (el) el.textContent = Math.floor(totalClicks).toLocaleString(); el = document.getElementById('cps'); if (el) el.textContent = cps; el = document.getElementById('boostVal'); if (el) el.textContent = boostPct + '%'; el = document.getElementById('clvl'); if (el) el.textContent = clickPower; el = document.getElementById('cpr'); if (el) el.textContent = formatMoney(price(10, 1.5, clickPower - 1)); el = document.getElementById('alvl'); if (el) el.textContent = autoClicker; el = document.getElementById('apr'); if (el) el.textContent = formatMoney(price(50, 1.8, autoClicker)); el = document.getElementById('mlvl'); if (el) el.textContent = multiplier; el = document.getElementById('mpr'); if (el) el.textContent = formatMoney(price(500, 3, multiplier)); el = document.getElementById('rebLvl'); if (el) el.textContent = rebirths; el = document.getElementById('rebMult'); if (el) el.textContent = rm; el = document.getElementById('rebBtn'); if (el) el.textContent = rebirths >= 4 ? 'Максимум!' : 'Переродиться (' + formatMoney(REBIRTH_COSTS[rebirths]) + ')'; el = document.getElementById('craftCnt'); if (el) el.textContent = craftCnt; el = document.getElementById('craftTargetName'); if (el) el.textContent = TYPES[craftTarget] ? TYPES[craftTarget].emoji + ' ' + TYPES[craftTarget].n : 'Не выбрана'; var md = document.getElementById('myStickers'); if (md) { md.innerHTML = ''; var total = 0; for (var t in stickers) { var c = stickers[t]; if (c <= 0) continue; total += c; var tp = TYPES[t]; if (!tp) continue; var d = document.createElement('div'); d.className = 'sticker' + (favorites[t] ? ' fav' : ''); d.style.cursor = 'pointer'; d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#999;">' + formatMoney(tp.v) + '</div>'; d.onclick = (function (emoji) { return function () { addToCraft(emoji) } })(t); if (c >= 5) { d.style.border = '2px solid #ff9800'; d.style.background = '#fff3e0'; var mb = document.createElement('div'); mb.style.cssText = 'font-size:8px;color:#ff6600;cursor:pointer;margin-top:2px;font-weight:bold'; mb.textContent = '🔄 Слить 5'; mb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); mergeStickers(emoji) } })(t); d.appendChild(mb) } var fb = document.createElement('div'); fb.style.cssText = 'font-size:8px;cursor:pointer;margin-top:1px'; fb.textContent = favorites[t] ? '⭐' : '☆'; fb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); toggleFavorite(emoji) } })(t); d.appendChild(fb); md.appendChild(d) } for (var id in limitedStickers) { var ls = limitedStickers[id]; if (!ls) continue; total++; var stickerAge = (Date.now() - (ls.created || Date.now())) / 1000; var canSell = stickerAge >= 10; var d = document.createElement('div'); d.className = 'sticker'; d.style.background = (ls.color && ls.color.bg) ? getGradient(ls.color.bg) : '#555'; d.style.border = (ls.color && ls.color.border) ? '3px solid ' + ls.color.border : '3px solid #888'; d.innerHTML = '<div class="sticker-emoji">' + (ls.emoji || '?') + '</div>'; if (!canSell) { d.innerHTML += '<div style="font-size:9px;color:#ff6600">⏳ ' + (10 - stickerAge).toFixed(1) + 'с</div>' } else { d.innerHTML += '<div style="font-size:9px;color:#333">' + formatMoney(ls.price || 0) + '</div>' } if (canSell) { var sb = document.createElement('div'); sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; sb.textContent = '💎' + getLimitedCoinValue(ls); sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellLimitedForCoins(id) } })(id); d.appendChild(sb) } var isPinned = pinned.some(function (p) { return p.id === id }); var pb = document.createElement('div'); pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; pb.textContent = isPinned ? '📌✅' : '📌'; pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); d.appendChild(pb); md.appendChild(d) } for (var id in collectibleStickers) { var cs = collectibleStickers[id]; if (!cs) continue; total++; var d = document.createElement('div'); d.className = 'sticker collectible'; d.style.background = (cs.color && cs.color.bg) ? getGradient(cs.color.bg) : '#555'; d.style.border = (cs.color && cs.color.border) ? '3px solid ' + cs.color.border : '3px solid #7c4dff'; d.innerHTML = '<div class="sticker-emoji">' + (cs.emoji || '?') + '</div><div style="font-size:9px;color:#7c4dff;margin-top:2px;">💷' + (cs.price || cs.basePrice || 0).toFixed(1) + '</div>'; var sb = document.createElement('div'); sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; var sellPrice = cs.price || cs.basePrice || 0; sb.textContent = '💷+' + sellPrice.toFixed(1); sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellCollectible(id) } })(id); d.appendChild(sb); var isPinned = pinned.some(function (p) { return p.id === id }); var pb = document.createElement('div'); pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; pb.textContent = isPinned ? '📌✅' : '📌'; pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); d.appendChild(pb); md.appendChild(d) } if (total === 0) md.innerHTML = '<div style="color:#999;font-size:12px;">Нет стикеров</div>'; el = document.getElementById('stCnt'); if (el) el.textContent = total } var cd = document.getElementById('craftSlots'); if (cd) { cd.innerHTML = ''; var pts = 0; for (var t in craftSel) { var c = craftSel[t]; if (c <= 0) continue; var tp = TYPES[t]; if (!tp) continue; pts += tp.p * c; var d = document.createElement('div'); d.className = 'sticker sel'; d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#4caf50">' + (tp.p * c) + 'очк</div>'; d.onclick = (function (emoji) { return function () { removeFromCraft(emoji) } })(t); cd.appendChild(d) } var info = document.getElementById('craftInfo'), btn = document.getElementById('craftBtn'); if (craftTarget && pts > 0) { var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3); if (info) info.textContent = 'Нужно: ' + need + ' | Есть: ' + pts + ' | Шанс: ' + Math.min(100, (pts / need) * 100).toFixed(0) + '%'; if (btn) btn.disabled = false } else if (!craftTarget && pts > 0) { if (info) info.textContent = 'Выберите цель'; if (btn) btn.disabled = true } else { if (cd.children.length === 0 && cd) cd.innerHTML = '<div style="color:#999;font-size:12px;">Нажимайте на стикеры</div>'; if (info) info.textContent = ''; if (btn) btn.disabled = true } } if (boostActive) document.getElementById('safe').classList.add('boosting'); else document.getElementById('safe').classList.remove('boosting'); var packDiv = document.getElementById('packShop'); if (packDiv) { packDiv.innerHTML = STICKER_PACKS.map(function (pack) { return '<button class="btn btn-gold" onclick="openPack(\'' + pack.id + '\')" style="flex-shrink:0;width:auto;padding:8px 14px;font-size:11px;white-space:nowrap;">🎁 ' + pack.name + ' 💎' + pack.price + '</button>' }).join('') } updateUnpinButton() }
-
+function updateUI() { 
+    var rm = getRebMult(); 
+    var el; 
+    el = document.getElementById('bal'); if (el) el.textContent = formatMoney(balance); 
+    el = document.getElementById('clicks'); if (el) el.textContent = Math.floor(totalClicks).toLocaleString(); 
+    el = document.getElementById('cps'); if (el) el.textContent = cps; 
+    el = document.getElementById('boostVal'); if (el) el.textContent = boostPct + '%'; 
+    el = document.getElementById('clvl'); if (el) el.textContent = clickPower; 
+    el = document.getElementById('cpr'); if (el) el.textContent = formatMoney(price(10, 1.5, clickPower - 1)); 
+    el = document.getElementById('alvl'); if (el) el.textContent = autoClicker; 
+    el = document.getElementById('apr'); if (el) el.textContent = formatMoney(price(50, 1.8, autoClicker)); 
+    el = document.getElementById('mlvl'); if (el) el.textContent = multiplier; 
+    el = document.getElementById('mpr'); if (el) el.textContent = formatMoney(price(500, 3, multiplier)); 
+    el = document.getElementById('rebLvl'); if (el) el.textContent = rebirths; 
+    el = document.getElementById('rebMult'); if (el) el.textContent = rm; 
+    el = document.getElementById('rebBtn'); if (el) el.textContent = rebirths >= 4 ? 'Максимум!' : 'Переродиться (' + formatMoney(REBIRTH_COSTS[rebirths]) + ')'; 
+    el = document.getElementById('craftCnt'); if (el) el.textContent = craftCnt; 
+    el = document.getElementById('craftTargetName'); if (el) el.textContent = TYPES[craftTarget] ? TYPES[craftTarget].emoji + ' ' + TYPES[craftTarget].n : 'Не выбрана'; 
+    
+    var md = document.getElementById('myStickers'); 
+    if (md) { 
+        md.innerHTML = ''; 
+        var total = 0; 
+        
+        // Обычные стикеры
+        for (var t in stickers) { 
+            var c = stickers[t]; 
+            if (c <= 0) continue; 
+            total += c; 
+            var tp = TYPES[t]; 
+            if (!tp) continue; 
+            var d = document.createElement('div'); 
+            d.className = 'sticker' + (favorites[t] ? ' fav' : ''); 
+            d.style.cursor = 'pointer'; 
+            d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#999;">' + formatMoney(tp.v) + '</div>'; 
+            d.onclick = (function (emoji) { return function () { addToCraft(emoji) } })(t); 
+            if (c >= 5) { 
+                d.style.border = '2px solid #ff9800'; 
+                d.style.background = '#fff3e0'; 
+                var mb = document.createElement('div'); 
+                mb.style.cssText = 'font-size:8px;color:#ff6600;cursor:pointer;margin-top:2px;font-weight:bold'; 
+                mb.textContent = '🔄 Слить 5'; 
+                mb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); mergeStickers(emoji) } })(t); 
+                d.appendChild(mb); 
+            } 
+            var fb = document.createElement('div'); 
+            fb.style.cssText = 'font-size:8px;cursor:pointer;margin-top:1px'; 
+            fb.textContent = favorites[t] ? '⭐' : '☆'; 
+            fb.onclick = (function (emoji) { return function (e) { e.stopPropagation(); toggleFavorite(emoji) } })(t); 
+            d.appendChild(fb); 
+            md.appendChild(d); 
+        } 
+        
+        // Лимит-стикеры
+        for (var id in limitedStickers) { 
+            var ls = limitedStickers[id]; 
+            if (!ls) continue; 
+            total++; 
+            var stickerAge = (Date.now() - (ls.created || Date.now())) / 1000; 
+            var canSell = stickerAge >= 10; 
+            var d = document.createElement('div'); 
+            d.className = 'sticker'; 
+            d.style.background = (ls.color && ls.color.bg) ? getGradient(ls.color.bg) : '#555'; 
+            d.style.border = (ls.color && ls.color.border) ? '3px solid ' + ls.color.border : '3px solid #888'; 
+            d.innerHTML = '<div class="sticker-emoji">' + (ls.emoji || '?') + '</div>'; 
+            if (!canSell) { 
+                d.innerHTML += '<div style="font-size:9px;color:#ff6600">⏳ ' + (10 - stickerAge).toFixed(1) + 'с</div>'; 
+            } else { 
+                d.innerHTML += '<div style="font-size:9px;color:#333">' + formatMoney(ls.price || 0) + '</div>'; 
+            } 
+            if (canSell) { 
+                var sb = document.createElement('div'); 
+                sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; 
+                sb.textContent = '💎' + getLimitedCoinValue(ls); 
+                sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellLimitedForCoins(id) } })(id); 
+                d.appendChild(sb); 
+            } 
+            var isPinned = pinned.some(function (p) { return p.id === id }); 
+            var pb = document.createElement('div'); 
+            pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; 
+            pb.textContent = isPinned ? '📌✅' : '📌'; 
+            pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); 
+            d.appendChild(pb); 
+            md.appendChild(d); 
+        } 
+        
+        // Коллекционные стикеры
+        for (var id in collectibleStickers) { 
+            var cs = collectibleStickers[id]; 
+            if (!cs) continue; 
+            total++; 
+            var csPrice = Number(cs.price || cs.basePrice || 0);
+            var d = document.createElement('div'); 
+            d.className = 'sticker collectible'; 
+            d.style.background = (cs.color && cs.color.bg) ? getGradient(cs.color.bg) : '#555'; 
+            d.style.border = (cs.color && cs.color.border) ? '3px solid ' + cs.color.border : '3px solid #7c4dff'; 
+            d.innerHTML = '<div class="sticker-emoji">' + (cs.emoji || '?') + '</div><div style="font-size:9px;color:#7c4dff;margin-top:2px;">💷' + csPrice.toFixed(1) + '</div>'; 
+            var sb = document.createElement('div'); 
+            sb.style.cssText = 'font-size:8px;color:#ffd700;cursor:pointer;margin-top:1px'; 
+            var sellPrice = Number(cs.price || cs.basePrice || 0);
+            sb.textContent = '💷+' + sellPrice.toFixed(1); 
+            sb.onclick = (function (id) { return function (e) { e.stopPropagation(); sellCollectible(id) } })(id); 
+            d.appendChild(sb); 
+            var isPinned = pinned.some(function (p) { return p.id === id }); 
+            var pb = document.createElement('div'); 
+            pb.style.cssText = 'font-size:8px;color:#4caf50;cursor:pointer;margin-top:1px'; 
+            pb.textContent = isPinned ? '📌✅' : '📌'; 
+            pb.onclick = (function (id) { return function (e) { e.stopPropagation(); pinSticker(id) } })(id); 
+            d.appendChild(pb); 
+            md.appendChild(d); 
+        } 
+        
+        if (total === 0) md.innerHTML = '<div style="color:#999;font-size:12px;">Нет стикеров</div>'; 
+        el = document.getElementById('stCnt'); if (el) el.textContent = total; 
+    } 
+    
+    var cd = document.getElementById('craftSlots'); 
+    if (cd) { 
+        cd.innerHTML = ''; 
+        var pts = 0; 
+        for (var t in craftSel) { 
+            var c = craftSel[t]; 
+            if (c <= 0) continue; 
+            var tp = TYPES[t]; 
+            if (!tp) continue; 
+            pts += tp.p * c; 
+            var d = document.createElement('div'); 
+            d.className = 'sticker sel'; 
+            d.innerHTML = '<div class="sticker-emoji">' + t + '</div><div>×' + c + '</div><div style="font-size:9px;color:#4caf50">' + (tp.p * c) + 'очк</div>'; 
+            d.onclick = (function (emoji) { return function () { removeFromCraft(emoji) } })(t); 
+            cd.appendChild(d); 
+        } 
+        var info = document.getElementById('craftInfo'), btn = document.getElementById('craftBtn'); 
+        if (craftTarget && pts > 0) { 
+            var ct = TYPES[craftTarget], need = Math.ceil(ct.p * 1.3); 
+            if (info) info.textContent = 'Нужно: ' + need + ' | Есть: ' + pts + ' | Шанс: ' + Math.min(100, (pts / need) * 100).toFixed(0) + '%'; 
+            if (btn) btn.disabled = false; 
+        } else if (!craftTarget && pts > 0) { 
+            if (info) info.textContent = 'Выберите цель'; 
+            if (btn) btn.disabled = true; 
+        } else { 
+            if (cd.children.length === 0 && cd) cd.innerHTML = '<div style="color:#999;font-size:12px;">Нажимайте на стикеры</div>'; 
+            if (info) info.textContent = ''; 
+            if (btn) btn.disabled = true; 
+        } 
+    } 
+    
+    if (boostActive) document.getElementById('safe').classList.add('boosting'); 
+    else document.getElementById('safe').classList.remove('boosting'); 
+    
+    var packDiv = document.getElementById('packShop'); 
+    if (packDiv) { 
+        packDiv.innerHTML = STICKER_PACKS.map(function (pack) { 
+            return '<button class="btn btn-gold" onclick="openPack(\'' + pack.id + '\')" style="flex-shrink:0;width:auto;padding:8px 14px;font-size:11px;white-space:nowrap;">🎁 ' + pack.name + ' 💎' + pack.price + '</button>'; 
+        }).join(''); 
+    } 
+    
+    updateUnpinButton(); 
+}
+    
 // ========== ОСТАЛЬНЫЕ ФУНКЦИИ ==========
 function toggleFavorite(emoji) { favorites[emoji] = !favorites[emoji]; if (!favorites[emoji]) delete favorites[emoji]; saveExtra(); updateUI() }
 function openCraftModal() { document.getElementById('modalLogin').style.display = 'none'; document.getElementById('modalRegister').style.display = 'none'; document.getElementById('modalShop').style.display = 'none'; document.getElementById('modalOverlay').style.display = 'flex'; document.getElementById('modalCraft').style.display = 'block'; var list = document.getElementById('craftList'); list.innerHTML = ''; var tn = ['', 'Обычный', 'Необычный', 'Редкий', 'Эпический', 'Легендарный', 'Мифический']; for (var tier = 1; tier <= 6; tier++) { var items = Object.entries(TYPES).filter(function (e) { return e[1].t === tier }); if (items.length === 0) continue; var td = document.createElement('div'); td.style.cssText = 'font-weight:bold;margin:10px 0 5px;color:#0077b6;text-align:left'; td.textContent = tn[tier]; list.appendChild(td); items.forEach(function (entry) { var emoji = entry[0], st = entry[1]; var div = document.createElement('div'); div.className = 'craft-option'; if (craftTarget === emoji) div.classList.add('selected'); div.innerHTML = '<span style="font-size:30px">' + emoji + '</span><span style="flex:1;text-align:left"><b>' + st.n + '</b><br><span style="font-size:11px;color:#666">Очков: ' + Math.ceil(st.p * 1.3) + ' | ' + formatMoney(st.v) + '</span></span>'; div.onclick = (function (emoji) { return function (e) { e.stopPropagation(); craftTarget = emoji; closeCraftModal(); updateUI(); saveClickerData() } })(emoji); list.appendChild(div) }) } }
