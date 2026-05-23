@@ -405,6 +405,14 @@
             <span class="game-badge">🖱️ Кликай</span>
         </div>
     </div>
+            <div class="game-card" onclick="showInDevelopment()">
+    <img class="game-image" src="img/minepole.png" alt="Минное поле">
+    <div class="game-info">
+        <div class="game-title">💣 Минное поле</div>
+        <div class="game-description">Разминируй поле и собирай клады</div>
+        <span class="game-badge" style="background:#ff8800;">🔄 В разработке</span>
+    </div>
+</div>
 </div>
     
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -635,6 +643,28 @@ document.getElementById('modalOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
 
+function showInDevelopment() {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:14px 28px;border-radius:15px;font-weight:bold;font-size:16px;z-index:9999;color:#fff;background:#ff8800;box-shadow:0 5px 20px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.4s ease;';
+    t.textContent = '🚧 Минное поле — скоро будет доступно!';
+    document.body.appendChild(t);
+    
+    // Плавное появление
+    setTimeout(function() {
+        t.style.opacity = '1';
+    }, 10);
+    
+    // Плавное исчезновение
+    setTimeout(function() {
+        t.style.opacity = '0';
+    }, 2100);
+    
+    // Удаление
+    setTimeout(function() {
+        t.remove();
+    }, 2600);
+}
+    
 // ========== ЗАПУСК ==========
 updateProfileUI();
 
