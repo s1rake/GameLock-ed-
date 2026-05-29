@@ -906,50 +906,34 @@ function logout() {
             return false;
         }
 
-        // Подписка на глобальные тосты в реальном времени
-        function subscribeGlobalToasts() {
-            if (!sb) return;
-
-            sb.channel('global-toasts')
-                .on('postgres_changes',
-                    { event: 'INSERT', schema: 'public', table: 'global_toasts' },
-                    function (payload) {
-                        var toast = payload.new;
+// Удали старый код подписки и замени на этот:
+function startToastPolling() {
+    var lastId = parseInt(localStorage.getItem('global_toast_last_id') || '0');
+    
+    function checkToasts() {
+        if (!sb) return;
+        
+        sb.from('global_toasts')
+            .select('*')
+            .gt('id', lastId)
+            .order('id')
+            .then(function(res) {
+                if (res.data && res.data.length > 0) {
+                    res.data.forEach(function(toast) {
                         showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
-                    }
-                )
-                .subscribe();
-        }
-
-        // Показ тоста слева
-        function showGlobalToast(msg, color, duration) {
-            var t = document.createElement('div');
-            t.style.cssText = 'position:fixed;bottom:20px;left:20px;padding:12px 20px;border-radius:12px;font-weight:bold;font-size:14px;z-index:9999;color:#fff;background:' + (color || '#4caf50') + ';box-shadow:0 4px 15px rgba(0,0,0,0.3);opacity:0;transform:translateX(-50px);transition:all 0.4s ease;max-width:350px;';
-            t.textContent = msg;
-            document.body.appendChild(t);
-
-            setTimeout(function () { t.style.opacity = '1'; t.style.transform = 'translateX(0)'; }, 10);
-            setTimeout(function () { t.style.opacity = '0'; t.style.transform = 'translateX(-50px)'; }, duration - 400);
-            setTimeout(function () { t.remove(); }, duration);
-        }
-
-var channel = sb.channel('global-toasts-' + Date.now());
-
-channel.on('postgres_changes', 
-    { event: 'INSERT', schema: 'public', table: 'global_toasts' },
-    function(payload) {
-        console.log('Получен тост:', payload.new);
-        var toast = payload.new;
-        showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
+                        lastId = toast.id;
+                    });
+                    localStorage.setItem('global_toast_last_id', lastId);
+                }
+            })
+            .catch(function(e) {
+                console.log('Ошибка опроса тостов:', e);
+            });
     }
-);
-
-channel.subscribe(function(status) {
-    console.log('Статус подписки:', status);
-    if (status === 'SUBSCRIBED') {
-        console.log('✅ Подписка на тосты активна!');
-    }
-});
+    
+    checkToasts();
+    setInterval(checkToasts, 5000);
+}
         
         // ========== БОТ ==========
         function botMove() {
@@ -1104,7 +1088,7 @@ function loadScores() {
         setInterval(verifyGameIntegrity, 10000);
 
         // ========== ЗАПУСК ==========
-        updateProfileUI(); loadScores(); restartGame(); updateBotLeaderboard(); generateAntiCheatToken(); subscribeGlobalToasts();
+        updateProfileUI(); loadScores(); restartGame(); updateBotLeaderboard(); generateAntiCheatToken(); startToastPolling();
     </script>
 </body>
 
