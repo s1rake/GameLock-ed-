@@ -932,6 +932,23 @@ function logout() {
             setTimeout(function () { t.style.opacity = '0'; t.style.transform = 'translateX(-50px)'; }, duration - 400);
             setTimeout(function () { t.remove(); }, duration);
         }
+
+        // Правильная подписка на Realtime (Supabase v2)
+var channel = sb.channel('global-toasts');
+
+channel.on('postgres_changes', 
+    { event: 'INSERT', schema: 'public', table: 'global_toasts' },
+    function(payload) {
+        console.log('Получен тост:', payload.new);
+        var toast = payload.new;
+        showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
+    }
+).subscribe(function(status) {
+    console.log('Статус подписки:', status);
+    if (status === 'SUBSCRIBED') {
+        console.log('✅ Подписка на тосты активна!');
+    }
+});
         
         // ========== БОТ ==========
         function botMove() {
