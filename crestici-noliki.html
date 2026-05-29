@@ -906,34 +906,33 @@ function logout() {
             return false;
         }
 
-// Удали старый код подписки и замени на этот:
 function startToastPolling() {
-    var lastId = parseInt(localStorage.getItem('global_toast_last_id') || '0');
+    var shownIds = JSON.parse(localStorage.getItem('shown_toast_ids') || '[]');
     
     function checkToasts() {
         if (!sb) return;
         
         sb.from('global_toasts')
             .select('*')
-            .gt('id', lastId)
             .order('id')
             .then(function(res) {
                 if (res.data && res.data.length > 0) {
                     res.data.forEach(function(toast) {
-                        showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
-                        lastId = toast.id;
+                        if (shownIds.indexOf(toast.id) === -1) {
+                            showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
+                            shownIds.push(toast.id);
+                        }
                     });
-                    localStorage.setItem('global_toast_last_id', lastId);
+                    localStorage.setItem('shown_toast_ids', JSON.stringify(shownIds));
                 }
-            })
-            .catch(function(e) {
-                console.log('Ошибка опроса тостов:', e);
             });
     }
     
     checkToasts();
     setInterval(checkToasts, 5000);
 }
+
+
         
         // ========== БОТ ==========
         function botMove() {
