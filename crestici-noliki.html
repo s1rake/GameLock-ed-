@@ -933,7 +933,6 @@ function logout() {
             setTimeout(function () { t.remove(); }, duration);
         }
 
-        // Правильная подписка на Realtime (Supabase v2)
 var channel = sb.channel('global-toasts');
 
 channel.on('postgres_changes', 
@@ -943,7 +942,9 @@ channel.on('postgres_changes',
         var toast = payload.new;
         showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
     }
-).subscribe(function(status) {
+);
+
+channel.subscribe(function(status) {
     console.log('Статус подписки:', status);
     if (status === 'SUBSCRIBED') {
         console.log('✅ Подписка на тосты активна!');
