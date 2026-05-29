@@ -933,7 +933,7 @@ function logout() {
             setTimeout(function () { t.remove(); }, duration);
         }
 
-var channel = sb.channel('global-toasts');
+var channel = sb.channel('global-toasts-' + Date.now());
 
 channel.on('postgres_changes', 
     { event: 'INSERT', schema: 'public', table: 'global_toasts' },
