@@ -914,23 +914,28 @@ function startToastPolling() {
         
         sb.from('global_toasts')
             .select('*')
-            .order('id')
             .then(function(res) {
                 if (res.data && res.data.length > 0) {
-                    res.data.forEach(function(toast) {
+                    for (var i = 0; i < res.data.length; i++) {
+                        var toast = res.data[i];
                         if (shownIds.indexOf(toast.id) === -1) {
                             showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
                             shownIds.push(toast.id);
                         }
-                    });
+                    }
                     localStorage.setItem('shown_toast_ids', JSON.stringify(shownIds));
                 }
+            })
+            .catch(function(e) {
+                console.log('Ошибка:', e);
             });
     }
     
     checkToasts();
     setInterval(checkToasts, 5000);
 }
+
+startToastPolling();
 
 
         
