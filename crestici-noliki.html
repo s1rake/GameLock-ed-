@@ -925,28 +925,17 @@ function startToastPolling() {
             .select('*')
             .then(function(res) {
                 if (res.data && res.data.length > 0) {
-                    // Сортируем в JS
-                    res.data.sort(function(a, b) { return a.id - b.id; });
-                    
-                    var now = Date.now();
                     for (var i = 0; i < res.data.length; i++) {
                         var toast = res.data[i];
-                        var toastTime = new Date(toast.created_at).getTime();
-                        var ageInSeconds = (now - toastTime) / 1000;
-                        
-                        if (ageInSeconds < 60) {
-                            showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
-                        }
+                        showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
                     }
                 }
             })
-            .catch(function(e) {
-                // Тишина
-            });
+            .catch(function(e) {});
     }
     
     checkToasts();
-    setInterval(checkToasts, 4000);
+    setInterval(checkToasts, 5000);
 }
 
         
