@@ -2181,8 +2181,45 @@ setInterval(function () { if (autoClicker > 0) { var earn = autoClicker * Math.p
 setInterval(function () { cps = 0 }, 1000);
 window.addEventListener('beforeunload', function () { saveClickerData(); saveToSupabase(); });
 
+//=========== ГЛОБАЛЬНЫЕ ТОСТЫ =========
+function showGlobalToast(msg, color, duration) {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:20px;left:20px;padding:12px 20px;border-radius:12px;font-weight:bold;font-size:14px;z-index:9999;color:#fff;background:' + (color || '#4caf50') + ';box-shadow:0 4px 15px rgba(0,0,0,0.3);opacity:0;transform:translateX(-50px);transition:all 0.4s ease;max-width:300px;';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    
+    setTimeout(function() { t.style.opacity = '1'; t.style.transform = 'translateX(0)'; }, 10);
+    setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'translateX(-50px)'; }, (duration || 3000) - 400);
+    setTimeout(function() { t.remove(); }, duration || 3000);
+}
+
+function startToastPolling() {
+    var lastShownId = parseInt(localStorage.getItem('last_toast_id') || '0');
+    
+    function checkToasts() {
+        if (!sb) return;
+        
+        sb.from('global_toasts')
+            .select('*')
+            .then(function(res) {
+                if (res.data && res.data.length > 0) {
+                    var toast = res.data[0];
+                    if (toast.id !== lastShownId) {
+                        showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
+                        lastShownId = toast.id;
+                        localStorage.setItem('last_toast_id', lastShownId);
+                    }
+                }
+            })
+            .catch(function(e) {});
+    }
+    
+    checkToasts();
+    setInterval(checkToasts, 5000);
+}
+
 // ========== ЗАПУСК ==========
-updateProfileUI(); updateUI(); updatePinned(); updateStickerLB(); updateTokenBal(); checkPrestigeDisplay();
+updateProfileUI(); updateUI(); updatePinned(); updateStickerLB(); updateTokenBal(); checkPrestigeDisplay(); startToastPolling();
 </script>
 </body>
 
