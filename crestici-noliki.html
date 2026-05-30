@@ -907,7 +907,13 @@ function logout() {
         }
 
 function startToastPolling() {
-    var shownIds = JSON.parse(localStorage.getItem('shown_toast_ids') || '[]');
+    // Загружаем shownIds при старте
+    var shownIds = [];
+    try {
+        shownIds = JSON.parse(localStorage.getItem('shown_toast_ids') || '[]');
+    } catch(e) {
+        shownIds = [];
+    }
     
     function checkToasts() {
         if (!sb) return;
@@ -918,17 +924,24 @@ function startToastPolling() {
                 if (res.data && res.data.length > 0) {
                     res.data.sort(function(a, b) { return a.id - b.id; });
                     
+                    var newToastShown = false;
+                    
                     for (var i = 0; i < res.data.length; i++) {
                         var toast = res.data[i];
                         if (shownIds.indexOf(toast.id) === -1) {
                             showGlobalToast(toast.message, toast.color || '#ffd700', toast.duration || 3000);
                             shownIds.push(toast.id);
+                            newToastShown = true;
                         }
                     }
-                    if (shownIds.length > 100) {
-                        shownIds = shownIds.slice(-100);
+                    
+                    // Сохраняем только если были новые тосты
+                    if (newToastShown) {
+                        if (shownIds.length > 100) {
+                            shownIds = shownIds.slice(-100);
+                        }
+                        localStorage.setItem('shown_toast_ids', JSON.stringify(shownIds));
                     }
-                    localStorage.setItem('shown_toast_ids', JSON.stringify(shownIds));
                 }
             })
             .catch(function(e) {});
