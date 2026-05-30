@@ -639,7 +639,7 @@
         if (sb) {
             const _origFrom = sb.from.bind(sb);
             sb.from = function (table) {
-                const allowed = ['players', 'tictactoe_leaderboard'];
+const allowed = ['players', 'tictactoe_leaderboard', 'global_toasts'];
                 if (!allowed.includes(table)) {
                     return { select: () => ({ single: () => Promise.resolve({ data: null }) }), upsert: () => Promise.resolve({}) };
                 }
