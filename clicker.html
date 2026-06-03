@@ -2713,7 +2713,7 @@
             if (!stickers[emoji] || stickers[emoji] < 5) return;
             stickers[emoji] -= 5;
             if (stickers[emoji] <= 0) delete stickers[emoji];
-            var color = randomLimitedColor();
+            var color = getEventColor(randomLimitedColor());
             var basePrice = Math.floor(Math.min(TYPES[emoji].v, 5000000000) * 5 * color.coeff);
             var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
             limitedStickers[id] = { emoji: emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() };
@@ -2750,7 +2750,7 @@
             }
             for (var i = 0; i < allStickers.length; i++) {
                 var sticker = allStickers[i];
-                var color = randomLimitedColor();
+                var color = getEventColor(randomLimitedColor());
                 var basePrice = Math.floor(TYPES[sticker.emoji].v * 5 * color.coeff);
                 var id = 'lim_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
                 limitedStickers[id] = { emoji: sticker.emoji, color: color, basePrice: basePrice, price: basePrice, created: Date.now() };
@@ -2878,7 +2878,7 @@
             for (let i = 0; i < 3; i++) {
                 var tiers = Object.entries(TYPES).filter(function (e) { return !e[1].secret; });
                 var sticker = tiers[Math.floor(Math.random() * tiers.length)];
-                var color = randomLimitedColor();
+                var color = getEventColor(randomLimitedColor());
                 var tier = sticker[1].t;
                 var price = (TIER_TOKEN_PRICES[tier] || 1);
                 if (color.coeff && COLOR_PRICE_MULTS[color.name]) {
@@ -2980,7 +2980,7 @@
             for (let i = 0; i < 3; i++) {
                 var tiers = Object.entries(TYPES).filter(function (e) { return !e[1].secret; });
                 var sticker = tiers[Math.floor(Math.random() * tiers.length)];
-                var color = randomLimitedColor();
+                var color = getEventColor(randomLimitedColor());
                 var tier = sticker[1].t;
                 var price = TIER_TOKEN_PRICES[tier] || 1;
                 if (COLOR_PRICE_MULTS[color.name]) price *= COLOR_PRICE_MULTS[color.name];
@@ -3085,9 +3085,9 @@
             } else {
                 var validColors = usedColors.filter(function (c) { return c && c.bg; });
                 if (validColors.length > 0) { finalColor = validColors[Math.floor(Math.random() * validColors.length)]; }
-                else { finalColor = randomLimitedColor(); }
+                else { finalColor = getEventColor(randomLimitedColor()); }
             }
-            if (!finalColor) finalColor = randomLimitedColor();
+            if (!finalColor) finalColor = getEventColor(randomLimitedColor());
             if (!finalColor.bg) { finalColor.bg = '#444'; finalColor.border = '#888'; finalColor.name = 'Обычный'; finalColor.coeff = 1.0; }
             var id = 'col_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
             collectibleStickers[id] = { emoji: resultEmoji, color: finalColor, basePrice: basePrice || 1, price: basePrice || 1, created: Date.now(), isCollectible: true };
@@ -3230,7 +3230,7 @@
             var rand = Math.random() * total;
             var reward = FUSE_REWARDS[0];
             for (var r of FUSE_REWARDS) { rand -= r.chance; if (rand <= 0) { reward = r; break; } }
-            var color = randomLimitedColor();
+            var color = getEventColor(randomLimitedColor());
             var hasEvent = activeEvents && activeEvents.length > 0;
             if (hasEvent && Math.random() < 0.15) {
                 var event = activeEvents[Math.floor(Math.random() * activeEvents.length)];
@@ -3429,14 +3429,22 @@
             setInterval(updateTimer, 1000);
         }
 
-        function getEventColor(normalColor) {
-            if (!activeEvents || activeEvents.length === 0) return normalColor;
-            if (Math.random() < 0.15) {
-                var event = activeEvents[Math.floor(Math.random() * activeEvents.length)];
-                return { name: event.special_color_name || 'Event', bg: event.special_color_bg || '#ffd700', border: event.special_color_border || '#ccaa00', coeff: event.special_color_coeff || 2.0, isEvent: true };
-            }
-            return normalColor;
-        }
+function getEventColor(normalColor) {
+    if (!activeEvents || activeEvents.length === 0) return normalColor;
+    
+    // 15% шанс на ивентовый фон
+    if (Math.random() < 0.15) {
+        var event = activeEvents[Math.floor(Math.random() * activeEvents.length)];
+        return { 
+            name: event.special_color_name || 'Event', 
+            bg: event.special_color_bg || '#ffd700', 
+            border: event.special_color_border || '#ccaa00', 
+            coeff: event.special_color_coeff || 2.0, 
+            isEvent: true 
+        };
+    }
+    return normalColor;
+}
 
         // ========== ОТРИСОВКА ==========
         function updateUI() {
