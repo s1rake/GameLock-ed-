@@ -2414,15 +2414,21 @@ updateUI = function() {
         // ========== ПОДПИСАННОЕ СОХРАНЕНИЕ ==========
         const CLICKER_SECRET = 'CLICKER_SECRET_KEY_2026_X7k9';
 
-        async function generateSignature(data) {
-            const str = data.username + '|' + data.balance + '|' + data.coins + '|' +
-                (Math.round(data.collectibleTokens * 10) / 10) + '|' + data.prestigeLevel + '|' +
-                data.clientTime + '|' + CLICKER_SECRET;
-            const encoder = new TextEncoder();
-            const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(str));
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
+async function generateSignature(data) {
+    // Округляем токены до 1 знака
+    var roundedTokens = (Math.round(data.collectibleTokens * 10) / 10).toFixed(1);
+    
+    const str = data.username + '|' + data.balance + '|' + data.coins + '|' +
+        roundedTokens + '|' + data.prestigeLevel + '|' +
+        data.clientTime + '|' + CLICKER_SECRET;
+    
+    console.log('Подписываем:', str); // Для отладки
+    
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(str));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
         async function saveToSupabase() {
             if (!currentUser || !sb) return;
@@ -2436,7 +2442,7 @@ updateUI = function() {
 
                 const { data, error } = await sb.rpc('save_clicker_signed', {
                     p_username: currentUser.username, p_balance: Math.floor(balance),
-                    p_coins: coins, p_collectible_tokens: collectibleTokens,
+                    p_coins: coins, p_collectible_tokens: Math.round(collectibleTokens * 10) / 10,
                     p_prestige_level: prestigeLevel, p_total_clicks: Math.floor(totalClicks),
                     p_stickers: stickers, p_limited_stickers: limitedStickers,
                     p_collectible_stickers: collectibleStickers, p_favorites: favorites,
