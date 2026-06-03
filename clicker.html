@@ -3716,8 +3716,38 @@ function getEventColor(normalColor) {
 
         function openSpecialCraftInventoryWithNeeded(craft, neededCopy, selectedItems) { if (craft.ends_at && new Date(craft.ends_at) < new Date()) { for (const item of selectedItems) { if (item.type === 'limited') limitedStickers[item.id] = item.sticker; else collectibleStickers[item.id] = item.sticker; } updateUI(); loadSpecialCrafts(); toast('❌ Время крафта истекло!', '#f44'); return; } const available = []; for (const id in limitedStickers) { const ls = limitedStickers[id]; if (ls && neededCopy[ls.emoji] && neededCopy[ls.emoji] > 0) { available.push({ id: id, sticker: ls, type: 'limited' }); } } for (const id in collectibleStickers) { const cs = collectibleStickers[id]; if (cs && neededCopy[cs.emoji] && neededCopy[cs.emoji] > 0) { available.push({ id: id, sticker: cs, type: 'collectible' }); } } if (available.length === 0) { for (const item of selectedItems) { if (item.type === 'limited') limitedStickers[item.id] = item.sticker; else collectibleStickers[item.id] = item.sticker; } updateUI(); toast('Нет нужных стикеров! Стикеры возвращены.', '#f44'); return; } const overlay = document.createElement('div'); overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;'; const title = document.createElement('div'); title.style.cssText = 'color:white;font-size:20px;margin-bottom:10px;'; title.textContent = 'Выберите стикер для ' + craft.result_emoji + ' (' + selectedItems.length + '/' + Object.keys(craft.recipe).length + ')'; overlay.appendChild(title); const neededList = []; for (const [emoji, need] of Object.entries(neededCopy)) { if (need > 0) neededList.push(emoji); } const neededDiv = document.createElement('div'); neededDiv.style.cssText = 'color:#ff9800;font-size:14px;margin-bottom:15px;'; neededDiv.textContent = 'Осталось: ' + neededList.join(', '); overlay.appendChild(neededDiv); const grid = document.createElement('div'); grid.className = 'inv-grid'; available.forEach(function (item) { if (!neededCopy[item.sticker.emoji] || neededCopy[item.sticker.emoji] <= 0) return; const el = document.createElement('div'); el.className = 'inv-item limited'; el.style.background = getGradient(item.sticker.color.bg); el.style.borderColor = item.sticker.color.border; el.innerHTML = item.sticker.emoji + '<br><span class="inv-count" style="color:white">' + item.sticker.color.name + '</span>'; el.onclick = function () { if (!neededCopy[item.sticker.emoji] || neededCopy[item.sticker.emoji] <= 0) return; neededCopy[item.sticker.emoji]--; selectedItems.push(item); if (item.type === 'limited') delete limitedStickers[item.id]; else delete collectibleStickers[item.id]; updateUI(); const allDone = Object.values(neededCopy).every(v => v <= 0); overlay.remove(); if (allDone) { executeSpecialCraft(craft, selectedItems); } else { openSpecialCraftInventoryWithNeeded(craft, neededCopy, selectedItems); } }; grid.appendChild(el); }); overlay.appendChild(grid); const cancelBtn = document.createElement('button'); cancelBtn.textContent = '❌ Отменить (вернуть ' + selectedItems.length + ' стикеров)'; cancelBtn.style.cssText = 'margin-top:15px;padding:10px 20px;border-radius:10px;cursor:pointer;background:#f44;color:white;border:none;'; cancelBtn.onclick = function () { for (const item of selectedItems) { if (item.type === 'limited') limitedStickers[item.id] = item.sticker; else collectibleStickers[item.id] = item.sticker; } updateUI(); overlay.remove(); toast('Крафт отменён, стикеры возвращены', '#ff8800'); }; overlay.appendChild(cancelBtn); document.body.appendChild(overlay); }
 
-        async function executeSpecialCraft(craft, selectedItems) { if (!currentUser || !sb) { toast('Войдите в аккаунт!', '#f44'); return; } try { const { data, error } = await sb.rpc('execute_special_craft', { p_craft_id: craft.id, p_username: currentUser.username }); if (error) throw error; if (data && data.success) { const usedColors = selectedItems.map(item => item.sticker.color); await loadFromSupabase(); updateUI(); updateStickerLB(); showCraftAnimation(data.result_emoji, usedColors, craft.base_price); await loadSpecialCrafts(); } else { for (const item of selectedItems) { if (item.type === 'limited') limitedStickers[item.id] = item.sticker; else collectibleStickers[item.id] = item.sticker; } updateUI(); toast(`❌ ${data?.error || 'Ошибка крафта'}`, '#f44'); } } catch (e) { for (const item of selectedItems) { if (item.type === 'limited') limitedStickers[item.id] = item.sticker; else collectibleStickers[item.id] = item.sticker; } updateUI(); toast('❌ Ошибка соединения', '#f44'); } }
-
+       async function executeSpecialCraft(craft, selectedItems) {
+    if (!currentUser || !sb) {
+        toast('Войдите в аккаунт!', '#f44');
+        return;
+    }
+    
+    try {
+        const { data, error } = await sb.rpc('execute_special_craft', {
+            p_craft_id: craft.id,
+            p_username: currentUser.username
+        });
+        
+        if (error) throw error;
+        
+        if (data && data.success) {
+            // ✅ Сразу сохраняем локальные изменения в Supabase
+            await sb.from('clicker_data').update({
+                limited_stickers: limitedStickers,
+                collectible_stickers: collectibleStickers
+            }).eq('username', currentUser.username);
+            
+            const usedColors = selectedItems.map(item => item.sticker.color);
+            await loadFromSupabase();
+            updateUI();
+            updateStickerLB();
+            showCraftAnimation(data.result_emoji, usedColors, craft.base_price);
+            await loadSpecialCrafts();
+        }
+    } catch (e) {
+        // ... обработка ошибок
+    }
+}
         function startSpecialCrafts() { loadSpecialCrafts(); setInterval(loadSpecialCrafts, 30000); }
 
         renderCrafts = function () { renderAllCrafts(); };
