@@ -2416,7 +2416,7 @@ updateUI = function() {
 
         async function generateSignature(data) {
             const str = data.username + '|' + data.balance + '|' + data.coins + '|' +
-                data.collectibleTokens.toFixed(1) + '|' + data.prestigeLevel + '|' +
+                (Math.round(data.collectibleTokens * 10) / 10) + '|' + data.prestigeLevel + '|' +
                 data.clientTime + '|' + CLICKER_SECRET;
             const encoder = new TextEncoder();
             const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(str));
