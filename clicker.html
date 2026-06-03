@@ -2127,7 +2127,7 @@
                     p_username: currentUser.username,
                     p_balance: Math.floor(balance),
                     p_coins: coins,
-                    p_collectible_tokens: collectibleTokens,
+                    p_collectible_tokens: Math.round(collectibleTokens * 10) / 10, 
                     p_prestige_level: prestigeLevel,
                     p_total_clicks: Math.floor(totalClicks),
                     p_stickers: stickers,
@@ -2169,18 +2169,17 @@
 
         // Обновление UI теперь через защищенный вызов
         const originalUpdateUI = updateUI;
-        // В updateUI:
-        updateUI = function () {
-            if (window.__DISABLE_SECURITY__) return originalUpdateUI();
 
-            const stack = new Error().stack || '';
-            if (stack.includes('<anonymous>') || stack.includes('eval')) {
-                console.warn('🛡️ updateUI blocked from console');
-                return;
-            }
-
-            return originalUpdateUI();
-        };
+updateUI = function() {
+    if (window.__DISABLE_SECURITY__) return originalUpdateUI(); // ← Добавить
+    
+    const stack = new Error().stack || '';
+    if (stack.includes('<anonymous>') || stack.includes('eval')) {
+        console.warn('🛡️ updateUI blocked from console');
+        return;
+    }
+    return originalUpdateUI();
+};
 
 
         // ========== СИСТЕМА БАНОВ ==========
@@ -2417,7 +2416,7 @@
 
         async function generateSignature(data) {
             const str = data.username + '|' + data.balance + '|' + data.coins + '|' +
-                data.collectibleTokens + '|' + data.prestigeLevel + '|' +
+                data.collectibleTokens.toFixed(1) + '|' + data.prestigeLevel + '|' +
                 data.clientTime + '|' + CLICKER_SECRET;
             const encoder = new TextEncoder();
             const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(str));
@@ -2640,6 +2639,7 @@
 
             // Добавляем токены
             collectibleTokens += price;
+            collectibleTokens = Math.round(collectibleTokens * 10) / 10;
 
             // Удаляем стикер
             delete collectibleStickers[id];
