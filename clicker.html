@@ -3256,28 +3256,43 @@
         var eventWindow = null;
         var eventTimerInterval = null;
 
-        async function checkGlobalEvent() {
-            if (!sb) return null;
-            try {
-                var res = await sb.from('global_events').select('*').eq('is_active', true);
-                activeEvents = [];
-                if (res.data) {
-                    for (var i = 0; i < res.data.length; i++) {
-                        var event = res.data[i];
-                        var endsAt = new Date(event.ends_at).getTime();
-                        if (endsAt > Date.now()) { activeEvents.push(event); }
-                    }
-                }
-                if (activeEvents.length > 0) {
-                    applyEventEffects(activeEvents[0]);
-                    showEventWindows();
-                    return activeEvents[0];
-                } else {
-                    removeEventEffects();
-                    return null;
-                }
-            } catch (e) { return null; }
+ async function checkGlobalEvent() {
+    if (!sb) return null;
+    
+    try {
+        var res = await sb.from('global_events').select('*').eq('is_active', true);
+        
+        if (res.error) {
+            console.log('❌ Ошибка загрузки ивентов:', res.error.message);
+            return null;
         }
+        
+        activeEvents = [];
+        if (res.data) {
+            for (var i = 0; i < res.data.length; i++) {
+                var event = res.data[i];
+                var endsAt = new Date(event.ends_at).getTime();
+                if (endsAt > Date.now()) {
+                    activeEvents.push(event);
+                }
+            }
+        }
+        
+        if (activeEvents.length > 0) {
+            console.log('✅ Загружены ивенты:', activeEvents.length);
+            applyEventEffects(activeEvents[0]);
+            showEventWindows();
+            return activeEvents[0];
+        } else {
+            console.log('ℹ️ Нет активных ивентов');
+        }
+        
+        return null;
+    } catch (e) {
+        console.log('❌ Supabase недоступен для ивентов');
+        return null;
+    }
+}
 
         function applyEventEffects(event) {
             showEventWindows();
