@@ -2597,9 +2597,55 @@ async function generateSignature(data) {
         function updateTokenBal() { document.getElementById('tokenBal').textContent = collectibleTokens.toFixed(1); var shopEl = document.getElementById('shopTokenBal'); if (shopEl) shopEl.textContent = collectibleTokens.toFixed(1) }
 
         // ========== ЗАКРЕПЛЕНИЕ ==========
-        function applyPinnedBackground() { if (pinned.length > 0) { document.body.style.background = pinned[0].gradient || getGradient(pinned[0].bg); document.body.style.backgroundAttachment = 'fixed' } }
-        function pinSticker(id) { if (pinned.length > 0) unpinSticker(0); var ls = limitedStickers[id] || collectibleStickers[id]; if (!ls) return; pinned = [{ id: id, emoji: ls.emoji, bg: ls.color.bg, border: ls.color.border, gradient: getGradient(ls.color.bg), price: ls.price || 0, x: 100, y: 100 }]; saveExtra(); applyPinnedBackground(); updatePinned(); updateUI(); updateUnpinButton(); toast('📌 Закреплён!') }
-        function unpinSticker(index) { pinned = []; document.body.style.background = ''; document.body.style.backgroundAttachment = ''; if (darkTheme) document.body.classList.add('dark-theme'); saveExtra(); updatePinned(); updateUI(); updateUnpinButton(); toast('Откреплено') }
+       function applyPinnedBackground() { 
+    if (pinned.length > 0 && pinned[0].isEvent) {
+        // Ивентовый фон
+        var p = pinned[0];
+        if (p.eventType === 'TV') {
+            document.body.style.background = '#1a1a2e';
+            document.body.style.backgroundImage = 'linear-gradient(135deg, #ffffff 0%, #00ccff 30%, #ffffff 50%, #00ccff 70%, #ffffff 100%)';
+            document.body.style.backgroundSize = '300% 300%';
+            document.body.style.animation = 'tvShimmer 0.8s linear infinite';
+        } else if (p.eventType === 'Lightning') {
+            document.body.style.background = '#0a1a3a';
+            document.body.style.backgroundImage = 'radial-gradient(circle at 30% 30%, rgba(255,255,200,0.2) 0%, transparent 60%)';
+        } else if (p.eventType === 'JUNE') {
+            document.body.style.background = 'linear-gradient(180deg, #87CEEB 0%, #4CAF50 100%)';
+        } else {
+            document.body.style.background = p.gradient || getGradient(p.bg);
+        }
+        document.body.style.backgroundAttachment = 'fixed';
+    } else if (pinned.length > 0) {
+        document.body.style.background = pinned[0].gradient || getGradient(pinned[0].bg); 
+        document.body.style.backgroundAttachment = 'fixed';
+    }
+}
+        function pinSticker(id) { 
+    if (pinned.length > 0) unpinSticker(0); 
+    var ls = limitedStickers[id] || collectibleStickers[id]; 
+    if (!ls) return; 
+    
+    pinned = [{ 
+        id: id, 
+        emoji: ls.emoji, 
+        bg: ls.color.bg, 
+        border: ls.color.border, 
+        gradient: getGradient(ls.color.bg), 
+        price: ls.price || 0, 
+        isEvent: ls.color.isEvent || false, // ← Сохраняем ивентовый флаг
+        eventType: ls.color.name || null,   // ← Сохраняем тип ивента
+        x: 100, 
+        y: 100 
+    }]; 
+    
+    saveExtra(); 
+    applyPinnedBackground(); 
+    updatePinned(); 
+    updateUI(); 
+    updateUnpinButton(); 
+    toast('📌 Закреплён!'); 
+}
+function unpinSticker(index) { pinned = []; document.body.style.background = ''; document.body.style.backgroundAttachment = ''; if (darkTheme) document.body.classList.add('dark-theme'); saveExtra(); updatePinned(); updateUI(); updateUnpinButton(); toast('Откреплено') }
         function updateUnpinButton() { var btn = document.getElementById('unpinBtn'); if (btn) btn.style.display = pinned.length > 0 ? 'block' : 'none' }
         function updatePinned() { var container = document.getElementById('pinnedArea'); if (!container) return; container.innerHTML = ''; if (pinned.length === 0) return; var p = pinned[0]; var item = document.createElement('div'); item.className = 'pinned-item'; item.style.background = p.gradient; item.style.borderColor = p.border; item.style.position = 'relative'; item.style.left = p.x + 'px'; item.style.top = p.y + 'px'; item.style.cursor = 'grab'; item.innerHTML = p.emoji + '<span class="pinned-coin">' + formatMoney(p.price || 0) + '</span>'; item.addEventListener('mousedown', function (e) { e.preventDefault(); var startX = e.clientX, startY = e.clientY, origX = p.x, origY = p.y; function onMove(e2) { p.x = origX + (e2.clientX - startX); p.y = origY + (e2.clientY - startY); updatePinned() } function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); saveExtra() } document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp) }); container.appendChild(item) }
 
@@ -3317,16 +3363,25 @@ async function generateSignature(data) {
             }
         }
 
-        function removeEventEffects() {
-            if (eventWindow) eventWindow.remove();
-            if (eventTimerInterval) clearInterval(eventTimerInterval);
-            stopStormEffect();
-            document.body.style.background = '';
-            document.body.style.backgroundImage = '';
-            document.body.style.backgroundAttachment = '';
-            if (darkTheme) document.body.classList.add('dark-theme');
-            stopStickerFall();
-        }
+function removeEventEffects() {
+    if (eventWindow) eventWindow.remove();
+    if (eventTimerInterval) clearInterval(eventTimerInterval);
+    stopStormEffect();
+    stopStickerFall();
+    
+    // Возвращаем фон к закреплённому (или обычному)
+    document.body.style.background = '';
+    document.body.style.backgroundImage = '';
+    document.body.style.backgroundSize = '';
+    document.body.style.animation = '';
+    document.body.style.backgroundAttachment = '';
+    document.body.classList.remove('storm-event', 'june-event');
+    
+    if (darkTheme) document.body.classList.add('dark-theme');
+    
+    // Восстанавливаем закреплённый фон
+    applyPinnedBackground();
+}
 
         function startStormEffect() {
             stopStormEffect();
